@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+
+  mysql:
+    image: mysql:latest
+    volumes:
+      - ./configs/setups/mysql_setup.sql:/data/application/mysql_setup.sql
+      - ${DOCKER_MAPPING_PATH:-./docker-volume-mapping}/mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_USER: "root"
+      MYSQL_ROOT_PASSWORD_FILE: "/run/secrets/mysql_root_password"
+      MYSQL_USER: "luntaixia"
+      MYSQL_PASSWORD: "luntaixia"
+      MYSQL_DATABASE: "finlens"
+    secrets:
+      - mysql_root_password
+    ports:
+      - 3306:3306
+    command:
+      --init-file=/data/application/mysql_setup.sql
+      --default-authentication-plugin=caching_sha2_password
+      --log-error-verbosity=1
+    restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", '-u', 'root', '-p$$MYSQL_ROOT_PASSWORD']
+      #test: ["CMD", "whoami"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+
+
+secrets:
+   mysql_root_password:
+     file: ./configs/secrets/mysql_root_password.txt
