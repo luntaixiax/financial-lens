@@ -2,9 +2,10 @@ from __future__ import annotations
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+from typing import List, Dict, Tuple
 from sqlmodel import Field, SQLModel, Column, create_engine
 from sqlalchemy import ForeignKey, Boolean, JSON, Integer, String, Text, Date, DateTime, Float, Numeric, DECIMAL, UniqueConstraint, inspect, INT, CHAR
-from sqlalchemy_utils import EmailType, PasswordType, PhoneNumberType, ChoiceType, CurrencyType
+from sqlalchemy_utils import EmailType, PasswordType, PhoneNumberType, ChoiceType, CurrencyType, PhoneNumber
 from datetime import date, datetime
 from model.enums import EntityType, BalShType, IncExpType, CurType, EntryType, EventType
 
@@ -26,6 +27,7 @@ class EntityORM(SQLModel, table=True):
     email: str = Field(sa_column=Column(EmailType(), nullable = False))
     phone: str = Field(sa_column=Column(PhoneNumberType(), nullable = True))
     address: dict = Field(sa_column=Column(JSON(), nullable = True))
+    avatar: str = Field(sa_column=Column(String(length = 50), nullable = True))
 
 
 class AcctBalshORM(SQLModel, table=True):
@@ -57,7 +59,7 @@ class TransactionORM(SQLModel, table=True):
     __tablename__ = "transaction"
 
     trans_id: str = Field(sa_column=Column(String(length = 15), primary_key = True, nullable = False))
-    trans_dt: datetime = Field(sa_column=Column(DateTime(), nullable = True))
+    trans_dt: datetime = Field(sa_column=Column(DateTime(), nullable = False))
     entity_id: str = Field(sa_column=Column(String(length = 10), ForeignKey('entity.entity_id', onupdate = 'CASCADE'), nullable = False))
     note: str = Field(sa_column=Column(Text(), nullable = True))
     
@@ -74,6 +76,21 @@ class EntryORM(SQLModel, table=True):
     amount: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
     event: EventType = Field(sa_column=Column(ChoiceType(EventType, impl = Integer()), nullable = False)) # event
     project: str = Field(sa_column=Column(String(length = 10), nullable = True))  # daily/investment/other
+    
+class InvoiceORM(SQLModel, table=True):
+    
+    __tablename__ = "invoice"
+    
+    invoice_id: str = Field(sa_column=Column(String(length = 15), primary_key = True, nullable = False))
+    invoice_dt: datetime = Field(sa_column=Column(DateTime(), nullable = False))
+    entity_id_provider: str = Field(sa_column=Column(String(length = 10), ForeignKey('entity.entity_id', onupdate = 'CASCADE'), nullable = False))
+    entity_id_payer: str = Field(sa_column=Column(String(length = 10), ForeignKey('entity.entity_id', onupdate = 'CASCADE'), nullable = False))
+    currency: CurType = Field(sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = False)) # category currency
+    items: List[dict] = Field(sa_column=Column(JSON(), nullable = False))
+    discount: float = Field(sa_column=Column(Float(), default = 0))
+    shipping: float = Field(sa_column=Column(Float(), default = 0))
+    note: str = Field(sa_column=Column(Text(), nullable = True))
+    
     
 if __name__ == '__main__':
     pass

@@ -3,12 +3,12 @@ from typing import Dict, List
 from dacite import from_dict, Config
 from enum import Enum
 from dataclasses import asdict
-
 from orm import EntityORM
 from connection import engine
 from sqlmodel import Session, select
 from model.entity import Entity
 from utils.exceptions import DuplicateEntryError
+from utils.tools import get_abs_img_path
 
 class entityDao:
     @classmethod
@@ -19,6 +19,7 @@ class entityDao:
     
     @classmethod
     def toEntity(cls, entity_orm: EntityORM) -> Entity:
+        entity_orm.phone = str(entity_orm.phone) # TODO: verify this
         return from_dict(
             data_class = Entity,
             data = entity_orm.dict(),
@@ -62,6 +63,7 @@ class entityDao:
             p.email = entity_orm.email
             p.phone = entity_orm.phone
             p.address = entity_orm.address
+            p.avatar = entity_orm.avatar
             
             s.add(p)
             s.commit()
@@ -90,27 +92,37 @@ class entityDao:
             sql = select(EntityORM.name)
             ps = s.exec(sql).all()
         return ps
+    
+    @classmethod
+    def get_avatar_abs_path(cls, entity_id: str) -> str:
+        entity = cls.get(entity_id=entity_id)
+        return get_abs_img_path(
+            img_name = entity.avatar,
+            sector = 'avatars'
+        )
 
 
 if __name__ == '__main__':
-    entity = from_dict(
-        data_class = Entity,
-        data = {
-            'entity_id' : 'e123',
-            'name' : 'LTX Intelligent Service Inc.',
-            'entity_type' : 2,
-            'email' : 'luntaix@ltxservice.ca',
-            'address' : {
-                'address1' : '33 Charles st E',
-                'suite_no' : 1603,
-                'city' : 'Toronto',
-                'state' : 'Ontario',
-                'country' : 'Canada',
-                'postal_code' : 'M4Y0A2'
-            }
-        },
-        config = Config(cast = [Enum])
-    )
-    entityDao.update(entity)
+    # entity = from_dict(
+    #     data_class = Entity,
+    #     data = {
+    #         'entity_id' : 'e123',
+    #         'name' : 'LTX Intelligent Service Inc.',
+    #         'entity_type' : 2,
+    #         'email' : 'luntaix@ltxservice.ca',
+    #         'address' : {
+    #             'address1' : '33 Charles st E',
+    #             'suite_no' : 1603,
+    #             'city' : 'Toronto',
+    #             'state' : 'Ontario',
+    #             'country' : 'Canada',
+    #             'postal_code' : 'M4Y0A2'
+    #         },
+    #         'avatar': 'LTX - logo.png'
+    #     },
+    #     config = Config(cast = [Enum])
+    # )
+    # entityDao.update(entity)
     
-    print(entityDao.getNames())
+    # print(entityDao.getNames())
+    print(entityDao.get('e-41ac6'))

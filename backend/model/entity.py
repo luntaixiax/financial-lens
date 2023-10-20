@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from enums import EntityType
 from datetime import datetime
 
-
 @dataclass(kw_only=True)
 class Address:
     address1: str
@@ -13,6 +12,21 @@ class Address:
     state: str
     country: str
     postal_code: str | int
+    
+    @property
+    def address_line(self) -> str:
+        adress_line = ""
+        if self.suite_no is not None:
+            adress_line += f"{self.suite_no} - "
+        adress_line += self.address1
+        if self.address2 is not None:
+            adress_line += f", {self.address2}"
+            
+        return adress_line
+            
+    @property
+    def post_code_line(self) -> str:
+        return f"{self.city}, {self.state}, {self.country}, {self.postal_code}"
 
 @dataclass(kw_only=True)
 class Entity:
@@ -22,6 +36,7 @@ class Entity:
     email: str
     phone: str | None = None
     address: Address | None = None
+    avatar: str | None = None # relative path of icon
 
 # @dataclass(kw_only=True)
 # class Person(Entity):
@@ -74,7 +89,7 @@ if __name__ == '__main__':
             'address1' : '33 Charles st E',
             'suite_no' : 1603,
             'city' : 'Toronto',
-            'state' : 'Ontario',
+            'state' : 'ON',
             'country' : 'Canada',
             'postal_code' : 'M4Y0A2'
         }
@@ -166,3 +181,5 @@ if __name__ == '__main__':
         }
     )
     print(person)
+    print(a.address_line)
+    print(a.post_code_line)

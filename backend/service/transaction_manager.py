@@ -1,6 +1,7 @@
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
 from model.transactions import Transaction
 from model.enums import EntryType
 from dao.transaction import entryDao, transactionDao
