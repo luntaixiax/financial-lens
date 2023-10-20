@@ -3,14 +3,17 @@ from enum import Enum
 from pydantic import BaseModel
 from fastapi import File, FastAPI
 from typing import Tuple, List, Dict
+from datetime import date, datetime
 from model.entity import Entity
 from model.accounts import BalSh, IncExp
 from model.transactions import Transaction, Entry
 from model.invoice import Invoice
+from model.enums import CurType
 from service.entity_manager import EntityManager
 from service.acct_manager import AcctManager
 from service.transaction_manager import TransManager
 from service.invoice_manager import InvoiceManager
+from service.fx_manager import FxManager
 from utils.tools import id_generator
 
 
@@ -150,6 +153,20 @@ def update_invoice(invoice_id: str, invoice: Invoice):
 @app.delete("/invoice/delete")
 def delete_invoice(invoice_id: str):
     InvoiceManager.delete(invoice_id = invoice_id)
+    
+@app.post("/fx/pull")
+def pull_fx(cur_dt: date, overwrite: bool = False):
+    FxManager.pull(
+        cur_dt=cur_dt,
+        overwrite=overwrite
+    )
+    
+@app.get("/fx/get")
+def get_fx(currency: CurType, cur_dt: date) -> float:
+    return FxManager.get(
+        cur_dt=cur_dt,
+        currency=currency
+    )
     
 if __name__ == '__main__':
     # from model.enums import IncExpType

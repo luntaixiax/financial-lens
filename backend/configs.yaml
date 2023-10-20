@@ -2,3 +2,5 @@ paths:
   static:
     images: '/home/luntaixia/Pictures/Images/finlens-images'
     
+preferences:
+  base_cur: 'CAD'

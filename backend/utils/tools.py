@@ -17,6 +17,10 @@ def get_abs_img_path(img_name: str, sector: str) -> str:
     settings = get_settings()
     img_root = settings.get('paths').get('static').get('images')
     return str(Path(img_root) / sector / img_name)
+
+def get_base_cur() -> str:
+    settings = get_settings()
+    return settings['preferences']['base_cur']
     
     
     

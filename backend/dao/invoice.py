@@ -26,8 +26,6 @@ class invoiceDao:
     @classmethod
     def add(cls, invoice: Invoice):
         invoice_orm = cls.fromInvoice(invoice)
-        print(invoice)
-        print(invoice_orm)
         with Session(engine) as s:
             s.add(invoice_orm)
             s.commit()

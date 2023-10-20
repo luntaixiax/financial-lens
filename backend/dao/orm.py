@@ -13,7 +13,7 @@ from model.enums import EntityType, BalShType, IncExpType, CurType, EntryType, E
 class FxORM(SQLModel, table=True):
     __tablename__ = "currency"
     
-    currency: str = Field(sa_column=Column(ChoiceType(CurType, impl = Integer()), primary_key = True, nullable = False))
+    currency: CurType = Field(sa_column=Column(ChoiceType(CurType, impl = Integer()), primary_key = True, nullable = False))
     cur_dt: date = Field(sa_column=Column(Date(), primary_key = True, nullable = False))
     rate: float = Field(sa_column=Column(Float(), nullable = False))
 
