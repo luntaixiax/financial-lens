@@ -4,3 +4,4 @@ __pycache__/
 *$py.class
 configs/secrets/*
 secrets.toml
+docker-volume-mapping

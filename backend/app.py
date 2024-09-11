@@ -2,7 +2,7 @@ from dacite import from_dict, Config
 from enum import Enum
 from pydantic import BaseModel
 from fastapi import File, FastAPI
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Any
 from datetime import date, datetime
 from model.entity import Entity
 from model.accounts import BalSh, IncExp
@@ -133,7 +133,7 @@ def create_invoice(invoice: Invoice) -> str:
     return invoice_id
 
 @app.put("/invoice/create_pdf")
-def create_invoice_pdf(invoice_id: str, size: Tuple = (650, 800)):
+def create_invoice_pdf(invoice_id: str, size: Tuple[int] | Any = (650, 800)):
     # get invoice
     invoice = InvoiceManager.get(invoice_id=invoice_id)
     # create pdf
