@@ -3,12 +3,12 @@ from typing import Dict, List
 from dacite import from_dict, Config
 from enum import Enum
 from dataclasses import asdict
-from orm import EntityORM
-from connection import engine
 from sqlmodel import Session, select
-from model.entity import Entity
-from utils.exceptions import DuplicateEntryError
-from utils.tools import get_abs_img_path
+from src.dao.orm import EntityORM
+from src.dao.connection import engine
+from src.model.entity import Entity
+from src.utils.exceptions import DuplicateEntryError
+from src.utils.tools import get_abs_img_path
 
 class entityDao:
     @classmethod

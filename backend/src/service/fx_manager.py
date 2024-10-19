@@ -1,13 +1,9 @@
-import os
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
 from typing import List, Dict, Tuple
 from datetime import date
 from currency_converter import CurrencyConverter, ECB_URL
-from dao.fx import fxDao
-from model.enums import CurType
-from utils.tools import get_base_cur
+from src.dao.fx import fxDao
+from src.model.enums import CurType
+from src.utils.tools import get_base_cur
 from sqlalchemy.exc import NoResultFound
 
 class FxManager:

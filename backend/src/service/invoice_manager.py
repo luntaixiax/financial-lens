@@ -1,7 +1,3 @@
-import os
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
 from typing import List, Tuple, Dict
 from decimal import Decimal
 from pathlib import Path
@@ -18,10 +14,10 @@ from borb.pdf.canvas.layout.layout_element import Alignment
 from borb.pdf.canvas.color.color import HexColor, X11Color
 from borb.pdf.pdf import PDF
 
-from model.invoice import Invoice, InvoiceItem
-from dao.invoice import invoiceDao
-from dao.entity import entityDao
-from utils.tools import get_abs_img_path
+from src.model.invoice import Invoice, InvoiceItem
+from src.dao.invoice import invoiceDao
+from src.dao.entity import entityDao
+from src.utils.tools import get_abs_img_path
         
 class InvoiceManager:
     

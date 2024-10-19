@@ -1,6 +1,6 @@
 from typing import List, Dict, Union, Optional, ClassVar
 from dataclasses import dataclass
-from enums import EntityType
+from src.model.enums import EntityType
 from datetime import datetime
 
 @dataclass(kw_only=True)

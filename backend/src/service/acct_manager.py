@@ -1,9 +1,5 @@
-import os
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
-from model.accounts import BalSh, IncExp
-from dao.acct import acctBalshDao, acctIncExpDao
+from src.model.accounts import BalSh, IncExp
+from src.dao.acct import acctBalshDao, acctIncExpDao
 
 class AcctManager:
     @classmethod

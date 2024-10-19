@@ -1,11 +1,7 @@
-import os
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
-from model.transactions import Transaction
-from model.enums import EntryType
-from dao.transaction import entryDao, transactionDao
-from dao.acct import acctBalshDao
+from src.model.transactions import Transaction
+from src.model.enums import EntryType
+from src.dao.transaction import entryDao, transactionDao
+from src.dao.acct import acctBalshDao
 
 class TransManager:
     @classmethod

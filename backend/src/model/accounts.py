@@ -1,6 +1,6 @@
 from typing import List, Dict, Union, Optional, ClassVar
 from dataclasses import dataclass
-from enums import CurType, BalShType, IncExpType
+from src.model.enums import CurType, BalShType, IncExpType
 
 @dataclass(kw_only=True)
 class BaseAcct:

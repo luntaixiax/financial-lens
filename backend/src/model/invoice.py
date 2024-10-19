@@ -1,6 +1,6 @@
 from typing import List, Dict
 from dataclasses import dataclass
-from enums import CurType
+from src.model.enums import CurType
 from datetime import datetime
 
 @dataclass

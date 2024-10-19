@@ -4,18 +4,17 @@ from pydantic import BaseModel
 from fastapi import File, FastAPI
 from typing import Tuple, List, Dict, Any
 from datetime import date, datetime
-from model.entity import Entity
-from model.accounts import BalSh, IncExp
-from model.transactions import Transaction, Entry
-from model.invoice import Invoice
-from model.enums import CurType
-from service.entity_manager import EntityManager
-from service.acct_manager import AcctManager
-from service.transaction_manager import TransManager
-from service.invoice_manager import InvoiceManager
-from service.fx_manager import FxManager
-from utils.tools import id_generator
-
+from src.model.entity import Entity
+from src.model.accounts import BalSh, IncExp
+from src.model.transactions import Transaction, Entry
+from src.model.invoice import Invoice
+from src.model.enums import CurType
+from src.service.entity_manager import EntityManager
+from src.service.acct_manager import AcctManager
+from src.service.transaction_manager import TransManager
+from src.service.invoice_manager import InvoiceManager
+from src.service.fx_manager import FxManager
+from src.utils.tools import id_generator
 
 app = FastAPI() # instantiate
 

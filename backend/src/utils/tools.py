@@ -10,7 +10,7 @@ def id_generator(prefix: str, length: int = 8, existing_list: list = None):
     return new_id
 
 def get_settings() -> dict:
-    with open(Path(__file__).parent.parent / 'configs.yaml') as obj:
+    with open(Path.cwd() / 'configs.yaml') as obj:
         return yaml.safe_load(obj)
     
 def get_abs_img_path(img_name: str, sector: str) -> str:
