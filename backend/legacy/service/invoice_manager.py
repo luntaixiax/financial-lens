@@ -14,10 +14,10 @@ from borb.pdf.canvas.layout.layout_element import Alignment
 from borb.pdf.canvas.color.color import HexColor, X11Color
 from borb.pdf.pdf import PDF
 
-from src.model.invoice import Invoice, InvoiceItem
-from src.dao.invoice import invoiceDao
-from src.dao.entity import entityDao
-from src.utils.tools import get_abs_img_path
+from legacy.model.invoice import Invoice, InvoiceItem
+from legacy.dao.invoice import invoiceDao
+from legacy.dao.entity import entityDao
+from legacy.utils.tools import get_abs_img_path
         
 class InvoiceManager:
     

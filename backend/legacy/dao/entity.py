@@ -4,11 +4,11 @@ from dacite import from_dict, Config
 from enum import Enum
 from dataclasses import asdict
 from sqlmodel import Session, select
-from src.dao.orm import EntityORM
-from src.dao.connection import engine
-from src.model.entity import Entity
-from src.utils.exceptions import DuplicateEntryError
-from src.utils.tools import get_abs_img_path
+from legacy.dao.orm import EntityORM
+from legacy.dao.connection import engine
+from legacy.model.entity import Entity
+from legacy.utils.exceptions import DuplicateEntryError
+from legacy.utils.tools import get_abs_img_path
 
 class entityDao:
     @classmethod

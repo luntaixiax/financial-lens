@@ -1,5 +1,5 @@
-from src.model.accounts import BalSh, IncExp
-from src.dao.acct import acctBalshDao, acctIncExpDao
+from legacy.model.accounts import BalSh, IncExp
+from legacy.dao.acct import acctBalshDao, acctIncExpDao
 
 class AcctManager:
     @classmethod

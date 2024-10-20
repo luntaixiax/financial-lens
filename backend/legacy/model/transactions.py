@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Dict, Union, Tuple, Optional, ClassVar
 from dataclasses import dataclass
-from src.model.enums import CurType, EventType, EntryType
+from legacy.model.enums import CurType, EventType, EntryType
 
 @dataclass(kw_only=True)
 class Entry:

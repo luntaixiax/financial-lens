@@ -9,6 +9,6 @@ mysql_url = f"mysql+mysqlconnector://{config['username']}:{config['password']}@{
 engine = create_engine(mysql_url, echo=True)
 
 if __name__ == '__main__':
-    from src.dao.orm import SQLModel
+    from legacy.dao.orm import SQLModel
     
     SQLModel.metadata.create_all(engine)

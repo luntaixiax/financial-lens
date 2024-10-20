@@ -4,9 +4,9 @@ from dacite import from_dict, Config
 from enum import Enum
 from dataclasses import asdict
 from sqlmodel import Session, select
-from src.dao.orm import InvoiceORM
-from src.dao.connection import engine
-from src.model.invoice import Invoice
+from legacy.dao.orm import InvoiceORM
+from legacy.dao.connection import engine
+from legacy.model.invoice import Invoice
 
 class invoiceDao:
     @classmethod

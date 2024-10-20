@@ -3,9 +3,9 @@ from typing import Dict, List
 from datetime import date
 from dacite import from_dict, Config
 from sqlmodel import Session, select
-from src.dao.orm import FxORM
-from src.dao.connection import engine
-from src.model.enums import CurType
+from legacy.dao.orm import FxORM
+from legacy.dao.connection import engine
+from legacy.model.enums import CurType
 
 class fxDao:
     

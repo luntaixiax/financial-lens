@@ -3,7 +3,7 @@ from sqlmodel import Field, SQLModel, Column, create_engine
 from sqlalchemy import ForeignKey, Boolean, JSON, Integer, String, Text, Date, DateTime, Float, Numeric, DECIMAL, UniqueConstraint, inspect, INT, CHAR
 from sqlalchemy_utils import EmailType, PasswordType, PhoneNumberType, ChoiceType, CurrencyType, PhoneNumber
 from datetime import date, datetime
-from src.model.enums import EntityType, BalShType, IncExpType, CurType, EntryType, EventType
+from legacy.model.enums import EntityType, BalShType, IncExpType, CurType, EntryType, EventType
 
 
 class FxORM(SQLModel, table=True):

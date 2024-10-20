@@ -4,10 +4,10 @@ from dacite import from_dict, Config
 from enum import Enum
 from dataclasses import asdict
 from sqlmodel import Session, select
-from src.dao.orm import AcctBalshORM, AcctIncExpORM
-from src.dao.connection import engine
-from src.model.accounts import BalSh, IncExp
-from src.utils.exceptions import DuplicateEntryError
+from legacy.dao.orm import AcctBalshORM, AcctIncExpORM
+from legacy.dao.connection import engine
+from legacy.model.accounts import BalSh, IncExp
+from legacy.utils.exceptions import DuplicateEntryError
 
 
 class acctBalshDao:

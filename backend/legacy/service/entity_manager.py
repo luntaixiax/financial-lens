@@ -1,5 +1,5 @@
-from src.model.entity import Entity
-from src.dao.entity import entityDao
+from legacy.model.entity import Entity
+from legacy.dao.entity import entityDao
 
 class EntityManager:
     @classmethod

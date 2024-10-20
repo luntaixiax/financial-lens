@@ -1,9 +1,9 @@
 from typing import List, Dict, Tuple
 from datetime import date
 from currency_converter import CurrencyConverter, ECB_URL
-from src.dao.fx import fxDao
-from src.model.enums import CurType
-from src.utils.tools import get_base_cur
+from legacy.dao.fx import fxDao
+from legacy.model.enums import CurType
+from legacy.utils.tools import get_base_cur
 from sqlalchemy.exc import NoResultFound
 
 class FxManager:

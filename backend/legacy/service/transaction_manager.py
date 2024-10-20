@@ -1,7 +1,7 @@
-from src.model.transactions import Transaction
-from src.model.enums import EntryType
-from src.dao.transaction import entryDao, transactionDao
-from src.dao.acct import acctBalshDao
+from legacy.model.transactions import Transaction
+from legacy.model.enums import EntryType
+from legacy.dao.transaction import entryDao, transactionDao
+from legacy.dao.acct import acctBalshDao
 
 class TransManager:
     @classmethod
