@@ -1,3 +1,4 @@
+from functools import lru_cache
 import uuid
 import yaml
 from pathlib import Path
@@ -10,6 +11,7 @@ def id_generator(prefix: str, length: int = 8, existing_list: list = None) -> st
             new_id = id_generator(prefix, length, existing_list)
     return new_id
 
+@lru_cache()
 def get_settings() -> dict:
     with open(Path.cwd() / 'configs.yaml') as obj:
         return yaml.safe_load(obj)

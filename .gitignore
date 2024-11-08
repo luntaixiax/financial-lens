@@ -5,3 +5,4 @@ __pycache__/
 configs/secrets/*
 secrets.toml
 docker-volume-mapping
+*.db

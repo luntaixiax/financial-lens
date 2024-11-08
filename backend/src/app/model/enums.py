@@ -1,4 +1,4 @@
-from enum import Enum, IntEnum, unique, auto
+from enum import IntEnum, unique
 
 @unique
 class CurType(IntEnum):
@@ -52,3 +52,4 @@ class UnitType(IntEnum):
     MONTH = 4
     PIECE = 5
     KG = 6
+    

@@ -1,12 +1,12 @@
 import logging
 from sqlmodel import Session, select
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import NoResultFound, IntegrityError
 from anytree import PreOrderIter, RenderTree
+from src.app.model.exceptions import AlreadyExistError, NotExistError
 from src.app.model.enums import AcctType
-from src.app.model.entity import BankAcct
 from src.app.model.accounts import Account, Chart, ChartNode
-from src.app.dao.orm import ChartOfAccountORM, AcctORM, BankAcctORM
-from src.app.dao.connection import engine
+from src.app.dao.orm import ChartOfAccountORM, AcctORM
+from src.app.dao.connection import get_engine
 
 class chartOfAcctDao:
     @classmethod
@@ -16,7 +16,7 @@ class chartOfAcctDao:
         for pre, fill, node in RenderTree(top_node):
             logging.info("%s%s" % (pre, node.name))
     
-        with Session(engine) as s:
+        with Session(get_engine()) as s:
             for node in PreOrderIter(top_node):
                 # get parent id
                 parent_chart_id = None
@@ -39,19 +39,25 @@ class chartOfAcctDao:
                         parent_chart_id = parent_chart_id
                     )
                     s.add(new_node_orm)
-                    s.commit()
+                    
                 else:
+                    # otherwise update the nodes
                     old_node_orm.node_name = node.chart.name
                     old_node_orm.acct_type = node.chart.acct_type
                     old_node_orm.parent_chart_id = parent_chart_id
                     s.add(old_node_orm)
-                    s.commit()
+            
+            try:
+                s.commit() # submit all in one commit
+            except IntegrityError as e:
+                s.rollback()
+                raise AlreadyExistError(e)
                 
     
     @classmethod
     def load(cls, acct_type: AcctType) -> ChartNode:
         # assemble the relevant tree from DB and return the top node
-        with Session(engine) as s:
+        with Session(get_engine()) as s:
             def add_childs(node: ChartNode):
                 # find child
                 sql = select(ChartOfAccountORM).where(
@@ -122,28 +128,40 @@ class acctDao:
     @classmethod
     def add(cls, acct: Account):
         acct_orm = cls.fromAcct(acct)
-        with Session(engine) as s:
+        with Session(get_engine()) as s:
             s.add(acct_orm)
-            s.commit()
-            logging.info(f"Added {acct_orm} to Account table")
+            
+            try:
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise AlreadyExistError(e)
+            else:
+                logging.info(f"Added {acct_orm} to Account table")
             
     @classmethod
     def remove(cls, acct_id: str):
-        with Session(engine) as s:
+        with Session(get_engine()) as s:
             sql = select(AcctORM).where(AcctORM.acct_id == acct_id)
-            p = s.exec(sql).one() # get the ccount
+            try:
+                p = s.exec(sql).one()
+            except NoResultFound as e:
+                raise NotExistError(e)    
+            
             s.delete(p)
             s.commit()
             
-        logging.info(f"Removed {p} from Account table")
+            logging.info(f"Removed {p} from Account table")
         
     @classmethod
     def update(cls, acct: Account):
         acct_orm = cls.fromAcct(acct)
-        with Session(engine) as s:
+        with Session(get_engine()) as s:
             sql = select(AcctORM).where(AcctORM.acct_id == acct_orm.acct_id)
-            p = s.exec(sql).one() # get the accountluntaixia
-            
+            try:
+                p = s.exec(sql).one()
+            except NoResultFound as e:
+                raise NotExistError(e)
             
             # update
             p.acct_name = acct_orm.acct_name
@@ -159,7 +177,7 @@ class acctDao:
         
     @classmethod
     def get(cls, acct_id: str) -> Account:
-        with Session(engine) as s:
+        with Session(get_engine()) as s:
             sql = select(AcctORM).where(AcctORM.acct_id == acct_id)
             acct_orm = s.exec(sql).one() # get the account
             
@@ -167,69 +185,9 @@ class acctDao:
             sql = select(ChartOfAccountORM).where(
                 ChartOfAccountORM.chart_id == acct_orm.chart_id
             )
-            chart_orm = s.exec(sql).one() # get the account
+            try:
+                chart_orm = s.exec(sql).one() # get the account
+            except NoResultFound as e:
+                raise NotExistError(e)
             
         return cls.toAcct(acct_orm, chart_orm)
-
-
-class bankAcctDao:
-    @classmethod
-    def fromAcct(cls, linked_acct_id: str, bank_acct: BankAcct) -> BankAcctORM:
-        return BankAcctORM(
-            linked_acct_id=linked_acct_id,
-            **bank_acct.model_dump()
-        )
-        
-    @classmethod
-    def toAcct(cls, bank_acct_orm: BankAcctORM) -> BankAcct:
-        return BankAcct.model_validate(
-            bank_acct_orm.model_dump(exclude=['linked_acct_id'])
-        )
-        
-    @classmethod
-    def add(cls, linked_acct_id: str, acct: BankAcct):
-        acct_orm = cls.fromAcct(linked_acct_id, acct)
-        with Session(engine) as s:
-            s.add(acct_orm)
-            s.commit()
-            logging.info(f"Added {acct_orm} to Bank Account table")
-            
-    @classmethod
-    def remove(cls, linked_acct_id: str):
-        with Session(engine) as s:
-            sql = select(BankAcctORM).where(BankAcctORM.acct_id == linked_acct_id)
-            p = s.exec(sql).one() # get the ccount
-            s.delete(p)
-            s.commit()
-            
-        logging.info(f"Removed {p} from Bank Account table")
-        
-    @classmethod
-    def update(cls, linked_acct_id: str, acct: BankAcct):
-        acct_orm = cls.fromAcct(linked_acct_id, acct)
-        with Session(engine) as s:
-            sql = select(BankAcctORM).where(
-                BankAcctORM.linked_acct_id == acct_orm.linked_acct_id
-            )
-            p = s.exec(sql).one() # get the accountluntaixia
-            
-            
-            # update
-            p.bank_name = acct_orm.bank_name
-            p.bank_acct_number = acct_orm.bank_acct_number
-            p.bank_acct_type = acct_orm.bank_acct_type
-            
-            s.add(p)
-            s.commit()
-            s.refresh(p) # update p to instantly have new values
-            
-        logging.info(f"Updated to {p} from Bank Account table")
-        
-    @classmethod
-    def get(cls, linked_acct_id: str) -> BankAcct:
-        with Session(engine) as s:
-            sql = select(BankAcctORM).where(
-                BankAcctORM.linked_acct_id == linked_acct_id
-            )
-            p = s.exec(sql).one() # get the account
-        return cls.toAcct(p)

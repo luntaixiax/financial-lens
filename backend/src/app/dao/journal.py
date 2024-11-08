@@ -1,11 +1,11 @@
-
-
 import logging
 from sqlmodel import Session, select, delete
+from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.dao.orm import EntryORM, JournalORM
 from src.app.model.journal import Entry, Journal
 from src.app.dao.accounts import acctDao
-from src.app.dao.connection import engine
+from src.app.dao.connection import get_engine
+from src.app.model.exceptions import AlreadyExistError, NotExistError
 
 class journalDao:
     @classmethod
@@ -53,12 +53,17 @@ class journalDao:
         
     @classmethod
     def add(cls, journal: Journal):
-        with Session(engine) as s:
+        with Session(get_engine()) as s:
             # add journal first
             journal_orm = cls.fromJournal(journal)
             s.add(journal_orm)
-            s.commit()
-            logging.info(f"Added {journal_orm} to Journal table")
+            try:
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise AlreadyExistError(e)
+            else:
+                logging.info(f"Added {journal_orm} to Journal table")
             
             # add individual entries
             for entry in journal.entries:
@@ -67,23 +72,34 @@ class journalDao:
                     entry=entry
                 )
                 s.add(entry_orm)
+            try:
                 s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise AlreadyExistError(e)
+            else:
                 logging.info(f"Added {entry_orm} to Entry table")
     
     @classmethod
     def get(cls, journal_id: str) -> Journal:
-        with Session(engine) as s:
+        with Session(get_engine()) as s:
             # get entries
             sql = select(EntryORM).where(
                 EntryORM.journal_id == journal_id
             )
-            entry_orms = s.exec(sql).all()
+            try:
+                entry_orms = s.exec(sql).all()
+            except NoResultFound as e:
+                raise NotExistError(e)
 
             # get journal
             sql = select(JournalORM).where(
                 JournalORM.journal_id == journal_id
             )
-            journal_orm = s.exec(sql).one() # get the journal
+            try:
+                journal_orm = s.exec(sql).one() # get the journal
+            except NoResultFound as e:
+                raise NotExistError(e)
             
             journal = cls.toJournal(
                 journal_orm=journal_orm,
@@ -93,7 +109,7 @@ class journalDao:
     
     @classmethod
     def remove(cls, journal_id: str):
-        with Session(engine) as s:
+        with Session(get_engine()) as s:
             # remove entries
             sql = delete(EntryORM).where(
                 EntryORM.journal_id == journal_id

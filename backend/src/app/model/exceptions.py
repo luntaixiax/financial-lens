@@ -1,0 +1,6 @@
+
+class AlreadyExistError(FileExistsError):
+    ...
+    
+class NotExistError(FileNotFoundError):
+    ...

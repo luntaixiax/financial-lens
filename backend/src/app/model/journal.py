@@ -3,7 +3,7 @@
 from datetime import date
 from functools import partial
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from src.app.model.accounts import Account, BankAccount
+from src.app.model.accounts import Account
 from src.app.model.enums import EntryType
 from src.app.utils.tools import get_base_cur, id_generator
 
@@ -12,7 +12,7 @@ class Entry(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     entry_type: EntryType
-    acct: Account | BankAccount
+    acct: Account
     amount: float
     amount_base: float
     description: str | None = Field(None)

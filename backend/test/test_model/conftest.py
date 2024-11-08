@@ -1,6 +1,6 @@
 import pytest
-
-from src.app.model.enums import AcctType
+from src.app.model.invoice import Invoice, InvoiceItem, Item
+from src.app.model.enums import AcctType, CurType, ItemType, UnitType
 from src.app.model.accounts import ChartNode, Chart
 
 @pytest.fixture

@@ -19,9 +19,6 @@ class Item(BaseModel):
     unit: UnitType = Field(UnitType.HOUR)
     unit_price: float
     currency: CurType
-    tax_rate: float = Field(
-        default_factory=get_default_tax_rate
-    )
     default_acct_id: str
     
 class InvoiceItem(BaseModel):
@@ -30,6 +27,14 @@ class InvoiceItem(BaseModel):
     item: Item
     quantity: float = Field(ge=0)
     acct_id: str = Field("") # will be overwritten in validator
+    tax_rate: float = Field(
+        default_factory=get_default_tax_rate
+    )
+    discount_rate: float = Field(
+        default=0, 
+        ge=0, 
+        le=1
+    ) # discount rate
     description: str | None = Field(None)
     
     @model_validator(mode='after')
@@ -39,20 +44,28 @@ class InvoiceItem(BaseModel):
         return self
     
     @computed_field()
-    def amount_pre_tax(self) -> float:
+    def amount_pre_discount(self) -> float:
+        # in item currency
         return self.quantity * self.item.unit_price
     
     @computed_field()
+    def amount_pre_tax(self) -> float:
+        # in item currency
+        return self.amount_pre_discount * (1 - self.discount_rate)
+    
+    @computed_field()
     def tax_amount(self) -> float:
-        return self.amount_pre_tax * self.item.tax_rate
+        # in item currency
+        return self.amount_pre_tax * self.tax_rate
     
     @computed_field()
     def amount_after_tax(self) -> float:
-        return self.amount_pre_tax * (1 + self.item.tax_rate)
+        # in item currency
+        return self.amount_pre_tax * (1 + self.tax_rate)
     
 
 class Invoice(BaseModel):
-    item_id: str = Field(
+    invoice_id: str = Field(
         default_factory=partial(
             id_generator,
             prefix='inv-',
@@ -63,11 +76,10 @@ class Invoice(BaseModel):
     invoice_num: str
     invoice_dt: date
     due_dt: date | None = None
-    entity_id: str
+    customer_id: str
     subject: str
     invoice_items: list[InvoiceItem] = Field(min_length=1)
-    discount: float = Field(0)
-    shipping: float = Field(0) # shipping or handling
+    shipping: float = Field(0) # shipping or handling (after tax)
     note: str | None = Field(None)
     
     @model_validator(mode='after')
@@ -83,12 +95,15 @@ class Invoice(BaseModel):
     
     @computed_field()
     def subtotal(self) -> float:
+        # in item currency, all item before shipping
         return sum(item.amount_pre_tax for item in self.invoice_items)
     
     @computed_field()
     def tax_amount(self) -> float:
+        # in item currency
         return sum(item.tax_amount for item in self.invoice_items)
     
     @computed_field()
     def total(self) -> float:
-        return self.subtotal + self.tax_amount - self.discount + self.shipping
+        # in item currency
+        return self.subtotal + self.tax_amount + self.shipping
