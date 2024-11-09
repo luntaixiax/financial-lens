@@ -202,7 +202,7 @@ class AcctService:
         try:
             acctDao.add(acct)
         except AlreadyExistError as e:
-            logging.error(f"acct already exist: {acct}")
+            logging.error(str(e))
             
     @classmethod
     def get_account(cls, acct_id: str) -> Account:
@@ -213,5 +213,5 @@ class AcctService:
         try:
             acctDao.remove(acct_id)
         except NotExistError as e:
-            logging.error(f"acct does not exist: {acct_id}")
+            logging.error(str(e))
             

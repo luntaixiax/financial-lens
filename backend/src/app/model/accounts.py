@@ -32,7 +32,8 @@ class ChartNode(NodeMixin):
     def _pre_attach(self, parent):
         # validation before attach
         if parent:
-            assert parent.chart.acct_type == self.chart.acct_type
+            assert parent.chart.acct_type == self.chart.acct_type, \
+                f"Current chart acct type: {self.chart.acct_type} must match parent chart acct type: {parent.chart.acct_type}"
             
     def find_node_by_name(self, chart_name: str) -> ChartNode:
         return find_by_attr(self, chart_name, name='name')
@@ -62,15 +63,18 @@ class Account(BaseModel):
     
     @model_validator(mode='after')
     def validate_chart(self):
-        assert self.acct_type == self.chart.acct_type
+        assert self.acct_type == self.chart.acct_type, \
+            f"Account type: {self.acct_type} must match chart account type: {self.chart.acct_type}"
         return self
     
     @model_validator(mode='after')
     def validate_fx(self):
         if self.acct_type in [AcctType.INC, AcctType.EXP]:
-            assert self.currency is None
+            assert self.currency is None, \
+                f"This is Inc/Exp account, should not specify currency: {self.currency}"
         else:
-            assert self.currency is not None
+            assert self.currency is not None, \
+                f"This is Balance Sheet account, must specify currency"
         return self
 
     @property

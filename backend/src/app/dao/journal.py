@@ -63,7 +63,7 @@ class journalDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(e)
+                raise AlreadyExistError(f"Journal already exist: {journal}")
             else:
                 logging.info(f"Added {journal_orm} to Journal table")
             
@@ -78,7 +78,7 @@ class journalDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(e)
+                raise AlreadyExistError(f"Journal Entry already exist: {entry_orm}")
             else:
                 logging.info(f"Added {entry_orm} to Entry table")
     
@@ -92,7 +92,7 @@ class journalDao:
             try:
                 entry_orms = s.exec(sql).all()
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"Journal not found: {journal_id}")
 
             # get journal
             sql = select(JournalORM).where(
@@ -101,7 +101,7 @@ class journalDao:
             try:
                 journal_orm = s.exec(sql).one() # get the journal
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"journal Entry not found: {journal_id}")
             
             journal = cls.toJournal(
                 journal_orm=journal_orm,

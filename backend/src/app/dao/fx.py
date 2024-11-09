@@ -24,7 +24,7 @@ class fxDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(e)
+                raise AlreadyExistError(f"FX alreay exist: {fx}")
             else:
                 logging.info(f"Added {fx} to FX table")
             
@@ -44,7 +44,7 @@ class fxDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(e)
+                raise AlreadyExistError(f"FX alreay exist: {fx}")
             else:
                 logging.info(f"Added {currencies} to FX table @ {cur_dt}")
             
@@ -55,7 +55,7 @@ class fxDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(e)    
+                raise NotExistError(f"FX not exist, currency = {currency}, cur_dt = {cur_dt}")
             
             s.delete(p)
             s.commit()
@@ -69,7 +69,7 @@ class fxDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"FX not exist, currency = {currency}, cur_dt = {cur_dt}")
             
             # update
             p.rate = rate
@@ -87,7 +87,7 @@ class fxDao:
             try:
                 p = s.exec(sql).one() # get the fx
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"FX not exist, currency = {currency}, cur_dt = {cur_dt}")
         return p
     
     @classmethod
@@ -97,7 +97,7 @@ class fxDao:
             try:
                 p = s.exec(sql).all() # get the fx
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"FX (all currency) not exist, cur_dt = {cur_dt}")
             
         return p
     

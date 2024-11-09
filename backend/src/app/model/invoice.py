@@ -86,7 +86,8 @@ class Invoice(BaseModel):
     def validate_currency(self):
         # make sure currency within all items are in same currency
         all_currency = set(inv_item.item.currency for inv_item in self.invoice_items)
-        assert len(all_currency) == 1
+        assert len(all_currency) == 1, \
+            f"Only allow 1 currency across all invoice items, found: {all_currency}"
         return self
     
     @computed_field()

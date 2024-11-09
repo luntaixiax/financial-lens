@@ -30,7 +30,7 @@ class itemDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(e)
+                raise AlreadyExistError(f"Item already exist: {item}")
             else:
                 logging.info(f"Added {item_orm} to Item table")
         
@@ -42,7 +42,7 @@ class itemDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(e)    
+                raise NotExistError(f"Item not found: {item_id}")
             
             s.delete(p)
             s.commit()
@@ -59,7 +59,7 @@ class itemDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"Item not found: {item.item_id}")
             
             # update
             p.name = item_orm.name
@@ -85,7 +85,7 @@ class itemDao:
             try:
                 p = s.exec(sql).one() # get the item
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"Item not found: {item_id}")
             
         return cls.toItem(p)
 
@@ -168,7 +168,7 @@ class invoiceDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(e)
+                raise AlreadyExistError(f"invoice item already exist: {invoice_item_orm}")
             
     @classmethod
     def remove(cls, invoice_id: str):
@@ -207,7 +207,7 @@ class invoiceDao:
             try:
                 invoice_item_orms = s.exec(sql).all()
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"Invoice items not found: invoice_id: {invoice_id}")
 
             # get invoice
             sql = select(InvoiceORM).where(
@@ -216,7 +216,7 @@ class invoiceDao:
             try:
                 invoice_orm = s.exec(sql).one() # get the invoice
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"Invoice not found: {invoice_id}")
             
             invoice = cls.toInvoice(
                 invoice_orm=invoice_orm,

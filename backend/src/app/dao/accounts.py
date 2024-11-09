@@ -135,7 +135,7 @@ class acctDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(e)
+                raise AlreadyExistError(f"Account already exist: {acct}")
             else:
                 logging.info(f"Added {acct_orm} to Account table")
             
@@ -146,7 +146,7 @@ class acctDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(e)    
+                raise NotExistError(f"Account not found: {acct_id}")    
             
             s.delete(p)
             s.commit()
@@ -161,7 +161,7 @@ class acctDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"Account not found: {acct.acct_id}")
             
             # update
             p.acct_name = acct_orm.acct_name
@@ -182,7 +182,7 @@ class acctDao:
             try:
                 acct_orm = s.exec(sql).one() # get the account
             except NoResultFound as e:
-                raise NotExistError(f"No account find: acct_id = {acct_id}")
+                raise NotExistError(f"Account not found: {acct_id}")
             
             # get chart orm
             sql = select(ChartOfAccountORM).where(
@@ -191,6 +191,6 @@ class acctDao:
             try:
                 chart_orm = s.exec(sql).one() # get the account
             except NoResultFound as e:
-                raise NotExistError(f"No chart find: chart_id = {acct_orm.chart_id}")
+                raise NotExistError(f"Chart not found: {acct_orm.chart_id}")
             
         return cls.toAcct(acct_orm, chart_orm)

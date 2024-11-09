@@ -53,6 +53,16 @@ class Journal(BaseModel):
     is_manual: bool = Field(True)
     note: str | None = Field(None)
     
+    @property
+    def is_redundant(self) -> bool:
+        # whether there are entries can be reduced/combined
+        # convert to list of unique key set
+        reduced = map(lambda x: (x.acct.acct_id, x.entry_type, x.cur_incexp), self.entries)
+        
+        return len(self.entries) > len(set(reduced))
+        
+        
+    
     def reduce_entries(self):
         # combine same entry and add up amounts
         # description will be combined as well
@@ -74,11 +84,10 @@ class Journal(BaseModel):
         
         self.entries =  list(reduced.values())
 
-        
-    
-    @model_validator(mode='after')
-    def validate_balance(self):
-        debits = sum(
+    @property
+    def total_debits(self) -> float:
+        # in base amount
+        return sum(
             map(
                 lambda e: e.amount_base, 
                 filter(
@@ -87,7 +96,11 @@ class Journal(BaseModel):
                 )
             )
         )
-        credits = sum(
+        
+    @property
+    def total_credits(self) -> float:
+        # in base amount
+        return sum(
             map(
                 lambda e: e.amount_base, 
                 filter(
@@ -96,6 +109,11 @@ class Journal(BaseModel):
                 )
             )
         )
+    
+    @model_validator(mode='after')
+    def validate_balance(self):
+        debits = self.total_debits
+        credits = self.total_credits
         assert abs(debits - credits) <= 1e-4, \
             f"Total debits: {debits} not equal to total credits: {credits}"
         return self
