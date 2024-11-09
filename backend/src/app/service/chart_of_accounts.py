@@ -62,7 +62,7 @@ class AcctService:
         bank_liability = ChartNode(
             Chart(
                 chart_id=SystemChartOfAcctNumber.BANK_LIB, 
-                name='2110 - Current Liability',
+                name='2110 - Bank Liability',
                 acct_type=AcctType.LIB
             ), 
             parent = current_liability
@@ -189,21 +189,9 @@ class AcctService:
         cls.add_account(disc)
         
     @classmethod
-    def get_coa(cls) -> ChartNode:
+    def get_coa(cls, acct_type: AcctType) -> ChartNode:
         # TODO: error handling: not exist
-        return chartOfAcctDao.load(acct_type=AcctType.AST)
-    
-    @classmethod
-    def get_bank_asset_chart(cls) -> Chart:
-        return cls.get_coa().find_node_by_id(
-            chart_id=SystemChartOfAcctNumber.BANK_ASSET
-        ).chart
-        
-    @classmethod
-    def get_bank_liability_chart(cls) -> Chart:
-        return cls.get_coa().find_node_by_id(
-            chart_id=SystemChartOfAcctNumber.BANK_LIB
-        ).chart
+        return chartOfAcctDao.load(acct_type=acct_type)
         
     @classmethod
     def save_chart_of_accounts(cls, node: ChartNode):
@@ -219,4 +207,11 @@ class AcctService:
     @classmethod
     def get_account(cls, acct_id: str) -> Account:
         return acctDao.get(acct_id)
+    
+    @classmethod
+    def delete_account(cls, acct_id: str):
+        try:
+            acctDao.remove(acct_id)
+        except NotExistError as e:
+            logging.error(f"acct does not exist: {acct_id}")
             

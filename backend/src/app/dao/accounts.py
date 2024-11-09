@@ -179,7 +179,10 @@ class acctDao:
     def get(cls, acct_id: str) -> Account:
         with Session(get_engine()) as s:
             sql = select(AcctORM).where(AcctORM.acct_id == acct_id)
-            acct_orm = s.exec(sql).one() # get the account
+            try:
+                acct_orm = s.exec(sql).one() # get the account
+            except NoResultFound as e:
+                raise NotExistError(f"No account find: acct_id = {acct_id}")
             
             # get chart orm
             sql = select(ChartOfAccountORM).where(
@@ -188,6 +191,6 @@ class acctDao:
             try:
                 chart_orm = s.exec(sql).one() # get the account
             except NoResultFound as e:
-                raise NotExistError(e)
+                raise NotExistError(f"No chart find: chart_id = {acct_orm.chart_id}")
             
         return cls.toAcct(acct_orm, chart_orm)

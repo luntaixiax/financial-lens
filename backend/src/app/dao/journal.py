@@ -14,6 +14,7 @@ class journalDao:
             journal_id=journal_id,
             entry_type=entry.entry_type,
             acct_id=entry.acct.acct_id,
+            cur_incexp=entry.cur_incexp,
             amount=entry.amount,
             amount_base=entry.amount_base,
             description=entry.description,
@@ -25,6 +26,7 @@ class journalDao:
         return Entry(
             entry_type=entry_orm.entry_type,
             acct=acct,
+            cur_incexp=entry_orm.cur_incexp,
             amount=entry_orm.amount,
             amount_base=entry_orm.amount_base,
             description=entry_orm.description,

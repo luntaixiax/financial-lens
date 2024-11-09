@@ -27,6 +27,7 @@ class SalesService:
             entry = Entry(
                 entry_type=EntryType.CREDIT, # income is credit entry
                 acct=item_acct,
+                cur_incexp=invoice.currency, # income currency is invoice currency
                 amount=invoice_item.amount_pre_tax, # amount in raw currency
                 # amount in base currency
                 amount_base=FxService.convert(
@@ -60,6 +61,7 @@ class SalesService:
             entry_type=EntryType.CREDIT, # shipping is credit entry
             # shipping account -- predefined
             acct=AcctService.get_account(SystemAcctNumber.SHIP_CHARGE),
+            cur_incexp=invoice.currency, # shipping currency is invoice currency
             amount=invoice.shipping, # amount in raw currency
             # amount in base currency
             amount_base = FxService.convert(
@@ -73,7 +75,7 @@ class SalesService:
         
         # add account receivable (use base currency)
         ar_base_cur = FxService.convert(
-            amount=invoice.subtotal, # subtotal before tax and shipping
+            amount=invoice.total, # total after tax and shipping
             src_currency=invoice.currency, # invoice currency
             cur_dt=invoice.invoice_dt, # convert fx at invoice date
         )
@@ -94,4 +96,5 @@ class SalesService:
             is_manual=False,
             note=invoice.note
         )
+        journal.reduce_entries()
         return journal

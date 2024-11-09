@@ -1,4 +1,5 @@
 
+from src.app.model.const import SystemChartOfAcctNumber
 from src.app.service.chart_of_accounts import AcctService
 from src.app.model.accounts import Account, Chart
 from src.app.model.bank import BankAcct
@@ -13,10 +14,14 @@ class BankService:
         
         if bank_acct.bank_acct_type in (BankAcctType.CHQ, BankAcctType.SAV):
             acct_type=AcctType.AST
-            chart=AcctService.get_bank_asset_chart()
+            chart=AcctService.get_coa(AcctType.AST).find_node_by_id(
+                chart_id=SystemChartOfAcctNumber.BANK_ASSET
+            ).chart
         else:
             acct_type=AcctType.LIB
-            chart=AcctService.get_bank_liability_chart()
+            chart=AcctService.get_coa(AcctType.LIB).find_node_by_id(
+                chart_id=SystemChartOfAcctNumber.BANK_LIB
+            ).chart
             
         acct = Account(
             acct_name=bank_acct.bank_acct_name,

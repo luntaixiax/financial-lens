@@ -72,3 +72,7 @@ class Account(BaseModel):
         else:
             assert self.currency is not None
         return self
+
+    @property
+    def is_balance_sheet(self) -> bool:
+        return not (self.acct_type in (AcctType.INC, AcctType.EXP))

@@ -130,6 +130,7 @@ def test_journal_entry_base_currency(sample_chart_of_accounts: dict[AcctType, Ch
         entry1 = Entry(
             entry_type=EntryType.DEBIT,
             acct=acct_expense,
+            cur_incexp=CurType.CAD,
             amount=57.5,
             amount_base=20,
             description='Meal'
@@ -139,6 +140,7 @@ def test_journal_entry_base_currency(sample_chart_of_accounts: dict[AcctType, Ch
     entry1 = Entry(
         entry_type=EntryType.DEBIT,
         acct=acct_expense,
+        cur_incexp=CurType.CAD,
         amount=57.5,
         amount_base=57.5,
         description='Meal'
@@ -216,7 +218,8 @@ def test_journal_entry_multi_currency(sample_chart_of_accounts: dict[AcctType, C
     entry1 = Entry(
         entry_type=EntryType.DEBIT,
         acct=acct_expense,
-        amount=57.5,
+        cur_incexp=CurType.USD,
+        amount=40,
         amount_base=57.5,
         description='Meal'
     )
@@ -250,4 +253,26 @@ def test_journal_entry_multi_currency(sample_chart_of_accounts: dict[AcctType, C
                 entry4
             ],
             note="buy lunch"
+        )
+        
+    # test invalid entry (no currency specified for inc/exp)
+    with pytest.raises(ValidationError):
+        entry1 = Entry(
+            entry_type=EntryType.DEBIT,
+            acct=acct_expense,
+            cur_incexp=None,
+            amount=40,
+            amount_base=57.5,
+            description='Meal'
+        )
+        
+    # test invalid entry (base currency specified for inc/exp, but amount not equal)
+    with pytest.raises(ValidationError):
+        entry1 = Entry(
+            entry_type=EntryType.DEBIT,
+            acct=acct_expense,
+            cur_incexp=get_base_cur(),
+            amount=40,
+            amount_base=57.5,
+            description='Meal'
         )

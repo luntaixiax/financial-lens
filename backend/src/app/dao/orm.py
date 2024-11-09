@@ -282,6 +282,9 @@ class EntryORM(SQLModel, table=True):
             nullable = False
         )
     )
+    cur_incexp: CurType | None = Field(
+        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
+    )
     amount: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
     amount_base: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))

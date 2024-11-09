@@ -9,7 +9,7 @@ def get_engine():
         config = tomli.load(fp)['mysql']
 
     mysql_url = f"mysql+mysqlconnector://{config['username']}:{config['password']}@{config['ip']}:{config['port']}/{config['db']}"
-    engine = create_engine(mysql_url, echo=True)
+    engine = create_engine(mysql_url, pool_size=10)
     return engine
 
 if __name__ == '__main__':

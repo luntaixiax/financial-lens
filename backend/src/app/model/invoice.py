@@ -91,7 +91,7 @@ class Invoice(BaseModel):
     
     @computed_field()
     def currency(self) -> CurType:
-        return set(inv_item.item.currency for inv_item in self.invoice_items)[0]
+        return list(set(inv_item.item.currency for inv_item in self.invoice_items))[0]
     
     @computed_field()
     def subtotal(self) -> float:

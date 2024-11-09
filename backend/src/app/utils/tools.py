@@ -27,4 +27,4 @@ def get_base_cur() -> CurType:
 
 def get_default_tax_rate() -> float:
     settings = get_settings()
-    return CurType[settings['preferences']['default_sales_tax_rate']]
+    return settings['preferences']['default_sales_tax_rate']
