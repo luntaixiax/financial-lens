@@ -2,7 +2,7 @@ import logging
 from sqlmodel import Session, select
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from anytree import PreOrderIter, RenderTree
-from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
 from src.app.model.enums import AcctType
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.dao.orm import ChartOfAccountORM, AcctORM, infer_integrity_error
@@ -51,7 +51,8 @@ class chartOfAcctDao:
                 s.commit() # submit all in one commit
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(e)
+                # TODO: also possible that parent_chart_id not exist during update (FKNotExistError)?
+                raise infer_integrity_error(e, during_creation=True)
                 
     
     @classmethod
@@ -146,14 +147,14 @@ class acctDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(f"Account not found: {acct_id}")    
+                raise NotExistError(e)    
             
             try:
                 s.delete(p)
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise FKNoDeleteUpdateError(f"acct {acct_id} referenced in some table")
+                raise FKNoDeleteUpdateError(e)
             
             logging.info(f"Removed {p} from Account table")
         
@@ -165,7 +166,7 @@ class acctDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(f"Account not found: {acct.acct_id}")
+                raise NotExistError(e)
             
             # update
             if not p == acct_orm:
@@ -173,12 +174,18 @@ class acctDao:
                 p.acct_type = acct_orm.acct_type
                 p.currency = acct_orm.currency
                 p.chart_id = acct_orm.chart_id
-            
-                s.add(p)
-                s.commit()
-                s.refresh(p) # update p to instantly have new values
-            
-                logging.info(f"Updated to {p} from Account table")
+
+                try:
+                    s.add(p)
+                    s.commit()
+                except IntegrityError as e:
+                    # if integrity error happened here, must certainly it is because
+                    # updated chart_id does not exist
+                    s.rollback()
+                    raise FKNotExistError(e)
+                else:
+                    s.refresh(p) # update p to instantly have new values
+                    logging.info(f"Updated to {p} from Account table")
         
     @classmethod
     def get(cls, acct_id: str) -> Account:
@@ -187,7 +194,7 @@ class acctDao:
             try:
                 acct_orm = s.exec(sql).one() # get the account
             except NoResultFound as e:
-                raise NotExistError(f"Account not found: {acct_id}")
+                raise NotExistError(e)
             
             # get chart orm
             sql = select(ChartOfAccountORM).where(
@@ -196,6 +203,6 @@ class acctDao:
             try:
                 chart_orm = s.exec(sql).one() # get the account
             except NoResultFound as e:
-                raise NotExistError(f"Chart not found: {acct_orm.chart_id}")
+                raise NotExistError(e)
             
         return cls.toAcct(acct_orm, chart_orm)
