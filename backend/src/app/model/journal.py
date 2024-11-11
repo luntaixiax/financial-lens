@@ -7,9 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from src.app.model.accounts import Account
 from src.app.model.enums import CurType, EntryType
 from src.app.utils.tools import get_base_cur, id_generator
+from src.app.utils.base import EnhancedBaseModel
 
-
-class Entry(BaseModel):
+class Entry(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     entry_type: EntryType
@@ -35,7 +35,7 @@ class Entry(BaseModel):
         return self
 
     
-class Journal(BaseModel):
+class Journal(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     journal_id: str = Field(
@@ -60,7 +60,6 @@ class Journal(BaseModel):
         reduced = map(lambda x: (x.acct.acct_id, x.entry_type, x.cur_incexp), self.entries)
         
         return len(self.entries) > len(set(reduced))
-        
         
     
     def reduce_entries(self):

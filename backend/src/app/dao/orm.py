@@ -2,10 +2,33 @@ from typing import List, Dict, Tuple
 from sqlmodel import Field, SQLModel, Column, create_engine
 from sqlalchemy import ForeignKey, Boolean, JSON, Integer, String, Text, Date, DateTime, Float, Numeric, DECIMAL, UniqueConstraint, inspect, INT, CHAR
 from sqlalchemy_utils import EmailType, PasswordType, PhoneNumberType, ChoiceType, CurrencyType, PhoneNumber
+from sqlalchemy.exc import NoResultFound, IntegrityError
 from datetime import date, datetime
 
+from src.app.model.exceptions import FKNoDeleteUpdateError, FKNotExistError, AlreadyExistError
 from src.app.model.enums import AcctType, BankAcctType, CurType, EntryType, ItemType, UnitType
 
+def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  FKNoDeleteUpdateError | FKNotExistError | AlreadyExistError | IntegrityError:
+    # TODO: enhance this when use other backend engine
+    origin_message = str(e.orig).lower()
+    if 'foreign key' in origin_message:
+        # sqlite message: FOREIGN KEY constraint failed
+        # mysql message: a foreign key constraint fails
+        if during_creation:
+            # during object creation, error = entry does not exist in child/lower level table
+            # e.g., if contact does not exist, customer should not be created
+            return FKNotExistError(e)
+        else:
+            # during update/delete, error = on_delete/on_update failed
+            return FKNoDeleteUpdateError(e)
+    if 'unique' in origin_message or 'duplicate' in origin_message:
+        # sqlite message: UNIQUE constraint failed
+        # mysql message: Duplicate entry
+        return AlreadyExistError(e)
+    
+    return e
+    
+    
 
 class FxORM(SQLModel, table=True):
     __tablename__ = "currency"
@@ -65,7 +88,7 @@ class CustomerORM(SQLModel, table=True):
             ForeignKey(
                 'contact.contact_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             nullable = False
         )
@@ -83,7 +106,7 @@ class CustomerORM(SQLModel, table=True):
             ForeignKey(
                 'contact.contact_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             nullable = False
         )
@@ -113,7 +136,7 @@ class SupplierORM(SQLModel, table=True):
             ForeignKey(
                 'contact.contact_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             nullable = False
         )
@@ -131,7 +154,7 @@ class SupplierORM(SQLModel, table=True):
             ForeignKey(
                 'contact.contact_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             nullable = False
         )
@@ -162,7 +185,7 @@ class ChartOfAccountORM(SQLModel, table=True):
             ForeignKey(
                 'chart_of_account.chart_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             nullable = True
         )
@@ -191,7 +214,7 @@ class AcctORM(SQLModel, table=True):
             ForeignKey(
                 'chart_of_account.chart_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             nullable = False
         )
@@ -207,7 +230,7 @@ class BankAcctORM(SQLModel, table=True):
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             primary_key = True, 
             nullable = True # if not business account, can be nullable
@@ -276,7 +299,7 @@ class EntryORM(SQLModel, table=True):
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             primary_key = True, 
             nullable = False
@@ -315,7 +338,7 @@ class ItemORM(SQLModel, table=True):
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             primary_key = False, 
             nullable = False
@@ -340,7 +363,7 @@ class InvoiceORM(SQLModel, table=True):
             ForeignKey(
                 'customer.cust_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             primary_key = False, 
             nullable = False
@@ -356,7 +379,7 @@ class InvoiceORM(SQLModel, table=True):
             ForeignKey(
                 'journals.journal_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT' # TODO: review this
             ),
             primary_key = False, 
             nullable = False
@@ -386,7 +409,7 @@ class InvoiceItemORM(SQLModel, table=True):
             ForeignKey(
                 'item.item_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             primary_key = False, 
             nullable = False
@@ -399,7 +422,7 @@ class InvoiceItemORM(SQLModel, table=True):
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'RESTRICT'
             ),
             primary_key = True, 
             nullable = False

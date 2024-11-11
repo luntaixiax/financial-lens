@@ -3,8 +3,9 @@ from functools import partial
 from pydantic import BaseModel, ConfigDict, Field
 from src.app.model.enums import BankAcctType, CurType
 from src.app.utils.tools import id_generator
+from src.app.utils.base import EnhancedBaseModel
 
-class BankAcct(BaseModel):
+class BankAcct(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     bank_acct_id: str = Field(

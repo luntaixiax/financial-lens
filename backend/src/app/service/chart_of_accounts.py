@@ -4,7 +4,7 @@ from src.app.utils.tools import get_base_cur
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.model.enums import AcctType
-from src.app.model.exceptions import AlreadyExistError, NotExistError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
 
 class AcctService:
     
@@ -198,20 +198,24 @@ class AcctService:
         chartOfAcctDao.save(node)
     
     @classmethod
-    def add_account(cls, acct: Account):
+    def add_account(cls, acct: Account, ignore_exist: bool = False):
         try:
             acctDao.add(acct)
         except AlreadyExistError as e:
-            logging.error(str(e))
+            if not ignore_exist:
+                raise AlreadyExistError(e)
             
     @classmethod
     def get_account(cls, acct_id: str) -> Account:
         return acctDao.get(acct_id)
     
     @classmethod
-    def delete_account(cls, acct_id: str):
+    def delete_account(cls, acct_id: str, ignore_nonexist: bool = False):
         try:
             acctDao.remove(acct_id)
         except NotExistError as e:
-            logging.error(str(e))
+            if not ignore_nonexist:
+                raise NotExistError(e)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(e)
             

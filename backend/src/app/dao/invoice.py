@@ -3,7 +3,7 @@ import logging
 from sqlmodel import Session, select, delete
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.invoice import InvoiceItem, Item, Invoice
-from src.app.dao.orm import InvoiceItemORM, InvoiceORM, ItemORM
+from src.app.dao.orm import InvoiceItemORM, InvoiceORM, ItemORM, infer_integrity_error
 from src.app.dao.connection import get_engine
 from src.app.model.exceptions import AlreadyExistError, NotExistError
 
@@ -168,7 +168,7 @@ class invoiceDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(f"invoice item already exist: {invoice_item_orm}")
+                raise infer_integrity_error(e, during_creation=True)
             
     @classmethod
     def remove(cls, invoice_id: str):

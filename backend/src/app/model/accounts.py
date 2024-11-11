@@ -5,8 +5,9 @@ from functools import partial
 from anytree import NodeMixin, Node, RenderTree, find_by_attr
 from src.app.model.enums import AcctType, CurType, BankAcctType
 from src.app.utils.tools import id_generator
+from src.app.utils.base import EnhancedBaseModel
 
-class Chart(BaseModel):
+class Chart(EnhancedBaseModel):
     chart_id: str = Field(
         default_factory=partial(
             id_generator,
@@ -42,7 +43,7 @@ class ChartNode(NodeMixin):
         return find_by_attr(self, chart_id, name='chart_id')
             
             
-class Account(BaseModel):
+class Account(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     acct_id: str = Field(

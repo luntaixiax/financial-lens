@@ -1,11 +1,12 @@
 from functools import partial
-from typing import Literal
+from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from src.app.utils.base import EnhancedBaseModel
 from src.app.model.enums import BankAcctType, CurType
 from src.app.utils.tools import id_generator
 
-class Address(BaseModel):
+class Address(EnhancedBaseModel):
     address1: str
     address2: str | None = Field(None)
     suite_no: str | int | None = Field(None)
@@ -29,7 +30,7 @@ class Address(BaseModel):
     def post_code_line(self) -> str:
         return f"{self.city}, {self.state}, {self.country}, {self.postal_code}"
     
-class Contact(BaseModel):
+class Contact(EnhancedBaseModel):
     contact_id: str = Field(
         default_factory=partial(
             id_generator,
@@ -43,7 +44,9 @@ class Contact(BaseModel):
     phone: str | None = Field(None)
     address: Address | None = Field(None)
     
-class Customer(BaseModel):
+class Customer(EnhancedBaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+    
     cust_id: str = Field(
         default_factory=partial(
             id_generator,
@@ -61,10 +64,13 @@ class Customer(BaseModel):
     @model_validator(mode='after')
     def copy_ship_contact(self):
         if self.ship_same_as_bill:
-            self.ship_contact = self.bill_contact
+            # avoid recursive validation
+            self._set_skip_validation('ship_contact', self.bill_contact)
         return self
     
-class Supplier(BaseModel):
+class Supplier(EnhancedBaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+    
     supplier_id: str = Field(
         default_factory=partial(
             id_generator,
@@ -82,5 +88,5 @@ class Supplier(BaseModel):
     @model_validator(mode='after')
     def copy_ship_contact(self):
         if self.ship_same_as_bill:
-            self.ship_contact = self.bill_contact
+            self._set_skip_validation('ship_contact', self.bill_contact)
         return self

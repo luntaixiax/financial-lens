@@ -2,10 +2,10 @@ import logging
 from sqlmodel import Session, select
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from anytree import PreOrderIter, RenderTree
-from src.app.model.exceptions import AlreadyExistError, NotExistError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
 from src.app.model.enums import AcctType
 from src.app.model.accounts import Account, Chart, ChartNode
-from src.app.dao.orm import ChartOfAccountORM, AcctORM
+from src.app.dao.orm import ChartOfAccountORM, AcctORM, infer_integrity_error
 from src.app.dao.connection import get_engine
 
 class chartOfAcctDao:
@@ -135,7 +135,7 @@ class acctDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(f"Account already exist: {acct}")
+                raise infer_integrity_error(e, during_creation=True)
             else:
                 logging.info(f"Added {acct_orm} to Account table")
             
@@ -148,8 +148,12 @@ class acctDao:
             except NoResultFound as e:
                 raise NotExistError(f"Account not found: {acct_id}")    
             
-            s.delete(p)
-            s.commit()
+            try:
+                s.delete(p)
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise FKNoDeleteUpdateError(f"acct {acct_id} referenced in some table")
             
             logging.info(f"Removed {p} from Account table")
         
@@ -164,16 +168,17 @@ class acctDao:
                 raise NotExistError(f"Account not found: {acct.acct_id}")
             
             # update
-            p.acct_name = acct_orm.acct_name
-            p.acct_type = acct_orm.acct_type
-            p.currency = acct_orm.currency
-            p.chart_id = acct_orm.chart_id
+            if not p == acct_orm:
+                p.acct_name = acct_orm.acct_name
+                p.acct_type = acct_orm.acct_type
+                p.currency = acct_orm.currency
+                p.chart_id = acct_orm.chart_id
             
-            s.add(p)
-            s.commit()
-            s.refresh(p) # update p to instantly have new values
+                s.add(p)
+                s.commit()
+                s.refresh(p) # update p to instantly have new values
             
-        logging.info(f"Updated to {p} from Account table")
+                logging.info(f"Updated to {p} from Account table")
         
     @classmethod
     def get(cls, acct_id: str) -> Account:

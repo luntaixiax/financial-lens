@@ -3,9 +3,9 @@ from functools import partial
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.utils.tools import get_default_tax_rate, id_generator
+from src.app.utils.base import EnhancedBaseModel
 
-
-class Item(BaseModel):
+class Item(EnhancedBaseModel):
     item_id: str = Field(
         default_factory=partial(
             id_generator,
@@ -21,7 +21,7 @@ class Item(BaseModel):
     currency: CurType
     default_acct_id: str
     
-class InvoiceItem(BaseModel):
+class InvoiceItem(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     item: Item
@@ -64,7 +64,9 @@ class InvoiceItem(BaseModel):
         return self.amount_pre_tax * (1 + self.tax_rate)
     
 
-class Invoice(BaseModel):
+class Invoice(EnhancedBaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+    
     invoice_id: str = Field(
         default_factory=partial(
             id_generator,

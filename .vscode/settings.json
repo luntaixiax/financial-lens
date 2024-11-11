@@ -1,3 +1,5 @@
 {
-    "sqltools.useNodeRuntime": true
+    "python.testing.cwd": "${workspaceFolder}/backend",
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }
