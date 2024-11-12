@@ -1,5 +1,5 @@
 import logging
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete, col
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from anytree import PreOrderIter, RenderTree
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
@@ -15,8 +15,25 @@ class chartOfAcctDao:
         logging.info("Saving following Chart of Accounts:\n")
         for pre, fill, node in RenderTree(top_node):
             logging.info("%s%s" % (pre, node.name))
+            
+        # get existing nodes for extra node deletion below
+        try:
+            existing_node = cls.load(top_node.chart.acct_type)
+        except NotExistError:
+            ordered_nodes = [] # no existing node
+        else:
+            # get the order of chart ids in case need to delete
+            ordered_nodes = list(existing_node.descendants)[::-1] + [existing_node]
     
         with Session(get_engine()) as s:
+            # get already existing nodes within same chart type in db
+            sql = select(ChartOfAccountORM.chart_id).where(
+                ChartOfAccountORM.acct_type == top_node.chart.acct_type,
+            )
+            db_chart_ids = s.exec(sql).all()
+            
+            # for nodes that already exist and newly created in the given node
+            kept_chart_ids = []
             for node in PreOrderIter(top_node):
                 # get parent id
                 parent_chart_id = None
@@ -46,13 +63,30 @@ class chartOfAcctDao:
                     old_node_orm.acct_type = node.chart.acct_type
                     old_node_orm.parent_chart_id = parent_chart_id
                     s.add(old_node_orm)
+                    # add existing node to seen nodes
+                    kept_chart_ids.append(node.chart.chart_id)
+                    
+            # but also need to remove nodes that be "deleted" -- in db but not in top_node (within same chart type)
+            chart_ids_to_rm = list(set(db_chart_ids).difference(kept_chart_ids))
+            logging.info(f"Chart ids ({top_node.chart.acct_type}) in db before update: {db_chart_ids}, need to drop: {chart_ids_to_rm}")
+            
+            if len(chart_ids_to_rm) > 0:
+                # need to delete by bottom to top order, otherwise will have FK error
+                for node in ordered_nodes:
+                    if node.chart.chart_id in chart_ids_to_rm:
+                        sql = select(ChartOfAccountORM).where(
+                            ChartOfAccountORM.chart_id == node.chart_id
+                        )
+                        p = s.exec(sql).one() # get the chart of account
+                        s.delete(p)
             
             try:
                 s.commit() # submit all in one commit
             except IntegrityError as e:
                 s.rollback()
-                # TODO: also possible that parent_chart_id not exist during update (FKNotExistError)?
-                raise infer_integrity_error(e, during_creation=True)
+                # if error, can only be the following scenario:
+                # the chart to remove have another chart / account belongs to it (FK on delete) 
+                raise FKNoDeleteUpdateError(e)
                 
     
     @classmethod
@@ -84,7 +118,11 @@ class chartOfAcctDao:
                 ChartOfAccountORM.acct_type == acct_type,
                 ChartOfAccountORM.parent_chart_id == None
             )
-            root_node_orm = s.exec(sql).one()
+            try:
+                root_node_orm = s.exec(sql).one()
+            except NoResultFound as e:
+                raise NotExistError(e) # top node not exist
+                
             root_node = ChartNode(
                 chart = Chart(
                     chart_id = root_node_orm.chart_id,
@@ -98,7 +136,32 @@ class chartOfAcctDao:
             add_childs(root_node)
         
         return root_node # return root
+        
+    @classmethod
+    def remove(cls, acct_type: AcctType):
+        # remove all charts under same acct type
+        try:
+            top_node = cls.load(acct_type)
+        except NotExistError as e:
+            return
             
+        with Session(get_engine()) as s:
+            # need to delete from bottom node to top node
+            for node in list(top_node.descendants)[::-1] + [top_node]:
+                sql = select(ChartOfAccountORM).where(
+                    ChartOfAccountORM.chart_id == node.chart_id
+                )
+                p = s.exec(sql).one() # get the chart of account
+                s.delete(p)
+                
+            try:
+                s.commit() # submit all in one commit
+            except IntegrityError as e:
+                s.rollback()
+                # if error, can only be the following scenario:
+                # the chart to remove have another chart / account belongs to it (FK on delete) 
+                raise FKNoDeleteUpdateError(e)
+
 
 class acctDao:
     @classmethod
