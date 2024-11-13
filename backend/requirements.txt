@@ -1,11 +1,12 @@
+anytree==2.12.1
 mysql-connector-python==8.1.0
-SQLAlchemy==1.4.41
+SQLAlchemy==2.0.36
 sqlalchemy_utils==0.41.2
-pydantic==1.10.13
-uvicorn==0.23.2
-fastapi==0.103.2
+pydantic==2.9.2
+uvicorn==0.32.0
+fastapi==0.115.2
 python-multipart==0.0.6
-sqlmodel==0.0.8
+sqlmodel==0.0.22
 babel==2.13.0
 tomli==2.0.1
 dacite==1.8.1

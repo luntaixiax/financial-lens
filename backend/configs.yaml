@@ -4,3 +4,4 @@ paths:
     
 preferences:
   base_cur: 'CAD'
+  default_sales_tax_rate: 0.13
