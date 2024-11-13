@@ -1,0 +1,52 @@
+name: Unit-Test-on-Push-and-PR
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  limit-changes:
+    # finds out which files to watch for unit testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: file_watch_list
+        with:
+          filters: |
+            code:
+              - 'backend/**'
+
+    outputs:
+      changelist: ${{ steps.file_watch_list.outputs.code }}
+
+  unit-test:
+    runs-on: ubuntu-latest
+    needs: limit-changes
+    if: ${{ needs.limit-changes.outputs.changelist == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: install python library
+        working-directory: backend
+        run: |
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+
+      - name: unit testing
+        working-directory: backend
+        env:
+          ENV: dev
+        run: |
+          python -m pytest -s .
+
+
