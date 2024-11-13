@@ -1,6 +1,6 @@
 
 from src.app.model.const import SystemChartOfAcctNumber
-from src.app.service.chart_of_accounts import AcctService
+from src.app.service.acct import AcctService
 from src.app.model.accounts import Account, Chart
 from src.app.model.bank import BankAcct
 from src.app.model.enums import BankAcctType, AcctType

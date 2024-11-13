@@ -4,7 +4,7 @@ from src.app.utils.tools import get_base_cur
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.model.enums import AcctType
-from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
 
 class AcctService:
     
@@ -100,11 +100,11 @@ class AcctService:
             )
         )
     
-        cls.save_chart_of_accounts(total_asset)
-        cls.save_chart_of_accounts(total_liability)
-        cls.save_chart_of_accounts(total_equity)
-        cls.save_chart_of_accounts(total_income)
-        cls.save_chart_of_accounts(total_expense)
+        cls.save_coa(total_asset)
+        cls.save_coa(total_liability)
+        cls.save_coa(total_equity)
+        cls.save_coa(total_income)
+        cls.save_coa(total_expense)
         
         
         # create system accounts (tax, AR/AP, etc.)
@@ -190,12 +190,61 @@ class AcctService:
         
     @classmethod
     def get_coa(cls, acct_type: AcctType) -> ChartNode:
-        # TODO: error handling: not exist
-        return chartOfAcctDao.load(acct_type=acct_type)
+        try:
+            head_node = chartOfAcctDao.load(acct_type=acct_type)
+        except NotExistError as e:
+            raise NotExistError(
+                f"Root node for {acct_type} does not exist.",
+                details=str(e)
+            )
+        return head_node
         
     @classmethod
-    def save_chart_of_accounts(cls, node: ChartNode):
-        chartOfAcctDao.save(node)
+    def save_coa(cls, node: ChartNode):
+        try:
+            chartOfAcctDao.save(node)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f'An account or chart of account belongs to the node {node}, so cannot delete it.',
+                details=str(e)
+            )
+        
+    @classmethod
+    def delete_coa(cls, acct_type: AcctType):
+        try:
+            chartOfAcctDao.remove(acct_type)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f'An account or chart of account belongs to the node {node}, so cannot delete it.',
+                details=str(e)
+            )
+            
+    @classmethod
+    def get_account(cls, acct_id: str) -> Account:
+        try:
+            chart_id = acctDao.get_chart_id_by_acct(acct_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Acct Id: {acct_id} not exist',
+                details=str(e)
+            )
+        
+        try:
+            chart = chartOfAcctDao.get_chart(chart_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Chart Id: {chart_id} not exist',
+                details=str(e)
+            )
+        
+        try:
+            acct = acctDao.get(acct_id, chart)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Acct Id: {acct_id} not exist',
+                details=str(e)
+            )
+        return acct
     
     @classmethod
     def add_account(cls, acct: Account, ignore_exist: bool = False):
@@ -203,11 +252,50 @@ class AcctService:
             acctDao.add(acct)
         except AlreadyExistError as e:
             if not ignore_exist:
-                raise AlreadyExistError(e)
+                raise AlreadyExistError(
+                    f'Account already exist: {acct}',
+                    details=str(e)
+                )
+        except FKNotExistError as e:
+            raise FKNotExistError(
+                f"Chart of account for the account added does not exist: {acct.chart}",
+                details=str(e)
+            )
             
     @classmethod
-    def get_account(cls, acct_id: str) -> Account:
-        return acctDao.get(acct_id)
+    def update_account(cls, acct: Account, ignore_nonexist: bool = False):
+        # get acct in db first, compare some fields not be changed:
+        try:
+            _acct = cls.get_account(acct.acct_id)
+        except NotExistError as e:
+            if not ignore_nonexist:
+                raise e
+        
+        if acct.currency != _acct.currency:
+            raise ValueError(f"Account currency cannot be changed. Before: {acct.currency}, After: {_acct.currency}")
+        
+        # update account
+        try:
+            acctDao.update(acct)
+        except FKNotExistError as e:
+            raise FKNotExistError(
+                f"Chart: {acct.chart} of the updated account does not exist",
+                details=str(e)
+            )
+            
+    @classmethod
+    def upsert_account(cls, acct: Account):
+        try:
+            cls.add_account(acct)
+        except AlreadyExistError:
+            try:
+                cls.update_account(acct)
+            except ValueError as e:
+                raise e
+            except FKNotExistError as e:
+                raise e
+        except FKNotExistError as e:
+            raise e
     
     @classmethod
     def delete_account(cls, acct_id: str, ignore_nonexist: bool = False):
@@ -215,7 +303,13 @@ class AcctService:
             acctDao.remove(acct_id)
         except NotExistError as e:
             if not ignore_nonexist:
-                raise NotExistError(e)
+                raise NotExistError(
+                    f'Acct Id: {acct_id} not exist',
+                    details=str(e)
+                )
         except FKNoDeleteUpdateError as e:
-            raise FKNoDeleteUpdateError(e)
+            raise FKNoDeleteUpdateError(
+                f'There are journal entry or item relates to this account: {acct_id}, so cannot delete it.',
+                details=str(e)
+            )
             

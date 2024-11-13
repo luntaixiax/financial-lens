@@ -7,7 +7,7 @@ def engine_with_test_choa(engine):
     with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
         mock_engine.return_value = engine
         
-        from src.app.service.chart_of_accounts import AcctService
+        from src.app.service.acct import AcctService
         
         AcctService.init()
         

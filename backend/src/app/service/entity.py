@@ -12,7 +12,7 @@ class EntityService:
             contactDao.add(contact)
         except AlreadyExistError as e:
             if not ignore_exist:
-                raise AlreadyExistError(e)
+                raise e
             
     @classmethod
     def update_contact(cls, contact: Contact, ignore_nonexist: bool = False):
@@ -20,7 +20,7 @@ class EntityService:
             contactDao.update(contact)
         except NotExistError as e:
             if not ignore_nonexist:
-                raise NotExistError(e)
+                raise e
             
     @classmethod
     def upsert_contact(cls, contact: Contact):
@@ -35,9 +35,9 @@ class EntityService:
             contactDao.remove(contact_id)
         except NotExistError as e:
             if not ignore_nonexist:
-                raise NotExistError(e)
+                raise e
         except FKNoDeleteUpdateError as e:
-            raise FKNoDeleteUpdateError(e)
+            raise e
         
     @classmethod
     def get_contact(cls, contact_id: str) -> Contact:
@@ -58,9 +58,9 @@ class EntityService:
             customerDao.add(customer)
         except AlreadyExistError as e:
             if not ignore_exist:
-                raise AlreadyExistError(e)
+                raise e
         except FKNotExistError as e:
-            raise FKNotExistError(e)
+            raise e
             
     @classmethod
     def remove_customer(cls, cust_id: str, ignore_nonexist: bool = False):
@@ -68,9 +68,9 @@ class EntityService:
             customerDao.remove(cust_id)
         except NotExistError as e:
             if not ignore_nonexist:
-                raise NotExistError(e)
+                raise e
         except FKNoDeleteUpdateError as e:
-            raise FKNoDeleteUpdateError(e)
+            raise e
             
     @classmethod
     def update_customer(cls, customer: Customer, ignore_nonexist: bool = False):
@@ -87,7 +87,7 @@ class EntityService:
             customerDao.update(customer)
         except NotExistError as e:
             if not ignore_nonexist:
-                raise NotExistError(e)
+                raise e
             
     @classmethod
     def upsert_customer(cls, customer: Customer):
@@ -96,7 +96,7 @@ class EntityService:
         except AlreadyExistError:
             cls.update_customer(customer)
         except FKNotExistError as e:
-            raise FKNotExistError(e) # contact does not exist
+            raise e # contact does not exist
             
     @classmethod
     def get_customer(cls, cust_id: str) -> Customer:
@@ -106,7 +106,7 @@ class EntityService:
             )
         except NotExistError as e:
             # customer not even exist
-            raise NotExistError(e)
+            raise e
         
         # get contacts
         bill_contact = cls.get_contact(bill_contact_id)

@@ -1,5 +1,5 @@
 from src.app.model.const import SystemAcctNumber
-from src.app.service.chart_of_accounts import AcctService
+from src.app.service.acct import AcctService
 from src.app.service.fx import FxService
 from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, EntryType

@@ -4,31 +4,6 @@ import pytest
 from src.app.model.exceptions import NotExistError, AlreadyExistError, FKNotExistError
 from src.app.model.entity import Address, Contact, Customer
 
-@pytest.fixture
-def contact1() -> Contact:
-    return Contact(
-        name='luntaixia',
-        email='infodesk@ltxservice.ca',
-        phone='123456789',
-        address=Address(
-            address1='00 XX St E',
-            suite_no=1234,
-            city='Toronto',
-            state='ON',
-            country='Canada',
-            postal_code='XYZABC'
-        )
-    )
-    
-@pytest.fixture
-def customer1(contact1) -> Customer:
-    return Customer(
-        customer_name = 'LTX Company',
-        is_business=True,
-        bill_contact=contact1,
-        ship_same_as_bill=True
-    )
-
 @mock.patch("src.app.dao.connection.get_engine")
 def test_contact(mock_engine, engine, contact1):
     mock_engine.return_value = engine

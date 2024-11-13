@@ -162,6 +162,23 @@ class chartOfAcctDao:
                 # the chart to remove have another chart / account belongs to it (FK on delete) 
                 raise FKNoDeleteUpdateError(e)
 
+    @classmethod
+    def get_chart(cls, chart_id: str) -> Chart:
+        # get chart orm
+        with Session(get_engine()) as s:
+            sql = select(ChartOfAccountORM).where(
+                ChartOfAccountORM.chart_id == chart_id
+            )
+            try:
+                chart_orm = s.exec(sql).one() # get the account
+            except NoResultFound as e:
+                raise NotExistError(e)
+        
+        return Chart(
+            chart_id=chart_orm.chart_id,
+            name=chart_orm.node_name,
+            acct_type=chart_orm.acct_type,
+        )
 
 class acctDao:
     @classmethod
@@ -175,18 +192,13 @@ class acctDao:
         )
         
     @classmethod
-    def toAcct(cls, acct_orm: AcctORM, chart_orm: ChartOfAccountORM) -> Account:
+    def toAcct(cls, acct_orm: AcctORM, chart: Chart) -> Account:
         return Account(
             acct_id=acct_orm.acct_id,
             acct_name=acct_orm.acct_name,
             acct_type=acct_orm.acct_type,
             currency=acct_orm.currency,
-            chart=Chart(
-                chart_id=chart_orm.chart_id,
-                name=chart_orm.node_name,
-                acct_type=chart_orm.acct_type,
-            )
-            
+            chart=chart
         )
         
     @classmethod
@@ -251,7 +263,19 @@ class acctDao:
                     logging.info(f"Updated to {p} from Account table")
         
     @classmethod
-    def get(cls, acct_id: str) -> Account:
+    def get_chart_id_by_acct(cls, acct_id: str) -> str:
+        with Session(get_engine()) as s:
+            sql = select(AcctORM.chart_id).where(
+                AcctORM.acct_id == acct_id
+            )
+            try:
+                chart_id = s.exec(sql).one() # get the account
+            except NoResultFound as e:
+                raise NotExistError(e)
+        return chart_id
+    
+    @classmethod
+    def get(cls, acct_id: str, chart: Chart) -> Account:
         with Session(get_engine()) as s:
             sql = select(AcctORM).where(AcctORM.acct_id == acct_id)
             try:
@@ -259,13 +283,4 @@ class acctDao:
             except NoResultFound as e:
                 raise NotExistError(e)
             
-            # get chart orm
-            sql = select(ChartOfAccountORM).where(
-                ChartOfAccountORM.chart_id == acct_orm.chart_id
-            )
-            try:
-                chart_orm = s.exec(sql).one() # get the account
-            except NoResultFound as e:
-                raise NotExistError(e)
-            
-        return cls.toAcct(acct_orm, chart_orm)
+        return cls.toAcct(acct_orm, chart)

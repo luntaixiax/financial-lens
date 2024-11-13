@@ -13,7 +13,7 @@ def sample_invoice(engine_with_test_choa) -> Generator[Invoice, None, None]:
         mock_engine.return_value = engine_with_test_choa
         
         # non-model module need to import under mock replacement
-        from src.app.service.chart_of_accounts import AcctService
+        from src.app.service.acct import AcctService
         
         
         # create accounts (consulting income)
