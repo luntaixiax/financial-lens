@@ -25,7 +25,6 @@ def sample_invoice(engine_with_test_choa) -> Generator[Invoice, None, None]:
             ).chart
         )
         AcctService.add_account(rev_acct)
-        print(f"Added account: {rev_acct}")
         
         # create items
         item_consult = Item(
@@ -73,4 +72,4 @@ def sample_invoice(engine_with_test_choa) -> Generator[Invoice, None, None]:
         yield invoice
         
         # delete account
-        AcctService.delete_account(rev_acct.acct_id)
+        AcctService.delete_account(rev_acct.acct_id, restrictive=False)

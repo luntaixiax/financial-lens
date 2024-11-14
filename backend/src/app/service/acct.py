@@ -4,7 +4,7 @@ from src.app.utils.tools import get_base_cur
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.model.enums import AcctType
-from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, OpNotPermittedError
 
 class AcctService:
     
@@ -195,7 +195,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f"Root node for {acct_type} does not exist.",
-                details=str(e)
+                details=e.details
             )
         return head_node
         
@@ -206,7 +206,7 @@ class AcctService:
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f'An account or chart of account belongs to the node {node}, so cannot delete it.',
-                details=str(e)
+                details=e.details
             )
         
     @classmethod
@@ -215,8 +215,8 @@ class AcctService:
             chartOfAcctDao.remove(acct_type)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
-                f'An account or chart of account belongs to the node {node}, so cannot delete it.',
-                details=str(e)
+                f'An account or chart of account belongs to a node, so cannot delete it.',
+                details=e.details
             )
             
     @classmethod
@@ -226,7 +226,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f'Acct Id: {acct_id} not exist',
-                details=str(e)
+                details=e.details
             )
         
         try:
@@ -234,7 +234,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f'Chart Id: {chart_id} not exist',
-                details=str(e)
+                details=e.details
             )
         
         try:
@@ -242,9 +242,21 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f'Acct Id: {acct_id} not exist',
-                details=str(e)
+                details=e.details
             )
         return acct
+    
+    @classmethod
+    def get_accounts(cls, chart: Chart) -> list[Account]:
+        try:
+            accts = acctDao.get_accts_by_chart(chart)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Chart: {chart} does not exist',
+                details=e.details
+            )
+        return accts
+            
     
     @classmethod
     def add_account(cls, acct: Account, ignore_exist: bool = False):
@@ -254,12 +266,12 @@ class AcctService:
             if not ignore_exist:
                 raise AlreadyExistError(
                     f'Account already exist: {acct}',
-                    details=str(e)
+                    details=e.details
                 )
         except FKNotExistError as e:
             raise FKNotExistError(
                 f"Chart of account for the account added does not exist: {acct.chart}",
-                details=str(e)
+                details=e.details
             )
             
     @classmethod
@@ -280,7 +292,7 @@ class AcctService:
         except FKNotExistError as e:
             raise FKNotExistError(
                 f"Chart: {acct.chart} of the updated account does not exist",
-                details=str(e)
+                details=e.details
             )
             
     @classmethod
@@ -298,18 +310,50 @@ class AcctService:
             raise e
     
     @classmethod
-    def delete_account(cls, acct_id: str, ignore_nonexist: bool = False):
+    def delete_account(cls, acct_id: str, ignore_nonexist: bool = False, 
+                       restrictive: bool = True):
+        if restrictive:
+            # cannot delete system created accounts
+            if acct_id in SystemAcctNumber:
+                raise OpNotPermittedError(
+                    f"Acct id {acct_id} is system account, not permitted to delete"
+                )
+        
         try:
             acctDao.remove(acct_id)
         except NotExistError as e:
             if not ignore_nonexist:
                 raise NotExistError(
                     f'Acct Id: {acct_id} not exist',
-                    details=str(e)
+                    details=e.details
                 )
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f'There are journal entry or item relates to this account: {acct_id}, so cannot delete it.',
-                details=str(e)
+                details=e.details
             )
             
+    @classmethod
+    def get_chart(cls, chart_id: str) -> Chart:
+        try:
+            chart = chartOfAcctDao.get_chart(chart_id=chart_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f"Chart {chart_id} not exist.",
+                details=e.details
+            )
+        return chart
+    
+
+    @classmethod
+    def get_charts(cls, acct_type: AcctType) -> list[Chart]:
+        try:
+            charts = chartOfAcctDao.get_charts(
+                acct_type=acct_type
+            )
+        except NotExistError as e:
+            raise NotExistError(
+                f"Chart of Acct Type: {acct_type} not exist.",
+                details=e.details
+            )
+        return charts

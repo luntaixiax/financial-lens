@@ -33,6 +33,19 @@ def test_tree_save_load_delete(mock_engine, engine, asset_node):
     # test get_chart
     _chart = chartOfAcctDao.get_chart(chart_id = _node.chart_id)
     assert _chart == _node.chart
+    
+    # test get charts
+    _charts = sorted(
+        chartOfAcctDao.get_charts(AcctType.AST), 
+        key=lambda c: c.chart_id
+    )
+    # get charts from node
+    charts = sorted(
+        (n.chart for n in PreOrderIter(asset_node)), 
+        key=lambda c: c.chart_id
+    )
+    for _c, c in zip(_charts, charts):
+        assert _c == c
         
     # remove the charts
     chartOfAcctDao.remove(AcctType.AST)
@@ -80,7 +93,7 @@ def test_tree_update_no_delete(mock_engine, engine, asset_node):
     # save the updated node
     chartOfAcctDao.save(_asset_node)
     
-    # see if same
+    # see if same between the 2 list
     _asset_node_reload = chartOfAcctDao.load(AcctType.AST)
     assert _asset_node_reload.is_root
     # iterate through the tree

@@ -32,3 +32,6 @@ class FKNoDeleteUpdateError(ReferenceError):
         
     def __str__(self):
         return f"{self.message} (Details: {self.details})"
+    
+class OpNotPermittedError(SystemError):
+    ... # does not allow to do some operation

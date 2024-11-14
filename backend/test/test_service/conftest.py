@@ -1,6 +1,7 @@
 import logging
 import pytest
 from unittest import mock
+from src.app.model.enums import AcctType
 
 @pytest.fixture(scope='module')
 def engine_with_test_choa(engine):
@@ -9,6 +10,24 @@ def engine_with_test_choa(engine):
         
         from src.app.service.acct import AcctService
         
+        print("Initializing Acct and COA...")
         AcctService.init()
         
-    yield engine
+        yield engine
+        
+        print("Tearing down Acct and COA...")
+        # clean up (delete all accounts)
+        for acct_type in AcctType:
+            charts = AcctService.get_charts(acct_type)
+            for chart in charts:
+                accts = AcctService.get_accounts(chart)
+                for acct in accts:
+                    AcctService.delete_account(
+                        acct_id=acct.acct_id,
+                        ignore_nonexist=True,
+                        restrictive=False
+                    )
+                    
+            # clean up (delete all chart of accounts)
+            AcctService.delete_coa(acct_type)
+        

@@ -77,19 +77,19 @@ def sample_accounts(asset_node: ChartNode) -> list[Account]:
         acct_name="Input Tax",
         acct_type=AcctType.AST,
         currency=get_base_cur(),
-        chart=asset_node.find_node_by_id(SystemChartOfAcctNumber.NONCUR_ASSET)
+        chart=asset_node.find_node_by_id(SystemChartOfAcctNumber.NONCUR_ASSET).chart
     )
     ar = Account(
         acct_id=SystemAcctNumber.ACCT_RECEIV,
         acct_name="Account Receivable",
         acct_type=AcctType.AST,
         currency=get_base_cur(),
-        chart=asset_node.find_node_by_id(SystemChartOfAcctNumber.CUR_ASSET)
+        chart=asset_node.find_node_by_id(SystemChartOfAcctNumber.CUR_ASSET).chart
     )
     check = Account(
         acct_name="TEST BANK CHECK",
         acct_type=AcctType.AST,
         currency=CurType.USD,
-        chart=asset_node.find_node_by_id(SystemChartOfAcctNumber.BANK_ASSET)
+        chart=asset_node.find_node_by_id(SystemChartOfAcctNumber.BANK_ASSET).chart
     )
     return [input_tax, ar, check]

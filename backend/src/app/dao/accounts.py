@@ -154,13 +154,23 @@ class chartOfAcctDao:
                 p = s.exec(sql).one() # get the chart of account
                 s.delete(p)
                 
-            try:
-                s.commit() # submit all in one commit
-            except IntegrityError as e:
-                s.rollback()
-                # if error, can only be the following scenario:
-                # the chart to remove have another chart / account belongs to it (FK on delete) 
-                raise FKNoDeleteUpdateError(e)
+                # need to delete (commit) one at a time
+                # because there are FK on same column
+                try:
+                    s.commit() # submit all in one commit
+                except IntegrityError as e:
+                    s.rollback()
+                    # if error, can only be the following scenario:
+                    # the chart to remove have another chart / account belongs to it (FK on delete) 
+                    raise FKNoDeleteUpdateError(e)
+            
+    @classmethod
+    def toChart(cls, chart_orm: ChartOfAccountORM) -> Chart:
+        return Chart(
+            chart_id=chart_orm.chart_id,
+            name=chart_orm.node_name,
+            acct_type=chart_orm.acct_type,
+        )
 
     @classmethod
     def get_chart(cls, chart_id: str) -> Chart:
@@ -174,11 +184,21 @@ class chartOfAcctDao:
             except NoResultFound as e:
                 raise NotExistError(e)
         
-        return Chart(
-            chart_id=chart_orm.chart_id,
-            name=chart_orm.node_name,
-            acct_type=chart_orm.acct_type,
-        )
+        return cls.toChart(chart_orm)
+    
+    @classmethod
+    def get_charts(cls, acct_type: AcctType) -> list[Chart]:
+        # get chart orm
+        with Session(get_engine()) as s:
+            sql = select(ChartOfAccountORM).where(
+                ChartOfAccountORM.acct_type == acct_type
+            )
+            try:
+                chart_orms = s.exec(sql).all() # get the charts
+            except NoResultFound as e:
+                raise NotExistError(e)
+            
+        return [cls.toChart(chart_orm) for chart_orm in chart_orms]
 
 class acctDao:
     @classmethod
@@ -284,3 +304,16 @@ class acctDao:
                 raise NotExistError(e)
             
         return cls.toAcct(acct_orm, chart)
+    
+    @classmethod
+    def get_accts_by_chart(cls, chart: Chart) -> list[Account]:
+        with Session(get_engine()) as s:
+            sql = select(AcctORM).where(
+                AcctORM.chart_id == chart.chart_id
+            )
+            try:
+                acct_orms = s.exec(sql).all() # get the accounts
+            except NoResultFound as e:
+                raise NotExistError(e)
+            
+        return [cls.toAcct(acct_orm, chart) for acct_orm in acct_orms]
