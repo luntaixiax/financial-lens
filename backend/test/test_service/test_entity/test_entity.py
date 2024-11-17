@@ -136,7 +136,7 @@ def test_crud_single_customer(mock_engine, engine, customer1, contact2):
     EntityService.update_customer(customer1)
     # test error on update customer not exist
     with pytest.raises(NotExistError):
-        customer2 = customer1.copy()
+        customer2 = customer1.model_copy()
         customer2._set_skip_validation('cust_id', 'random_cust_id')
         EntityService.update_customer(customer2)
     _customer = EntityService.get_customer(customer1.cust_id)

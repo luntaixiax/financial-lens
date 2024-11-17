@@ -1,4 +1,5 @@
 import logging
+from anytree import PreOrderIter
 from src.app.model.const import SystemAcctNumber, SystemChartOfAcctNumber
 from src.app.utils.tools import get_base_cur
 from src.app.dao.accounts import acctDao, chartOfAcctDao
@@ -201,6 +202,20 @@ class AcctService:
         
     @classmethod
     def save_coa(cls, node: ChartNode):
+        # first need to make sure the difference (charts to be deleted) does not have account attached
+        # first get already existing _charts
+        _charts = cls.get_charts(node.chart.acct_type)
+        # compare and find out charts to be deleted = _charts - charts
+        charts = [n.chart for n in PreOrderIter(node)]
+        chart_to_delete = [c for c in _charts if c not in charts]
+        # make sure they dont have account attached
+        for _chart in chart_to_delete:
+            accts = cls.get_accounts_by_chart(_chart)
+            if len(accts) > 0:
+                raise FKNoDeleteUpdateError(
+                    f"Chart: {_chart} contain {len(accts)} accounts, cannot be deleted"
+                )
+                
         try:
             chartOfAcctDao.save(node)
         except FKNoDeleteUpdateError as e:
@@ -211,13 +226,41 @@ class AcctService:
         
     @classmethod
     def delete_coa(cls, acct_type: AcctType):
+        # first need to make sure the (charts to be deleted) does not have account attached
+        _charts = cls.get_charts(acct_type)
+        for _chart in _charts:
+            accts = cls.get_accounts_by_chart(_chart)
+            if len(accts) > 0:
+                raise FKNoDeleteUpdateError(
+                    f"Chart: {_chart} contain {len(accts)} accounts, cannot be deleted"
+                )
+        
+        chartOfAcctDao.remove(acct_type)
+        
+    @classmethod
+    def get_chart(cls, chart_id: str) -> Chart:
         try:
-            chartOfAcctDao.remove(acct_type)
-        except FKNoDeleteUpdateError as e:
-            raise FKNoDeleteUpdateError(
-                f'An account or chart of account belongs to a node, so cannot delete it.',
+            chart = chartOfAcctDao.get_chart(chart_id=chart_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f"Chart {chart_id} not exist.",
                 details=e.details
             )
+        return chart
+    
+
+    @classmethod
+    def get_charts(cls, acct_type: AcctType) -> list[Chart]:
+        try:
+            charts = chartOfAcctDao.get_charts(
+                acct_type=acct_type
+            )
+        except NotExistError as e:
+            raise NotExistError(
+                f"Chart of Acct Type: {acct_type} not exist.",
+                details=e.details
+            )
+        return charts
             
     @classmethod
     def get_account(cls, acct_id: str) -> Account:
@@ -247,14 +290,11 @@ class AcctService:
         return acct
     
     @classmethod
-    def get_accounts(cls, chart: Chart) -> list[Account]:
+    def get_accounts_by_chart(cls, chart: Chart) -> list[Account]:
         try:
             accts = acctDao.get_accts_by_chart(chart)
         except NotExistError as e:
-            raise NotExistError(
-                f'Chart: {chart} does not exist',
-                details=e.details
-            )
+            accts = []
         return accts
             
     
@@ -314,7 +354,7 @@ class AcctService:
                        restrictive: bool = True):
         if restrictive:
             # cannot delete system created accounts
-            if acct_id in SystemAcctNumber:
+            if acct_id in SystemAcctNumber.list():
                 raise OpNotPermittedError(
                     f"Acct id {acct_id} is system account, not permitted to delete"
                 )
@@ -332,28 +372,3 @@ class AcctService:
                 f'There are journal entry or item relates to this account: {acct_id}, so cannot delete it.',
                 details=e.details
             )
-            
-    @classmethod
-    def get_chart(cls, chart_id: str) -> Chart:
-        try:
-            chart = chartOfAcctDao.get_chart(chart_id=chart_id)
-        except NotExistError as e:
-            raise NotExistError(
-                f"Chart {chart_id} not exist.",
-                details=e.details
-            )
-        return chart
-    
-
-    @classmethod
-    def get_charts(cls, acct_type: AcctType) -> list[Chart]:
-        try:
-            charts = chartOfAcctDao.get_charts(
-                acct_type=acct_type
-            )
-        except NotExistError as e:
-            raise NotExistError(
-                f"Chart of Acct Type: {acct_type} not exist.",
-                details=e.details
-            )
-        return charts

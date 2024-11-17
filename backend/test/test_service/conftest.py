@@ -20,7 +20,7 @@ def engine_with_test_choa(engine):
         for acct_type in AcctType:
             charts = AcctService.get_charts(acct_type)
             for chart in charts:
-                accts = AcctService.get_accounts(chart)
+                accts = AcctService.get_accounts_by_chart(chart)
                 for acct in accts:
                     AcctService.delete_account(
                         acct_id=acct.acct_id,
