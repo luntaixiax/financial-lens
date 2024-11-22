@@ -3,7 +3,6 @@ from src.app.dao.journal import journalDao
 from src.app.model.journal import Journal
 
 
-
 class JournalService:
         
     @classmethod

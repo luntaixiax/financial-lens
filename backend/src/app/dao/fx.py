@@ -24,7 +24,7 @@ class fxDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(f"FX alreay exist: {fx}")
+                raise AlreadyExistError(details=e)
             else:
                 logging.info(f"Added {fx} to FX table")
             
@@ -44,7 +44,7 @@ class fxDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(f"FX alreay exist: {fx}")
+                raise AlreadyExistError(details=e)
             else:
                 logging.info(f"Added {currencies} to FX table @ {cur_dt}")
             

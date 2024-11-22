@@ -17,14 +17,14 @@ def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  F
         if during_creation:
             # during object creation, error = entry does not exist in child/lower level table
             # e.g., if contact does not exist, customer should not be created
-            return FKNotExistError(e)
+            return FKNotExistError(details=e)
         else:
             # during update/delete, error = on_delete/on_update failed
-            return FKNoDeleteUpdateError(e)
+            return FKNoDeleteUpdateError(details=e)
     if 'unique' in origin_message or 'duplicate' in origin_message:
         # sqlite message: UNIQUE constraint failed
         # mysql message: Duplicate entry
-        return AlreadyExistError(e)
+        return AlreadyExistError(details=e)
     
     return e
     
@@ -278,6 +278,9 @@ class JournalORM(SQLModel, table=True):
 class EntryORM(SQLModel, table=True):
     __tablename__ = "entries"
     
+    entry_id: str = Field(
+        sa_column=Column(String(length = 13), primary_key = True, nullable = False)
+    )
     journal_id: str = Field(
         sa_column=Column(
             String(length = 17),
@@ -286,7 +289,7 @@ class EntryORM(SQLModel, table=True):
                 onupdate = 'CASCADE', 
                 ondelete = 'CASCADE'
             ),
-            primary_key = True, 
+            primary_key = False, 
             nullable = False
         )
     )
@@ -301,7 +304,7 @@ class EntryORM(SQLModel, table=True):
                 onupdate = 'CASCADE', 
                 ondelete = 'RESTRICT'
             ),
-            primary_key = True, 
+            primary_key = False, 
             nullable = False
         )
     )

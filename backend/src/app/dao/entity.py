@@ -39,7 +39,7 @@ class contactDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(e)
+                raise AlreadyExistError(details=e)
             else:
                 logging.info(f"Added {contact_orm} to Contact table")
         
@@ -51,14 +51,14 @@ class contactDao:
             try:
                 p = s.exec(sql).one() # get the ccount
             except NoResultFound as e:
-                raise NotExistError(f"Contact not found: {contact_id}")
+                raise NotExistError(details=e)
             
             try:
                 s.delete(p)
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise FKNoDeleteUpdateError(f"contact_id {contact_id} referenced in customer/supplier table")
+                raise FKNoDeleteUpdateError(details=e)
             
             logging.info(f"Removed {p} from Contact table")
         
@@ -73,7 +73,7 @@ class contactDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(f"Contact not found: {contact.contact_id}")
+                raise NotExistError(details=e)
             
             if not p == contact_orm:
                 # update
@@ -98,7 +98,7 @@ class contactDao:
             try:
                 p = s.exec(sql).one() # get the contact
             except NoResultFound as e:
-                raise NotExistError(f"Contact not found: {contact_id}")
+                raise NotExistError(details=e)
         return cls.toContact(p)
     
 
@@ -145,7 +145,7 @@ class customerDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(f"Customer not found: {cust_id}")
+                raise NotExistError(details=e)
         
             s.delete(p)
             s.commit()
@@ -161,7 +161,7 @@ class customerDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(f"Customer not found: {customer.cust_id}")
+                raise NotExistError(details=e)
             
             # update
             if not p == customer_orm:
@@ -186,7 +186,7 @@ class customerDao:
             try:
                 p = s.exec(sql).one() # get the customer
             except NoResultFound as e:
-                raise NotExistError(f"Customer not found: {cust_id}")
+                raise NotExistError(details=e)
             
         return cls.toCustomer(p, bill_contact, ship_contact)
     
@@ -200,7 +200,7 @@ class customerDao:
             try:
                 p = s.exec(sql).one() # get the customer
             except NoResultFound as e:
-                raise NotExistError(f"Customer not found: {cust_id}")
+                raise NotExistError(details=e)
         
         return p.bill_contact_id, p.ship_contact_id
     
@@ -248,7 +248,7 @@ class supplierDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(f"Supplier not found: {supplier_id}")    
+                raise NotExistError(details=e)    
         
         
             s.delete(p)
@@ -265,7 +265,7 @@ class supplierDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(f"Supplier not found: {supplier.supplier_id}")
+                raise NotExistError(details=e)
             
             if not p == supplier_orm:
                 # update
@@ -290,6 +290,6 @@ class supplierDao:
             try:
                 p = s.exec(sql).one() # get the supplier
             except NoResultFound as e:
-                raise NotExistError(f"Supplier not found: {supplier_id}")    
+                raise NotExistError(details=e)    
             
         return cls.toSupplier(p, bill_contact, ship_contact)

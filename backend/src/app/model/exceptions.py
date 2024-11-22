@@ -1,6 +1,6 @@
 
 class AlreadyExistError(FileExistsError):
-    def __init__(self, message: str, details: str = "N/A"):
+    def __init__(self, message: str = "N/A", details: str = "N/A"):
         super().__init__(message)
         self.details = details
         
@@ -8,7 +8,7 @@ class AlreadyExistError(FileExistsError):
         return f"{self.message} (Details: {self.details})"
     
 class NotExistError(FileNotFoundError):
-    def __init__(self, message: str, details: str = "N/A"):
+    def __init__(self, message: str = "N/A", details: str = "N/A"):
         super().__init__(message)
         self.details = details
         
@@ -17,7 +17,7 @@ class NotExistError(FileNotFoundError):
 
 class FKNotExistError(ReferenceError):
     # creation fail because value not exist in parent table
-    def __init__(self, message: str, details: str = "N/A"):
+    def __init__(self, message: str = "N/A", details: str = "N/A"):
         super().__init__(message)
         self.details = details
         
@@ -26,7 +26,7 @@ class FKNotExistError(ReferenceError):
     
 class FKNoDeleteUpdateError(ReferenceError):
     # delete/update fail because value exist in child table
-    def __init__(self, message: str, details: str = "N/A"):
+    def __init__(self, message: str = "N/A", details: str = "N/A"):
         super().__init__(message)
         self.details = details
         

@@ -1,9 +1,9 @@
 import logging
 from sqlmodel import Session, select, delete
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from src.app.dao.orm import EntryORM, JournalORM
+from src.app.dao.orm import EntryORM, JournalORM, infer_integrity_error
 from src.app.model.journal import Entry, Journal
-from src.app.dao.accounts import acctDao
+from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.dao.connection import get_engine
 from src.app.model.exceptions import AlreadyExistError, NotExistError
 
@@ -11,6 +11,7 @@ class journalDao:
     @classmethod
     def fromEntry(cls, journal_id: str, entry: Entry) -> EntryORM:
         return EntryORM(
+            entry_id=entry.entry_id,
             journal_id=journal_id,
             entry_type=entry.entry_type,
             acct_id=entry.acct.acct_id,
@@ -22,8 +23,13 @@ class journalDao:
         
     @classmethod
     def toEntry(cls, entry_orm: EntryORM) -> Entry:
-        acct = acctDao.get(acct_id=entry_orm.acct_id)
+        
+        # TODO: optimize it to not use acctDao
+        chart_id = acctDao.get_chart_id_by_acct(entry_orm.acct_id)
+        chart = chartOfAcctDao.get_chart(chart_id)
+        acct = acctDao.get(entry_orm.acct_id, chart)
         return Entry(
+            entry_id=entry_orm.entry_id,
             entry_type=entry_orm.entry_type,
             acct=acct,
             cur_incexp=entry_orm.cur_incexp,
@@ -63,7 +69,7 @@ class journalDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(f"Journal already exist: {journal}")
+                raise AlreadyExistError(details=e)
             else:
                 logging.info(f"Added {journal_orm} to Journal table")
             
@@ -78,7 +84,10 @@ class journalDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(f"Journal Entry already exist: {entry_orm}")
+                # remove journal as well
+                s.delete(journal_orm)
+                s.commit()
+                raise infer_integrity_error(e, during_creation=True)
             else:
                 logging.info(f"Added {entry_orm} to Entry table")
     
@@ -92,7 +101,7 @@ class journalDao:
             try:
                 entry_orms = s.exec(sql).all()
             except NoResultFound as e:
-                raise NotExistError(f"Journal not found: {journal_id}")
+                raise NotExistError(details=e)
 
             # get journal
             sql = select(JournalORM).where(
@@ -101,7 +110,7 @@ class journalDao:
             try:
                 journal_orm = s.exec(sql).one() # get the journal
             except NoResultFound as e:
-                raise NotExistError(f"journal Entry not found: {journal_id}")
+                raise NotExistError(details=e)
             
             journal = cls.toJournal(
                 journal_orm=journal_orm,
