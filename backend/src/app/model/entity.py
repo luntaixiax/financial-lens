@@ -36,12 +36,6 @@ class _ContactBrief(EnhancedBaseModel):
     contact_id: str
     name: str
     
-class _Contact(EnhancedBaseModel):
-    name: str
-    email: str
-    phone: str | None = Field(None)
-    address: Address | None = Field(None)
-    
 class Contact(EnhancedBaseModel):
     contact_id: str = Field(
         default_factory=partial(
@@ -63,14 +57,6 @@ class _CustomerBrief(EnhancedBaseModel):
     customer_name: str
     is_business: bool
     
-class _Customer(EnhancedBaseModel):
-    customer_name: str
-    is_business: bool
-    bill_contact_id: str
-    ship_same_as_bill: bool
-    ship_contact_id: str | None = Field(None)
-    
-
 class Customer(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
