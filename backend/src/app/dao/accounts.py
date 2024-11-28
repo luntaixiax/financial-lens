@@ -86,7 +86,7 @@ class chartOfAcctDao:
                 s.rollback()
                 # if error, can only be the following scenario:
                 # the chart to remove have another chart / account belongs to it (FK on delete) 
-                raise FKNoDeleteUpdateError(details=e)
+                raise FKNoDeleteUpdateError(details=str(e))
                 
     
     @classmethod
@@ -121,7 +121,7 @@ class chartOfAcctDao:
             try:
                 root_node_orm = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(details=e) # top node not exist
+                raise NotExistError(details=str(e)) # top node not exist
                 
             root_node = ChartNode(
                 chart = Chart(
@@ -162,7 +162,7 @@ class chartOfAcctDao:
                     s.rollback()
                     # if error, can only be the following scenario:
                     # the chart to remove have another chart / account belongs to it (FK on delete) 
-                    raise FKNoDeleteUpdateError(details=e)
+                    raise FKNoDeleteUpdateError(details=str(e))
             
     @classmethod
     def toChart(cls, chart_orm: ChartOfAccountORM) -> Chart:
@@ -182,7 +182,7 @@ class chartOfAcctDao:
             try:
                 chart_orm = s.exec(sql).one() # get the account
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
         
         return cls.toChart(chart_orm)
     
@@ -196,7 +196,7 @@ class chartOfAcctDao:
             try:
                 chart_orms = s.exec(sql).all() # get the charts
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
             
         return [cls.toChart(chart_orm) for chart_orm in chart_orms]
 
@@ -242,14 +242,14 @@ class acctDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(details=e)    
+                raise NotExistError(details=str(e))    
             
             try:
                 s.delete(p)
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise FKNoDeleteUpdateError(details=e)
+                raise FKNoDeleteUpdateError(details=str(e))
             
             logging.info(f"Removed {p} from Account table")
         
@@ -261,7 +261,7 @@ class acctDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
             
             # update
             if not p == acct_orm:
@@ -277,7 +277,7 @@ class acctDao:
                     # if integrity error happened here, must certainly it is because
                     # updated chart_id does not exist
                     s.rollback()
-                    raise FKNotExistError(details=e)
+                    raise FKNotExistError(details=str(e))
                 else:
                     s.refresh(p) # update p to instantly have new values
                     logging.info(f"Updated to {p} from Account table")
@@ -291,7 +291,7 @@ class acctDao:
             try:
                 chart_id = s.exec(sql).one() # get the account
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
         return chart_id
     
     @classmethod
@@ -301,7 +301,7 @@ class acctDao:
             try:
                 acct_orm = s.exec(sql).one() # get the account
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
             
         return cls.toAcct(acct_orm, chart)
     
@@ -314,6 +314,6 @@ class acctDao:
             try:
                 acct_orms = s.exec(sql).all() # get the accounts
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
             
         return [cls.toAcct(acct_orm, chart) for acct_orm in acct_orms]

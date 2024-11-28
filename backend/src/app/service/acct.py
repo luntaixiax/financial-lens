@@ -196,7 +196,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f"Root node for {acct_type} does not exist.",
-                details=e.details
+                details=str(e).details
             )
         return head_node
         
@@ -221,7 +221,7 @@ class AcctService:
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f'An account or chart of account belongs to the node {node}, so cannot delete it.',
-                details=e.details
+                details=str(e).details
             )
         
     @classmethod
@@ -244,7 +244,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f"Chart {chart_id} not exist.",
-                details=e.details
+                details=str(e).details
             )
         return chart
     
@@ -258,7 +258,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f"Chart of Acct Type: {acct_type} not exist.",
-                details=e.details
+                details=str(e).details
             )
         return charts
             
@@ -269,7 +269,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f'Acct Id: {acct_id} not exist',
-                details=e.details
+                details=str(e).details
             )
         
         try:
@@ -277,7 +277,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f'Chart Id: {chart_id} not exist',
-                details=e.details
+                details=str(e).details
             )
         
         try:
@@ -285,7 +285,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f'Acct Id: {acct_id} not exist',
-                details=e.details
+                details=str(e).details
             )
         return acct
     
@@ -306,12 +306,12 @@ class AcctService:
             if not ignore_exist:
                 raise AlreadyExistError(
                     f'Account already exist: {acct}',
-                    details=e.details
+                    details=str(e).details
                 )
         except FKNotExistError as e:
             raise FKNotExistError(
                 f"Chart of account for the account added does not exist: {acct.chart}",
-                details=e.details
+                details=str(e).details
             )
             
     @classmethod
@@ -332,7 +332,7 @@ class AcctService:
         except FKNotExistError as e:
             raise FKNotExistError(
                 f"Chart: {acct.chart} of the updated account does not exist",
-                details=e.details
+                details=str(e).details
             )
             
     @classmethod
@@ -365,10 +365,10 @@ class AcctService:
             if not ignore_nonexist:
                 raise NotExistError(
                     f'Acct Id: {acct_id} not exist',
-                    details=e.details
+                    details=str(e).details
                 )
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f'There are journal entry or item relates to this account: {acct_id}, so cannot delete it.',
-                details=e.details
+                details=str(e).details
             )

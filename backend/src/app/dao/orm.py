@@ -17,14 +17,14 @@ def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  F
         if during_creation:
             # during object creation, error = entry does not exist in child/lower level table
             # e.g., if contact does not exist, customer should not be created
-            return FKNotExistError(details=e)
+            return FKNotExistError(details=str(e))
         else:
             # during update/delete, error = on_delete/on_update failed
-            return FKNoDeleteUpdateError(details=e)
+            return FKNoDeleteUpdateError(details=str(e))
     if 'unique' in origin_message or 'duplicate' in origin_message:
         # sqlite message: UNIQUE constraint failed
         # mysql message: Duplicate entry
-        return AlreadyExistError(details=e)
+        return AlreadyExistError(details=str(e))
     
     return e
     
@@ -93,7 +93,7 @@ class CustomerORM(SQLModel, table=True):
             nullable = False
         )
     )
-    ship_same_as_bill: EntryType = Field(
+    ship_same_as_bill: bool = Field(
         sa_column=Column(
             Boolean(create_constraint=True), 
             default = True, 

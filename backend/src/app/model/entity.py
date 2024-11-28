@@ -6,6 +6,8 @@ from src.app.utils.base import EnhancedBaseModel
 from src.app.model.enums import BankAcctType, CurType
 from src.app.utils.tools import id_generator
 
+"""Contact Models"""
+
 class Address(EnhancedBaseModel):
     address1: str
     address2: str | None = Field(None)
@@ -30,6 +32,16 @@ class Address(EnhancedBaseModel):
     def post_code_line(self) -> str:
         return f"{self.city}, {self.state}, {self.country}, {self.postal_code}"
     
+class _ContactBrief(EnhancedBaseModel):
+    contact_id: str
+    name: str
+    
+class _Contact(EnhancedBaseModel):
+    name: str
+    email: str
+    phone: str | None = Field(None)
+    address: Address | None = Field(None)
+    
 class Contact(EnhancedBaseModel):
     contact_id: str = Field(
         default_factory=partial(
@@ -43,7 +55,22 @@ class Contact(EnhancedBaseModel):
     email: str
     phone: str | None = Field(None)
     address: Address | None = Field(None)
+
+"""Customer models"""
+
+class _CustomerBrief(EnhancedBaseModel):
+    cust_id: str
+    customer_name: str
+    is_business: bool
     
+class _Customer(EnhancedBaseModel):
+    customer_name: str
+    is_business: bool
+    bill_contact_id: str
+    ship_same_as_bill: bool
+    ship_contact_id: str | None = Field(None)
+    
+
 class Customer(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     

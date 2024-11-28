@@ -30,7 +30,7 @@ class itemDao:
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
-                raise AlreadyExistError(details=e)
+                raise AlreadyExistError(details=str(e))
             else:
                 logging.info(f"Added {item_orm} to Item table")
         
@@ -42,7 +42,7 @@ class itemDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
             
             s.delete(p)
             s.commit()
@@ -59,7 +59,7 @@ class itemDao:
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
             
             # update
             p.name = item_orm.name
@@ -85,7 +85,7 @@ class itemDao:
             try:
                 p = s.exec(sql).one() # get the item
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
             
         return cls.toItem(p)
 
@@ -207,7 +207,7 @@ class invoiceDao:
             try:
                 invoice_item_orms = s.exec(sql).all()
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
 
             # get invoice
             sql = select(InvoiceORM).where(
@@ -216,7 +216,7 @@ class invoiceDao:
             try:
                 invoice_orm = s.exec(sql).one() # get the invoice
             except NoResultFound as e:
-                raise NotExistError(details=e)
+                raise NotExistError(details=str(e))
             
             invoice = cls.toInvoice(
                 invoice_orm=invoice_orm,

@@ -1,7 +1,8 @@
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, JSONResponse
-from src.web.utils import AppException
+from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
+    FKNoDeleteUpdateError, OpNotPermittedError
 from src.web.api.v1.api import api_router
 
 
@@ -22,12 +23,53 @@ app.add_middleware(
 )
 app.include_router(api_router, prefix="/api/v1")
 
-@app.exception_handler(AppException)
-async def application_exception_handler(_: Request, exc: AppException) -> JSONResponse:
+# Already Exist Error
+@app.exception_handler(AlreadyExistError)
+async def already_exist_error_handler(_: Request, exc: AlreadyExistError) -> JSONResponse:
     return JSONResponse(
-        status_code = exc.status_code,
+        status_code = 520,
         content = {
-            "detail": exc.detail
+            "message": exc.message,
+            "details": exc.details
+        },
+    )
+    
+@app.exception_handler(NotExistError)
+async def not_exist_error_handler(_: Request, exc: NotExistError) -> JSONResponse:
+    return JSONResponse(
+        status_code = 521,
+        content = {
+            "message": exc.message,
+            "details": exc.details
+        },
+    )
+    
+@app.exception_handler(FKNotExistError)
+async def fk_not_exist_error_handler(_: Request, exc: FKNotExistError) -> JSONResponse:
+    return JSONResponse(
+        status_code = 530,
+        content = {
+            "message": exc.message,
+            "details": exc.details
+        },
+    )
+    
+@app.exception_handler(FKNoDeleteUpdateError)
+async def fk_no_delete_error_handler(_: Request, exc: FKNoDeleteUpdateError) -> JSONResponse:
+    return JSONResponse(
+        status_code = 531,
+        content = {
+            "message": exc.message,
+            "details": exc.details
+        },
+    )
+    
+@app.exception_handler(OpNotPermittedError)
+async def op_not_permitted_error_handler(_: Request, exc: OpNotPermittedError) -> JSONResponse:
+    return JSONResponse(
+        status_code = 540,
+        content = {
+            "message": exc.message,
         },
     )
 

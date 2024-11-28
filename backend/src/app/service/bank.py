@@ -23,7 +23,7 @@ class BankService:
         except NotExistError as e:
             raise NotExistError(
                 f"Chart of Acct Type: {acct_type} not exist for this bank account: {bank_acct}.",
-                details=e.details
+                details=str(e).details
             )
         return charts
             
