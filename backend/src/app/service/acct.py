@@ -196,7 +196,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f"Root node for {acct_type} does not exist.",
-                details=str(e).details
+                details=e.details
             )
         return head_node
         
@@ -221,7 +221,7 @@ class AcctService:
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f'An account or chart of account belongs to the node {node}, so cannot delete it.',
-                details=str(e).details
+                details=e.details
             )
         
     @classmethod
@@ -238,13 +238,61 @@ class AcctService:
         chartOfAcctDao.remove(acct_type)
         
     @classmethod
+    def add_chart(cls, child_chart: Chart, parent_chart_id: str):
+        root = cls.get_coa(child_chart.acct_type)
+        parent_node = root.find_node_by_id(parent_chart_id)
+        if parent_node is None:
+            raise NotExistError(
+                f"Parent node not found, id = {parent_chart_id}"
+            )
+        child_node = ChartNode(
+            chart = child_chart,
+            parent = parent_node
+        )
+        cls.save_coa(root)
+        
+    @classmethod
+    def delete_chart(cls, chart_id: str):
+        chart = cls.get_chart(chart_id)
+        # raise error if any accounts attached to this chart
+        accts = cls.get_accounts_by_chart(chart)
+        if len(accts) > 0:
+            raise FKNoDeleteUpdateError(
+                f"Cannot delete chart {chart_id} because there are {len(accts)} attached to it"
+            )
+        
+        root = cls.get_coa(chart.acct_type)
+        node = root.find_node_by_id(chart_id)
+        node.parent = None # remove node = dettach from the node tree
+        cls.save_coa(root)
+        
+    @classmethod
+    def update_chart(cls, chart: Chart):
+        root = cls.get_coa(chart.acct_type)
+        node = root.find_node_by_id(chart.chart_id)
+        node.name = chart.name
+        node.chart = chart
+        node.chart_id = chart.chart_id
+        cls.save_coa(root)
+        
+    @classmethod
+    def move_chart(cls, chart_id: str, new_parent_chart_id: str):
+        chart = cls.get_chart(chart_id)
+        root = cls.get_coa(chart.acct_type)
+        new_parent_node = root.find_node_by_id(new_parent_chart_id)
+        current_node = root.find_node_by_id(chart_id)
+        current_node.parent = new_parent_node # set a new parent
+        cls.save_coa(root)
+        
+        
+    @classmethod
     def get_chart(cls, chart_id: str) -> Chart:
         try:
             chart = chartOfAcctDao.get_chart(chart_id=chart_id)
         except NotExistError as e:
             raise NotExistError(
                 f"Chart {chart_id} not exist.",
-                details=str(e).details
+                details=e.details
             )
         return chart
     
@@ -258,7 +306,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f"Chart of Acct Type: {acct_type} not exist.",
-                details=str(e).details
+                details=e.details
             )
         return charts
             
@@ -269,7 +317,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f'Acct Id: {acct_id} not exist',
-                details=str(e).details
+                details=e.details
             )
         
         try:
@@ -277,7 +325,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f'Chart Id: {chart_id} not exist',
-                details=str(e).details
+                details=e.details
             )
         
         try:
@@ -285,7 +333,7 @@ class AcctService:
         except NotExistError as e:
             raise NotExistError(
                 f'Acct Id: {acct_id} not exist',
-                details=str(e).details
+                details=e.details
             )
         return acct
     
@@ -306,12 +354,12 @@ class AcctService:
             if not ignore_exist:
                 raise AlreadyExistError(
                     f'Account already exist: {acct}',
-                    details=str(e).details
+                    details=e.details
                 )
         except FKNotExistError as e:
             raise FKNotExistError(
                 f"Chart of account for the account added does not exist: {acct.chart}",
-                details=str(e).details
+                details=e.details
             )
             
     @classmethod
@@ -332,7 +380,7 @@ class AcctService:
         except FKNotExistError as e:
             raise FKNotExistError(
                 f"Chart: {acct.chart} of the updated account does not exist",
-                details=str(e).details
+                details=e.details
             )
             
     @classmethod
@@ -365,10 +413,10 @@ class AcctService:
             if not ignore_nonexist:
                 raise NotExistError(
                     f'Acct Id: {acct_id} not exist',
-                    details=str(e).details
+                    details=e.details
                 )
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f'There are journal entry or item relates to this account: {acct_id}, so cannot delete it.',
-                details=str(e).details
+                details=e.details
             )

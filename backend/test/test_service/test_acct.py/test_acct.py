@@ -38,6 +38,71 @@ def test_coa(mock_engine, engine_with_test_choa):
     # try to remove chart of account
     with pytest.raises(FKNoDeleteUpdateError):
         AcctService.delete_coa(AcctType.AST)
+        
+    # test add chart directly
+    _node = AcctService.get_coa(AcctType.AST)
+    test_bank = Chart(
+        name='test-bank',
+        acct_type=AcctType.AST
+    )
+    AcctService.add_chart(
+        child_chart=test_bank,
+        parent_chart_id=_node.chart_id
+    )
+    test_wise = Chart(
+        name='test-wise',
+        acct_type=AcctType.AST
+    )
+    AcctService.add_chart(
+        child_chart=test_wise,
+        parent_chart_id=test_bank.chart_id
+    )
+    _test_bank = AcctService.get_chart(test_bank.chart_id)
+    assert _test_bank == test_bank
+    _test_wise = AcctService.get_chart(test_wise.chart_id)
+    assert _test_wise == test_wise
+    
+    # test update chart
+    test_bank.name = 'test-bank-2'
+    AcctService.update_chart(test_bank)
+    _test_bank = AcctService.get_chart(test_bank.chart_id)
+    assert _test_bank == test_bank
+    
+    # test move chart
+    AcctService.move_chart(
+        chart_id=test_wise.chart_id, 
+        new_parent_chart_id=SystemChartOfAcctNumber.CUR_ASSET
+    )
+    _test_wise = AcctService.get_chart(test_wise.chart_id)
+    _node = AcctService.get_coa(AcctType.AST)
+    assert _test_wise == test_wise
+    _cur_asset = _node.find_node_by_id(SystemChartOfAcctNumber.CUR_ASSET)
+    _wise_node = _node.find_node_by_id(test_wise.chart_id)
+    assert _wise_node.parent == _cur_asset
+    assert len(_cur_asset.descendants) == 1
+    assert len(_node.children) == 3
+    assert len(_node.descendants) == 4
+    AcctService.move_chart(
+        chart_id=test_bank.chart_id, 
+        new_parent_chart_id=SystemChartOfAcctNumber.NONCUR_ASSET
+    )
+    _node = AcctService.get_coa(AcctType.AST)
+    _noncur_asset = _node.find_node_by_id(SystemChartOfAcctNumber.NONCUR_ASSET)
+    _bank_node = _node.find_node_by_id(test_bank.chart_id)
+    assert _bank_node.parent == _noncur_asset
+    assert len(_cur_asset.descendants) == 1
+    assert len(_noncur_asset.descendants) == 1
+    assert len(_node.children) == 2
+    assert len(_node.descendants) == 4
+    
+    # test delete account
+    AcctService.delete_chart(chart_id=test_bank.chart_id)
+    AcctService.delete_chart(chart_id=test_wise.chart_id)
+    _node = AcctService.get_coa(AcctType.AST)
+    _noncur_asset = _node.find_node_by_id(SystemChartOfAcctNumber.NONCUR_ASSET)
+    _cur_asset = _node.find_node_by_id(SystemChartOfAcctNumber.CUR_ASSET)
+    assert len(_cur_asset.descendants) == 0
+    assert len(_noncur_asset.descendants) == 0
     
 @mock.patch("src.app.dao.connection.get_engine")
 def test_account(mock_engine, engine_with_test_choa):
