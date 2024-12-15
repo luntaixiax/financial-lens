@@ -54,6 +54,13 @@ def test_journal(mock_engine, engine_with_sample_choa, sample_journal_meal):
     ))[0]
     assert _entry.description == 'Unhappy Tip'
     
+    # test list
+    jb = journalDao.list(
+        is_manual = None,
+        num_entries=4
+    )
+    assert len(jb) == 1
+    
     # remove journal
     journalDao.remove(sample_journal_meal.journal_id)
     with pytest.raises(NotExistError):

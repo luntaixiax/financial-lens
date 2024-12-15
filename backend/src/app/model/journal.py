@@ -42,6 +42,14 @@ class Entry(EnhancedBaseModel):
                 f"Acct Currency is base currency, Amount {self.amount} not equal to base amount {self.amount_base}"
         return self
 
+
+class _JournalBrief(EnhancedBaseModel):
+    journal_id: str
+    jrn_date: date
+    is_manual: bool
+    num_entries: int
+    total_base_amount: float
+    note: str
     
 class Journal(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)

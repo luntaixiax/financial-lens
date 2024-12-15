@@ -1,8 +1,10 @@
+from datetime import date
 import logging
-from sqlmodel import Session, select, delete
+from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
+from src.app.model.enums import EntryType
 from src.app.dao.orm import EntryORM, JournalORM, infer_integrity_error
-from src.app.model.journal import Entry, Journal
+from src.app.model.journal import _JournalBrief, Entry, Journal
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.dao.connection import get_engine
 from src.app.model.exceptions import AlreadyExistError, NotExistError
@@ -143,3 +145,86 @@ class journalDao:
         # add the new one
         cls.add(journal)
         logging.info(f"updated {journal} by removing existing one and added new one")
+        
+    @classmethod
+    def list(
+        cls,
+        limit: int = 50,
+        offset: int = 0,
+        jrn_ids: list[str] | None = None,
+        is_manual: bool | None = None, 
+        min_dt: date = date(1970, 1, 1), 
+        max_dt: date = date(2099, 12, 31), 
+        note_keyword: str = '', 
+        min_amount: float = -999999999,
+        max_amount: float = 999999999,
+        num_entries: int | None = None
+    ) -> list[_JournalBrief]:
+        with Session(get_engine()) as s:
+            jrn_filters = [
+                JournalORM.jrn_date.between(min_dt, max_dt), 
+                JournalORM.note.contains(note_keyword)
+            ]
+            if jrn_ids is not None:
+                jrn_filters.append(JournalORM.journal_id.in_(jrn_ids))
+            if is_manual is not None:
+                jrn_filters.append(JournalORM.is_manual is is_manual)
+            
+            
+            entry_filters = [
+                f.sum(EntryORM.amount_base).between(min_amount, max_amount)
+            ]
+            if num_entries is not None:
+                entry_filters.append(f.count(EntryORM.entry_id) == num_entries)
+            
+            entry_agg = (
+                select(
+                    EntryORM.journal_id, 
+                    f.sum(
+                        case(
+                            (EntryORM.entry_type == EntryType.DEBIT, EntryORM.amount_base), 
+                            else_ = 0
+                        )
+                    ).label('total_base_amount'), 
+                    f.count(EntryORM.entry_id).label('num_entries')
+                )
+                .group_by(EntryORM.journal_id)
+                .having(*entry_filters)
+                .subquery()
+            )
+            
+            # join the two
+            sql = (
+                select(
+                    JournalORM.journal_id, 
+                    JournalORM.jrn_date, 
+                    JournalORM.is_manual, 
+                    entry_agg.c.num_entries,
+                    entry_agg.c.total_base_amount,
+                    JournalORM.note
+                )
+                .where(*jrn_filters)
+                .join(
+                    entry_agg,
+                    onclause=JournalORM.journal_id == entry_agg.c.journal_id,
+                    isouter=False
+                )
+                .order_by(JournalORM.jrn_date.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+            
+            jrns = s.exec(sql).all()
+            
+        return [
+            _JournalBrief(
+                journal_id=jrn.journal_id,
+                jrn_date=jrn.jrn_date,
+                is_manual=jrn.is_manual,
+                num_entries=jrn.num_entries,
+                total_base_amount=jrn.total_base_amount,
+                note=jrn.note
+            ) 
+            for jrn in jrns
+        ]
+        

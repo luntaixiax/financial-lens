@@ -6,7 +6,7 @@ from src.app.model.const import SystemAcctNumber, SystemChartOfAcctNumber
 from src.app.utils.tools import get_base_cur
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.model.accounts import Account, Chart, ChartNode
-from src.app.model.enums import AcctType
+from src.app.model.enums import AcctType, CurType
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
 
 class AcctService:
@@ -190,6 +190,87 @@ class AcctService:
         cls.add_account(oci)
         cls.add_account(sc)
         cls.add_account(disc)
+        
+    @classmethod
+    def create_sample(cls):
+        total_inc_chart = AcctService.get_chart(
+            chart_id=SystemChartOfAcctNumber.TOTAL_INC
+        )
+        total_exp_chart = AcctService.get_chart(
+            chart_id=SystemChartOfAcctNumber.TOTAL_EXP
+        )
+        bank_chart = AcctService.get_chart(
+            chart_id=SystemChartOfAcctNumber.BANK_ASSET
+        )
+        noncur_chart = AcctService.get_chart(
+            chart_id=SystemChartOfAcctNumber.NONCUR_ASSET
+        )
+        ncurlib_chart = AcctService.get_chart(
+            chart_id=SystemChartOfAcctNumber.NONCUR_LIB
+        )
+        
+        consult_inc = Account(
+            acct_id='acct-consul',
+            acct_name='Consulting Income',
+            acct_type=AcctType.INC,
+            chart=total_inc_chart
+        )
+        meal = Account(
+            acct_id='acct-meal',
+            acct_name='Meal Expense',
+            acct_type=AcctType.EXP,
+            chart=total_exp_chart
+        )
+        tip = Account(
+            acct_id='acct-tip',
+            acct_name='Tips',
+            acct_type=AcctType.EXP,
+            chart=total_exp_chart
+        )
+        rental = Account(
+            acct_id='acct-rental',
+            acct_name='Rental Expense',
+            acct_type=AcctType.EXP,
+            chart=total_exp_chart
+        )
+        bank = Account(
+            acct_id='acct-bank',
+            acct_name="Bank Acct",
+            acct_type=AcctType.AST,
+            currency=get_base_cur(),
+            chart=bank_chart
+        )
+        bank_foreign = Account(
+            acct_id='acct-fbank',
+            acct_name="Bank Acct (JPY)",
+            acct_type=AcctType.AST,
+            currency=CurType.JPY,
+            chart=bank_chart
+        )
+        fixed_asset = Account(
+            acct_id='acct-fass',
+            acct_name="Fixed Asset",
+            acct_type=AcctType.AST,
+            currency=get_base_cur(),
+            chart=noncur_chart
+        )
+        credit = Account(
+            acct_id='acct-credit',
+            acct_name="Credit Acct",
+            acct_type=AcctType.LIB,
+            currency=get_base_cur(),
+            chart=ncurlib_chart
+        )
+        
+        # add to db
+        AcctService.add_account(consult_inc)
+        AcctService.add_account(meal)
+        AcctService.add_account(tip)
+        AcctService.add_account(rental)
+        AcctService.add_account(bank)
+        AcctService.add_account(bank_foreign)
+        AcctService.add_account(fixed_asset)
+        AcctService.add_account(credit)
         
     @classmethod
     def get_coa(cls, acct_type: AcctType) -> ChartNode:

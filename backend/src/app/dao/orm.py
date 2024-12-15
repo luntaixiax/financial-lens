@@ -197,7 +197,7 @@ class AcctORM(SQLModel, table=True):
     __tablename__ = "accounts"
     
     acct_id: str = Field(
-        sa_column=Column(String(length = 13), primary_key = True, nullable = False)
+        sa_column=Column(String(length = 15), primary_key = True, nullable = False)
     )
     acct_name: str = Field(
         sa_column=Column(String(length = 50), nullable = False, unique = True)
@@ -226,7 +226,7 @@ class BankAcctORM(SQLModel, table=True):
     
     linked_acct_id: str = Field(
         sa_column=Column(
-            String(length = 13), 
+            String(length = 15), 
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
@@ -263,7 +263,7 @@ class JournalORM(SQLModel, table=True):
     __tablename__ = "journals"
     
     journal_id: str = Field(
-        sa_column=Column(String(length = 17), primary_key = True, nullable = False)
+        sa_column=Column(String(length = 20), primary_key = True, nullable = False)
     )
     jrn_date: date = Field(sa_column=Column(Date(), nullable = False))
     is_manual: bool = Field(
@@ -279,11 +279,11 @@ class EntryORM(SQLModel, table=True):
     __tablename__ = "entries"
     
     entry_id: str = Field(
-        sa_column=Column(String(length = 13), primary_key = True, nullable = False)
+        sa_column=Column(String(length = 20), primary_key = True, nullable = False)
     )
     journal_id: str = Field(
         sa_column=Column(
-            String(length = 17),
+            String(length = 20),
             ForeignKey(
                 'journals.journal_id', 
                 onupdate = 'CASCADE', 
@@ -298,7 +298,7 @@ class EntryORM(SQLModel, table=True):
     )
     acct_id: str = Field(
         sa_column=Column(
-            String(length = 13), 
+            String(length = 15), 
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
@@ -337,7 +337,7 @@ class ItemORM(SQLModel, table=True):
     )
     default_acct_id: str = Field(
         sa_column=Column(
-            String(length = 13), 
+            String(length = 15), 
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
@@ -378,7 +378,7 @@ class InvoiceORM(SQLModel, table=True):
     shipping: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
     journal_id: str = Field(
         sa_column=Column(
-            String(length = 17),
+            String(length = 20),
             ForeignKey(
                 'journals.journal_id', 
                 onupdate = 'CASCADE', 
@@ -421,7 +421,7 @@ class InvoiceItemORM(SQLModel, table=True):
     quantity: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
     acct_id: str = Field(
         sa_column=Column(
-            String(length = 13), 
+            String(length = 15), 
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
