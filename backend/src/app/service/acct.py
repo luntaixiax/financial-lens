@@ -356,7 +356,13 @@ class AcctService:
     @classmethod
     def add_account(cls, acct: Account, ignore_exist: bool = False):
         # verify chart exists and not changed
-        _chart = cls.get_chart(chart_id = acct.chart.chart_id)
+        try:
+            _chart = cls.get_chart(chart_id = acct.chart.chart_id)
+        except NotExistError as e:
+            raise FKNotExistError(
+                f"Chart of account for the account added does not exist: {acct.chart}",
+                details=e.details
+            )
         if not _chart == acct.chart:
             raise NotMatchWithSystemError(
                 message='Chart does not match with existing',
@@ -380,7 +386,14 @@ class AcctService:
     @classmethod
     def update_account(cls, acct: Account, ignore_nonexist: bool = False):
         # verify chart exists and not changed
-        _chart = cls.get_chart(chart_id = acct.chart.chart_id)
+        try:
+            _chart = cls.get_chart(chart_id = acct.chart.chart_id)
+        except NotExistError as e:
+            raise FKNotExistError(
+                f"Chart: {acct.chart} of the updated account does not exist",
+                details=e.details
+            )
+        
         if not _chart == acct.chart:
             raise NotMatchWithSystemError(
                 message='Chart does not match with existing',
