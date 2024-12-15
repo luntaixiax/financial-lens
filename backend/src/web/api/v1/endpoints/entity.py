@@ -12,8 +12,12 @@ def add_contact(contact: Contact):
     )
     
 @router.put("/contact/update")
-def put_contact(contact: Contact):
+def update_contact(contact: Contact):
     EntityService.update_contact(contact)
+    
+@router.put("/contact/upsert")
+def upsert_contact(contact: Contact):
+    EntityService.upsert_contact(contact)
     
 @router.delete("/contact/delete/{contact_id}")
 def delete_contact(contact_id: str):
@@ -32,8 +36,12 @@ def add_customer(customer: Customer):
     EntityService.add_customer(customer)
     
 @router.put("/customer/update")
-def put_customer(customer: Customer):
+def update_customer(customer: Customer):
     EntityService.update_customer(customer)
+    
+@router.put("/customer/upsert")
+def upsert_customer(customer: Customer):
+    EntityService.upsert_customer(customer)
     
 @router.delete("/customer/delete/{cust_id}")
 def delete_customer(cust_id: str):

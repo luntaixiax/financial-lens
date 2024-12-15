@@ -1,11 +1,13 @@
 import logging
+from typing import Any
 from anytree import PreOrderIter
+from pydantic import ValidationError
 from src.app.model.const import SystemAcctNumber, SystemChartOfAcctNumber
 from src.app.utils.tools import get_base_cur
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.model.enums import AcctType
-from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, OpNotPermittedError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
 
 class AcctService:
     
@@ -238,6 +240,11 @@ class AcctService:
         chartOfAcctDao.remove(acct_type)
         
     @classmethod
+    def export_coa(cls, acct_type: AcctType, simple: bool = False) -> dict[str, Any]:
+        root = cls.get_coa(acct_type)
+        return root.to_dict(simple = simple)
+        
+    @classmethod
     def add_chart(cls, child_chart: Chart, parent_chart_id: str):
         root = cls.get_coa(child_chart.acct_type)
         parent_node = root.find_node_by_id(parent_chart_id)
@@ -348,6 +355,14 @@ class AcctService:
     
     @classmethod
     def add_account(cls, acct: Account, ignore_exist: bool = False):
+        # verify chart exists and not changed
+        _chart = cls.get_chart(chart_id = acct.chart.chart_id)
+        if not _chart == acct.chart:
+            raise NotMatchWithSystemError(
+                message='Chart does not match with existing',
+                details=f"You have {acct.chart} while existing is {_chart}"
+            )
+        
         try:
             acctDao.add(acct)
         except AlreadyExistError as e:
@@ -364,6 +379,14 @@ class AcctService:
             
     @classmethod
     def update_account(cls, acct: Account, ignore_nonexist: bool = False):
+        # verify chart exists and not changed
+        _chart = cls.get_chart(chart_id = acct.chart.chart_id)
+        if not _chart == acct.chart:
+            raise NotMatchWithSystemError(
+                message='Chart does not match with existing',
+                details=f"You have {acct.chart} while existing is {_chart}"
+            )
+            
         # get acct in db first, compare some fields not be changed:
         try:
             _acct = cls.get_account(acct.acct_id)
@@ -372,7 +395,10 @@ class AcctService:
                 raise e
         
         if acct.currency != _acct.currency:
-            raise ValueError(f"Account currency cannot be changed. Before: {acct.currency}, After: {_acct.currency}")
+            raise NotMatchWithSystemError(
+                message=f"Account currency cannot be changed",
+                details=f"Before: {acct.currency}, After: {_acct.currency}"
+            )
         
         # update account
         try:

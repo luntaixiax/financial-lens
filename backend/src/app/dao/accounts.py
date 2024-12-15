@@ -1,7 +1,7 @@
 import logging
 from sqlmodel import Session, select, delete, col
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from anytree import PreOrderIter, RenderTree
+from anytree import PreOrderIter
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
 from src.app.model.enums import AcctType
 from src.app.model.accounts import Account, Chart, ChartNode
@@ -13,8 +13,7 @@ class chartOfAcctDao:
     def save(cls, top_node: ChartNode):
         # save the whole tree to DB
         logging.info("Saving following Chart of Accounts:\n")
-        for pre, fill, node in RenderTree(top_node):
-            logging.info("%s%s" % (pre, node.name))
+        top_node.print()
             
         # get existing nodes for extra node deletion below
         try:

@@ -1,8 +1,11 @@
 from __future__ import annotations
-from typing import Literal
+import logging
+from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from functools import partial
 from anytree import NodeMixin, Node, RenderTree, find_by_attr
+from anytree.exporter import DictExporter
+from anytree.importer import DictImporter
 from src.app.model.enums import AcctType, CurType, BankAcctType
 from src.app.utils.tools import id_generator
 from src.app.utils.base import EnhancedBaseModel
@@ -18,6 +21,8 @@ class Chart(EnhancedBaseModel):
     )
     name: str
     acct_type: AcctType
+
+
 
 class ChartNode(NodeMixin):
     def __init__(self, chart: Chart, parent=None, children=None):
@@ -35,6 +40,36 @@ class ChartNode(NodeMixin):
         if parent:
             assert parent.chart.acct_type == self.chart.acct_type, \
                 f"Current chart acct type: {self.chart.acct_type} must match parent chart acct type: {parent.chart.acct_type}"
+                
+    def _extract_simple(self, attrs):
+        extracted = []
+        for k, v in attrs:
+            if k == 'chart_id':
+                extracted.append((k, v))
+            elif k == 'chart':
+                extracted.append(('name', v.name))
+                #extracted.append(('acct_type', v.acct_type))
+            else:
+                pass
+        return extracted
+    
+    def print(self):
+        for pre, fill, node in RenderTree(self):
+            print(f"{pre}{node.chart_id}({node.name})")
+    
+    def to_dict(self, simple: bool = False) -> dict[str, Any]:
+        if simple:
+            exporter = DictExporter(attriter = self._extract_simple)
+        else:
+            exporter = DictExporter()
+        return exporter.export(self)
+    
+    @classmethod
+    def from_dict(cls, node_dict: dict[str, Any]):
+        # TODO: return is AnyNode, not original ChartNode dtype
+        importer = DictImporter()
+        return importer.import_(node_dict)
+        
             
     def find_node_by_name(self, chart_name: str) -> ChartNode:
         return find_by_attr(self, chart_name, name='name')

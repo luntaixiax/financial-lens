@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, JSONResponse
 from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
-    FKNoDeleteUpdateError, OpNotPermittedError
+    FKNoDeleteUpdateError, NotMatchWithSystemError, OpNotPermittedError
 from src.web.api.v1.api import api_router
 
 
@@ -70,6 +70,16 @@ async def op_not_permitted_error_handler(_: Request, exc: OpNotPermittedError) -
         status_code = 540,
         content = {
             "message": exc.message,
+        },
+    )
+    
+@app.exception_handler(NotMatchWithSystemError)
+async def not_match_system_error_handler(_: Request, exc: NotMatchWithSystemError) -> JSONResponse:
+    return JSONResponse(
+        status_code = 550,
+        content = {
+            "message": exc.message,
+            "details": exc.details
         },
     )
 

@@ -1,7 +1,7 @@
 from unittest import mock
-
+from pprint import pprint
 import pytest
-from src.app.model.accounts import Account, Chart
+from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.model.exceptions import FKNotExistError, NotExistError, FKNoDeleteUpdateError, OpNotPermittedError
 from src.app.model.const import SystemAcctNumber, SystemChartOfAcctNumber
 from src.app.model.enums import AcctType
@@ -15,6 +15,8 @@ def test_coa(mock_engine, engine_with_test_choa):
     
     # load the asset node
     _node = AcctService.get_coa(AcctType.AST)
+    _node.print()
+    
     # try remove the bank asset node
     _bnk_node = _node.find_node_by_id(
         chart_id=SystemChartOfAcctNumber.BANK_ASSET

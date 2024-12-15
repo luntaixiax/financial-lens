@@ -1,3 +1,4 @@
+from typing import Any
 from fastapi import APIRouter
 from src.app.model.enums import AcctType
 from src.app.service.acct import AcctService
@@ -36,3 +37,44 @@ def get_chart(chart_id: str) -> Chart:
 @router.get("/chart/list")
 def list_charts(acct_type: AcctType) -> list[Chart]:
     return AcctService.get_charts(acct_type=acct_type)
+
+@router.get("/chart/tree")
+def tree_charts(acct_type: AcctType) -> dict[str, Any]:
+    return AcctService.export_coa(acct_type=acct_type, simple=True)
+
+@router.get("/account/get/{acct_id}")
+def get_account(acct_id: str) -> Account:
+    return AcctService.get_account(acct_id=acct_id)
+
+@router.get("/account/list/{chart_id}")
+def list_accounts_by_chart(chart_id: str) -> list[Account]:
+    return AcctService.get_accounts_by_chart(
+        chart=AcctService.get_chart(chart_id=chart_id)
+    )
+    
+@router.post("/account/add")
+def add_account(acct: Account):
+    AcctService.add_account(
+        acct=acct,
+        ignore_exist=False
+    )
+    
+@router.put("/account/update")
+def update_account(acct: Account):
+    AcctService.update_account(
+        acct=acct,
+        ignore_nonexist=False
+    )
+
+@router.put("/account/upsert")
+def upsert_account(acct: Account):
+    AcctService.upsert_account(acct=acct)
+    
+    
+@router.delete("/account/delete/{acct_id}")
+def delete_account(acct_id: str):
+    AcctService.delete_account(
+        acct_id=acct_id,
+        ignore_nonexist=False,
+        restrictive=True
+    )

@@ -37,6 +37,16 @@ class FKNoDeleteUpdateError(ReferenceError):
     def __str__(self):
         return f"{self.args[0]} (Details: {self.details})"
     
+class NotMatchWithSystemError(ValueError):
+    # not match with system data, or not expected
+    def __init__(self, message: str = "N/A", details: str = "N/A"):
+        super().__init__(message)
+        self.message = message
+        self.details = details
+        
+    def __str__(self):
+        return f"{self.args[0]} (Details: {self.details})"
+    
 class OpNotPermittedError(SystemError):
     ... # does not allow to do some operation
     

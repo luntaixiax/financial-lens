@@ -1,3 +1,4 @@
+from src.app.model.exceptions import NotMatchWithSystemError
 from src.app.model.const import SystemAcctNumber
 from src.app.service.acct import AcctService
 from src.app.service.fx import FxService
@@ -21,7 +22,9 @@ class SalesService:
             
             # validate the item account must be of income type
             if not item_acct.acct_type == AcctType.INC:
-                raise TypeError(f"Acct type of invoice item must be of Income type, get {item_acct.acct_type}")
+                raise NotMatchWithSystemError(
+                    message=f"Acct type of invoice item must be of Income type, get {item_acct.acct_type}"
+                )
             
             # assemble the entry item
             entry = Entry(
