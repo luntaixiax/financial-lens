@@ -4,7 +4,7 @@ from unittest import mock
 from src.app.model.enums import AcctType
 
 @pytest.fixture(scope='module')
-def engine_with_test_choa(engine):
+def engine_with_basic_choa(engine):
     with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
         mock_engine.return_value = engine
         
@@ -30,4 +30,17 @@ def engine_with_test_choa(engine):
                     
             # clean up (delete all chart of accounts)
             AcctService.delete_coa(acct_type)
+            
+            
+@pytest.fixture(scope='module')
+def engine_with_sample_choa(engine_with_basic_choa):
+    with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
+        mock_engine.return_value = engine_with_basic_choa
+        
+        from src.app.service.acct import AcctService
+        
+        print("Adding sample Acct and COA...")
+        AcctService.create_sample()
+        
+        yield engine_with_basic_choa
         

@@ -42,6 +42,7 @@ def test_journal(mock_engine, engine_with_sample_choa, sample_journal_meal):
         journalDao.get(_copy_journal.journal_id)
         
     # test if can update the modified journal
+    journalDao.add(sample_journal_meal) # add back meal
     sample_journal_meal.jrn_date = date(2024, 1, 2)
     sample_journal_meal.entries[1].description = 'Unhappy Tip'
     journalDao.update(sample_journal_meal)

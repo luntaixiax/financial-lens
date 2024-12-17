@@ -1,24 +1,25 @@
 
 import logging
+from typing import Tuple
 from sqlmodel import Session, select, delete
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.invoice import InvoiceItem, Item, Invoice
 from src.app.dao.orm import InvoiceItemORM, InvoiceORM, ItemORM, infer_integrity_error
 from src.app.dao.connection import get_engine
-from src.app.model.exceptions import AlreadyExistError, NotExistError
+from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNoDeleteUpdateError
 
 
 class itemDao:
     @classmethod
     def fromItem(cls, item: Item) -> ItemORM:
         return ItemORM.model_validate(
-            item.model_dump_json()
+            item.model_dump()
         )
         
     @classmethod
     def toItem(cls, item_orm: ItemORM) -> Item:
         return Item.model_validate(
-            item_orm.model_dump_json()
+            item_orm.model_dump()
         )
         
     @classmethod
@@ -43,6 +44,8 @@ class itemDao:
                 p = s.exec(sql).one()
             except NoResultFound as e:
                 raise NotExistError(details=str(e))
+            except IntegrityError as e:
+                raise FKNoDeleteUpdateError(details=str(e))
             
             s.delete(p)
             s.commit()
@@ -94,6 +97,7 @@ class invoiceDao:
     @classmethod
     def fromInvoiceItem(cls, invoice_id: str, invoice_item: InvoiceItem) -> InvoiceItemORM:
         return InvoiceItemORM(
+            invoice_item_id=invoice_item.invoice_item_id,
             invoice_id=invoice_id,
             item_id=invoice_item.item.item_id,
             acct_id=invoice_item.acct_id,
@@ -106,6 +110,7 @@ class invoiceDao:
     @classmethod
     def toInvoiceItem(cls, invoice_item_orm: InvoiceItemORM) -> InvoiceItem:
         return InvoiceItem(
+            invoice_item_id=invoice_item_orm.invoice_item_id,
             item=itemDao.get(item_id=invoice_item_orm.item_id),
             quantity=invoice_item_orm.quantity,
             acct_id=invoice_item_orm.acct_id,
@@ -152,18 +157,23 @@ class invoiceDao:
             invoice_orm = cls.fromInvoice(journal_id, invoice)
             
             s.add(invoice_orm)
+            try:
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise infer_integrity_error(e, during_creation=True)
             logging.info(f"Added {invoice_orm} to invoice table")
             
             # add invoice items
             for invoice_item in invoice.invoice_items:
                 invoice_item_orm = cls.fromInvoiceItem(
-                    invoice_id=Invoice.invoice_id,
+                    invoice_id=invoice.invoice_id,
                     invoice_item=invoice_item
                 )
                 s.add(invoice_item_orm)
                 logging.info(f"Added {invoice_item_orm} to invoice Item table")
             
-            # commit both
+            # commit all items
             try:
                 s.commit()
             except IntegrityError as e:
@@ -188,17 +198,11 @@ class invoiceDao:
             # commit at same time
             s.commit()
             logging.info(f"deleted invoice and items for {invoice_id}")
+
             
     @classmethod
-    def update(cls, invoice: Invoice):
-        # delete the given invoice and create new one
-        cls.remove(invoice_id = invoice.invoice_id)
-        # add the new one
-        cls.add(invoice)
-        logging.info(f"updated {invoice} by removing existing one and added new one")
-            
-    @classmethod
-    def get(cls, invoice_id: str) -> Invoice:
+    def get(cls, invoice_id: str) -> Tuple[Invoice, str]:
+        # return both invoice id and journal id
         with Session(get_engine()) as s:
             # get invoice items
             sql = select(InvoiceItemORM).where(
@@ -222,4 +226,4 @@ class invoiceDao:
                 invoice_orm=invoice_orm,
                 invoice_item_orms=invoice_item_orms
             )
-        return invoice
+        return invoice, invoice_orm.journal_id

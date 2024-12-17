@@ -8,9 +8,9 @@ from src.app.model.enums import AcctType, CurType, ItemType, UnitType
 from src.app.model.accounts import Account
 
 @pytest.fixture
-def sample_invoice(engine_with_test_choa) -> Generator[Invoice, None, None]:
+def sample_invoice(engine_with_basic_choa) -> Generator[Invoice, None, None]:
     with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
-        mock_engine.return_value = engine_with_test_choa
+        mock_engine.return_value = engine_with_basic_choa
         
         # non-model module need to import under mock replacement
         from src.app.service.acct import AcctService

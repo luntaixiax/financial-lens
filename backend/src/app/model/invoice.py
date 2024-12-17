@@ -24,6 +24,14 @@ class Item(EnhancedBaseModel):
 class InvoiceItem(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
+    invoice_item_id: str = Field(
+        default_factory=partial(
+            id_generator,
+            prefix='invitem-',
+            length=8,
+        ),
+        frozen=True,
+    )
     item: Item
     quantity: float = Field(ge=0)
     acct_id: str = Field("") # will be overwritten in validator

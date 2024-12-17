@@ -1,7 +1,7 @@
 
 from datetime import date
 from src.app.model.enums import CurType, EntryType
-from src.app.model.exceptions import NotExistError, AlreadyExistError, FKNotExistError
+from src.app.model.exceptions import FKNoDeleteUpdateError, NotExistError, AlreadyExistError, FKNotExistError
 from src.app.dao.journal import journalDao
 from src.app.model.journal import _JournalBrief, Entry, Journal
 
@@ -137,13 +137,17 @@ class JournalService:
             journal = journalDao.get(journal_id)
         except NotExistError as e:
             raise NotExistError(
-                f"Journal/Entry not found: {journal_id}"
+                f"Journal/Entry not found: {journal_id}",
+                details=e.details
             )
         return journal
     
     @classmethod
     def delete_journal(cls, journal_id: str):
-        journalDao.remove(journal_id)
+        try:
+            journalDao.remove(journal_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError()
         
     @classmethod
     def update_journal(cls, journal: Journal):

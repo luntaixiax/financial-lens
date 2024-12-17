@@ -12,7 +12,7 @@ from src.app.model.journal import Entry, Journal
 
 
 @pytest.fixture(scope='module')
-def engine_with_test_choa(engine):
+def engine_with_basic_choa(engine):
     with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
         mock_engine.return_value = engine
         
@@ -40,50 +40,16 @@ def engine_with_test_choa(engine):
             AcctService.delete_coa(acct_type)
             
 @pytest.fixture(scope='module')
-def engine_with_sample_choa(engine_with_test_choa):
+def engine_with_sample_choa(engine_with_basic_choa):
     with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
-        mock_engine.return_value = engine_with_test_choa
+        mock_engine.return_value = engine_with_basic_choa
         
         from src.app.service.acct import AcctService
         
-        total_exp_chart = AcctService.get_chart(
-            chart_id=SystemChartOfAcctNumber.TOTAL_EXP
-        )
-        bank_chart = AcctService.get_chart(
-            chart_id=SystemChartOfAcctNumber.BANK_ASSET
-        )
+        print("Adding sample Acct and COA...")
+        AcctService.create_sample()
         
-        meal = Account(
-            acct_id='acct-meal',
-            acct_name='Meal Expense',
-            acct_type=AcctType.EXP,
-            chart=total_exp_chart
-        )
-        tip = Account(
-            acct_id='acct-tip',
-            acct_name='Tips',
-            acct_type=AcctType.EXP,
-            chart=total_exp_chart
-        )
-        bank = Account(
-            acct_id='acct-bank',
-            acct_name="Bank Acct",
-            acct_type=AcctType.AST,
-            currency=get_base_cur(),
-            chart=bank_chart
-        )
-        
-        # add to db
-        AcctService.add_account(meal)
-        AcctService.add_account(tip)
-        AcctService.add_account(bank)
-        
-        yield engine_with_test_choa
-        
-        # remove accounts
-        AcctService.delete_account(meal.acct_id)
-        AcctService.delete_account(tip.acct_id)
-        AcctService.delete_account(bank.acct_id)
+        yield engine_with_basic_choa
         
             
 @pytest.fixture
@@ -177,7 +143,7 @@ def sample_accounts(asset_node: ChartNode) -> list[Account]:
 @pytest.fixture
 def sample_journal_meal(engine_with_sample_choa) -> Generator[Journal, None, None]:
     with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
-        mock_engine.return_value = engine_with_test_choa
+        mock_engine.return_value = engine_with_basic_choa
         
         from src.app.service.acct import AcctService
         

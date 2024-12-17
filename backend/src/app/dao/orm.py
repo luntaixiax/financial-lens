@@ -394,6 +394,9 @@ class InvoiceORM(SQLModel, table=True):
 class InvoiceItemORM(SQLModel, table=True):
     __tablename__ = "invoice_item"
     
+    invoice_item_id: str = Field(
+        sa_column=Column(String(length = 17), primary_key = True, nullable = False)
+    )
     invoice_id: str = Field(
         sa_column=Column(
             String(length = 13), 
@@ -402,7 +405,7 @@ class InvoiceItemORM(SQLModel, table=True):
                 onupdate = 'CASCADE', 
                 ondelete = 'CASCADE'
             ),
-            primary_key = True, 
+            primary_key = False, 
             nullable = False
         )
     )
@@ -427,7 +430,7 @@ class InvoiceItemORM(SQLModel, table=True):
                 onupdate = 'CASCADE', 
                 ondelete = 'RESTRICT'
             ),
-            primary_key = True, 
+            primary_key = False, 
             nullable = False
         )
     )

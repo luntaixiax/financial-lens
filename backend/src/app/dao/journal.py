@@ -7,7 +7,7 @@ from src.app.dao.orm import EntryORM, JournalORM, infer_integrity_error
 from src.app.model.journal import _JournalBrief, Entry, Journal
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.dao.connection import get_engine
-from src.app.model.exceptions import AlreadyExistError, NotExistError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
 
 class journalDao:
     @classmethod
@@ -129,13 +129,18 @@ class journalDao:
             )
             s.exec(sql)
             # remove journal
-            sql = delete(JournalORM).where(
+            sql = select(JournalORM).where(
                 JournalORM.journal_id == journal_id
             )
-            s.exec(sql)
+            j = s.exec(sql).one()
             
             # commit at same time
-            s.commit()
+            try:
+                s.delete(j)
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise infer_integrity_error(e, during_creation=False)
             logging.info(f"deleted journal and entries for {journal_id}")
             
     @classmethod

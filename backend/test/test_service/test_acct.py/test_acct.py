@@ -8,8 +8,8 @@ from src.app.model.enums import AcctType
 
 
 @mock.patch("src.app.dao.connection.get_engine")
-def test_coa(mock_engine, engine_with_test_choa):
-    mock_engine.return_value = engine_with_test_choa
+def test_coa(mock_engine, engine_with_basic_choa):
+    mock_engine.return_value = engine_with_basic_choa
     
     from src.app.service.acct import AcctService
     
@@ -107,8 +107,8 @@ def test_coa(mock_engine, engine_with_test_choa):
     assert len(_noncur_asset.descendants) == 0
     
 @mock.patch("src.app.dao.connection.get_engine")
-def test_account(mock_engine, engine_with_test_choa):
-    mock_engine.return_value = engine_with_test_choa
+def test_account(mock_engine, engine_with_basic_choa):
+    mock_engine.return_value = engine_with_basic_choa
     
     from src.app.service.acct import AcctService
     
