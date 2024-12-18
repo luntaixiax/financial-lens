@@ -119,7 +119,6 @@ def test_invoice(mock_engine, engine, sample_invoice, sample_journal_meal):
     
     from src.app.dao.invoice import invoiceDao
     from src.app.dao.journal import journalDao
-    from src.app.dao.accounts import acctDao
     
     # add without journal and customer will fail
     with pytest.raises(FKNotExistError):
@@ -137,6 +136,21 @@ def test_invoice(mock_engine, engine, sample_invoice, sample_journal_meal):
     _invoice, _jrn_id = invoiceDao.get(sample_invoice.invoice_id)
     assert _jrn_id == sample_journal_meal.journal_id
     assert _invoice == sample_invoice
+    
+    # test list and filter
+    _invoices = invoiceDao.list()
+    assert len(_invoices) == 1
+    _invoices = invoiceDao.list(currency=CurType.USD)
+    assert len(_invoices) == 1
+    _invoices = invoiceDao.list(currency=CurType.EUR)
+    assert len(_invoices) == 0
+    _invoices = invoiceDao.list(num_invoice_items=2)
+    assert len(_invoices) == 1
+    _invoices = invoiceDao.list(num_invoice_items=3)
+    assert len(_invoices) == 0
+    _invoices = invoiceDao.list(max_amount=1000)
+    assert len(_invoices) == 0
+    
     
     # test remove invoice
     invoiceDao.remove(sample_invoice.invoice_id)

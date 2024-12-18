@@ -1,9 +1,10 @@
-
+from datetime import date
 import logging
 from typing import Tuple
-from sqlmodel import Session, select, delete
+from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from src.app.model.invoice import InvoiceItem, Item, Invoice
+from src.app.model.enums import CurType
+from src.app.model.invoice import _InvoiceBrief, InvoiceItem, Item, Invoice
 from src.app.dao.orm import InvoiceItemORM, InvoiceORM, ItemORM, infer_integrity_error
 from src.app.dao.connection import get_engine
 from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNoDeleteUpdateError
@@ -227,3 +228,106 @@ class invoiceDao:
                 invoice_item_orms=invoice_item_orms
             )
         return invoice, invoice_orm.journal_id
+    
+    @classmethod
+    def list(
+        cls,
+        limit: int = 50,
+        offset: int = 0,
+        invoice_ids: list[str] | None = None,
+        invoice_nums: list[str] | None = None,
+        customer_ids: list[str] | None = None,
+        min_dt: date = date(1970, 1, 1), 
+        max_dt: date = date(2099, 12, 31), 
+        subject_keyword: str = '',
+        currency: CurType | None = None,
+        min_amount: float = -999999999,
+        max_amount: float = 999999999,
+        num_invoice_items: int | None = None
+    ) -> list[_InvoiceBrief]:
+        with Session(get_engine()) as s:
+            inv_filters = [
+                InvoiceORM.invoice_dt.between(min_dt, max_dt), 
+                InvoiceORM.subject.contains(subject_keyword)
+            ]
+            if invoice_ids is not None:
+                inv_filters.append(InvoiceORM.invoice_id.in_(invoice_ids))
+            if invoice_nums is not None:
+                inv_filters.append(InvoiceORM.invoice_num.in_(invoice_nums))
+            if customer_ids is not None:
+                inv_filters.append(InvoiceORM.customer_id.in_(customer_ids))
+                
+                
+            invoice_item_joined = (
+                select(
+                    InvoiceItemORM.invoice_id,
+                    f.max(ItemORM.currency).label('currency'), # bug that only support min/max
+                    f.count(InvoiceItemORM.invoice_item_id).label('num_invoice_items'),
+                    f.sum(
+                        InvoiceItemORM.quantity 
+                        * ItemORM.unit_price 
+                        * (1 - InvoiceItemORM.discount_rate) 
+                        * (1 + InvoiceItemORM.tax_rate)
+                    ).label('total_raw_amount')
+                )
+                .join(
+                    ItemORM, 
+                    onclause=InvoiceItemORM.item_id  == ItemORM.item_id, 
+                    isouter=False
+                )
+                .group_by(
+                    InvoiceItemORM.invoice_id,
+                    #ItemORM.currency
+                )
+                .subquery()
+            )
+            # add currency filter
+            if currency is not None:
+                inv_filters.append(invoice_item_joined.c.currency == currency)
+            # add num items filter
+            if num_invoice_items is not None:
+                inv_filters.append(invoice_item_joined.c.num_invoice_items == num_invoice_items)
+            # add amount filter (raw amount):
+            inv_filters.append(
+                (InvoiceORM.shipping + invoice_item_joined.c.total_raw_amount)
+                .between(min_amount, max_amount)
+            )
+            invoice_joined = (
+                select(
+                    InvoiceORM.invoice_id,
+                    InvoiceORM.invoice_num,
+                    InvoiceORM.invoice_dt,
+                    InvoiceORM.customer_id,
+                    InvoiceORM.subject,
+                    invoice_item_joined.c.currency,
+                    invoice_item_joined.c.num_invoice_items,
+                    (InvoiceORM.shipping + invoice_item_joined.c.total_raw_amount).label('total_raw_amount'),
+                )
+                .join(
+                    invoice_item_joined,
+                    onclause=InvoiceORM.invoice_id  == invoice_item_joined.c.invoice_id, 
+                    isouter=False
+                )
+                .where(
+                    *inv_filters
+                )
+                .order_by(InvoiceORM.invoice_dt.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+            
+            invoices = s.exec(invoice_joined).all()
+            
+        return [
+            _InvoiceBrief(
+                invoice_id=invoice.invoice_id,
+                invoice_num=invoice.invoice_num,
+                invoice_dt=invoice.invoice_dt,
+                customer_id=invoice.customer_id,
+                subject=invoice.subject,
+                currency=invoice.currency,
+                num_invoice_items=invoice.num_invoice_items,
+                total_raw_amount=invoice.total_raw_amount,
+            ) 
+            for invoice in invoices
+        ]
