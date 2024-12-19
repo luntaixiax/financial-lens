@@ -273,6 +273,22 @@ class AcctService:
         AcctService.add_account(credit)
         
     @classmethod
+    def clear_sample(cls):
+        for acct_type in AcctType:
+            charts = AcctService.get_charts(acct_type)
+            for chart in charts:
+                accts = AcctService.get_accounts_by_chart(chart)
+                for acct in accts:
+                    AcctService.delete_account(
+                        acct_id=acct.acct_id,
+                        ignore_nonexist=True,
+                        restrictive=False
+                    )
+                    
+            # clean up (delete all chart of accounts)
+            cls.delete_coa(acct_type)
+        
+    @classmethod
     def get_coa(cls, acct_type: AcctType) -> ChartNode:
         try:
             head_node = chartOfAcctDao.load(acct_type=acct_type)

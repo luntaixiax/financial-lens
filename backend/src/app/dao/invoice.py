@@ -92,6 +92,14 @@ class itemDao:
                 raise NotExistError(details=str(e))
             
         return cls.toItem(p)
+    
+    @classmethod
+    def list(cls) -> list[Item]:
+        with Session(get_engine()) as s:
+            sql = select(ItemORM)
+            item_orms = s.exec(sql).all()
+        
+        return [cls.toItem(item_orm) for item_orm in item_orms]
 
 
 class invoiceDao:
@@ -227,7 +235,8 @@ class invoiceDao:
                 invoice_orm=invoice_orm,
                 invoice_item_orms=invoice_item_orms
             )
-        return invoice, invoice_orm.journal_id
+            jrn_id = invoice_orm.journal_id
+        return invoice, jrn_id
     
     @classmethod
     def list(

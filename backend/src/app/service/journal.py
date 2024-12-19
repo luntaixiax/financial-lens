@@ -15,6 +15,7 @@ class JournalService:
         from src.app.service.acct import AcctService
 
         journal1 = Journal(
+            journal_id='jrn-1',
             jrn_date=date(2024, 1, 1),
             entries=[
                 Entry(
@@ -52,6 +53,7 @@ class JournalService:
             note='sample meal journal'
         )
         journal2 = Journal(
+            journal_id='jrn-2',
             jrn_date=date(2024, 1, 2),
             entries=[
                 Entry(
@@ -96,6 +98,7 @@ class JournalService:
             note='samples rental at foreign country'
         )
         journal3 = Journal(
+            journal_id='jrn-3',
             jrn_date=date(2024, 1, 2),
             entries=[
                 Entry(
@@ -120,6 +123,12 @@ class JournalService:
         cls.add_journal(journal1)
         cls.add_journal(journal2)
         cls.add_journal(journal3)
+        
+    @classmethod
+    def clear_sample(cls):
+        cls.delete_journal('jrn-1')
+        cls.delete_journal('jrn-2')
+        cls.delete_journal('jrn-3')
         
     @classmethod
     def add_journal(cls, journal: Journal):

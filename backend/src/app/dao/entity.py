@@ -154,9 +154,13 @@ class customerDao:
                 p = s.exec(sql).one()
             except NoResultFound as e:
                 raise NotExistError(details=str(e))
-        
-            s.delete(p)
-            s.commit()
+
+            try:
+                s.delete(p)
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise FKNoDeleteUpdateError(details=str(e))
             logging.info(f"Removed {p} from Customer table")
             
     @classmethod
@@ -313,6 +317,6 @@ class supplierDao:
             try:
                 p = s.exec(sql).one() # get the supplier
             except NoResultFound as e:
-                raise NotExistError(details=str(e))    
+                raise NotExistError(details=str(e))
             
         return cls.toSupplier(p, bill_contact, ship_contact)

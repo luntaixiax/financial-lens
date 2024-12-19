@@ -2,9 +2,42 @@ import logging
 
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
 from src.app.dao.entity import contactDao, customerDao
-from src.app.model.entity import _ContactBrief, _CustomerBrief, Contact, Customer
+from src.app.model.entity import _ContactBrief, _CustomerBrief, Address, Contact, Customer
 
 class EntityService:
+    
+    @classmethod
+    def create_sample(cls):
+        # create contact
+        contact = Contact(
+            contact_id='cont-sample',
+            name='luntaixia',
+            email='infodesk@ltxservice.ca',
+            phone='123456789',
+            address=Address(
+                address1='00 XX St E',
+                suite_no=1234,
+                city='Toronto',
+                state='ON',
+                country='Canada',
+                postal_code='XYZABC'
+            )
+        )
+        cls.add_contact(contact)
+        # create customer
+        customer = Customer(
+            cust_id='cust-sample',
+            customer_name = 'LTX Company',
+            is_business=True,
+            bill_contact=contact,
+            ship_same_as_bill=True
+        )
+        cls.add_customer(customer)
+        
+    @classmethod
+    def clear_sample(cls):
+        cls.remove_customer('cust-sample')
+        cls.remove_contact('cont-sample')
     
     @classmethod
     def add_contact(cls, contact: Contact, ignore_exist: bool = False):

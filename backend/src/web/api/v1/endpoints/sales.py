@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Any
+from typing import Any, Tuple
 from fastapi import APIRouter
 from src.app.model.enums import CurType
 from src.app.model.journal import Journal
@@ -24,21 +24,29 @@ def delete_item(item_id: str):
 def get_item(item_id: str) -> Item:
     return SalesService.get_item(item_id=item_id)
 
+@router.get("/item/list")
+def list_item() -> list[Item]:
+    return SalesService.list_item()
+
+@router.post("/invoice/validate")
+def validate_invoice(invoice: Invoice):
+    SalesService._validate_invoice(invoice)
+
 @router.get(
-    "invoice/trial_journal",
+    "/invoice/trial_journal",
     description='use to generate journal during new invoice creation'
 )
 def create_journal_from_new_invoice(invoice: Invoice) -> Journal:
     return SalesService.create_journal_from_invoice(invoice)
 
 @router.get(
-    "invoice/get_invoice_journal/{invoice_id}",
+    "/invoice/get_invoice_journal/{invoice_id}",
     description='get existing invoice and journal from database'
 )
-def get_invoice_journal(invoice_id: str) -> Journal:
+def get_invoice_journal(invoice_id: str) -> Tuple[Invoice, Journal]:
     return SalesService.get_invoice_journal(invoice_id=invoice_id)
 
-@router.get("invoice/list")
+@router.get("/invoice/list")
 def list_invoice(
     limit: int = 50,
     offset: int = 0,

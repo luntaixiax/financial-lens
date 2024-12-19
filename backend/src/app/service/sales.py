@@ -140,7 +140,13 @@ class SalesService:
                 )
             else:
                 # validate item
-                cls._validate_item(invoice_item.item)
+                try:
+                    cls._validate_item(invoice_item.item)
+                except NotExistError as e:
+                    raise FKNotExistError(
+                        f"Account Id {invoice_item.item.default_acct_id} of Item {invoice_item.item} does not exist",
+                        details=e.details
+                    )
                 # validate each item if no change from database
                 if item != invoice_item.item:
                     raise NotMatchWithSystemError(
@@ -152,7 +158,7 @@ class SalesService:
                 AcctService.get_account(invoice_item.acct_id)
             except NotExistError as e:
                 raise FKNotExistError(
-                    f"Account {invoice_item.acct_id} does not exist",
+                    f"Account {invoice_item.acct_id} of Invoice Item {invoice_item} does not exist",
                     details=e.details
                 )
         
@@ -171,6 +177,14 @@ class SalesService:
     @classmethod
     def update_item(cls, item: Item):
         cls._validate_item(item)
+        # cannot update unit type and item type
+        _item = cls.get_item(item.item_id)
+        if _item.unit != item.unit or _item.item_type != item.item_type:
+            raise NotMatchWithSystemError(
+                f"Item unit and type cannot change",
+                details=f'Database version: {_item}, your version: {item}'
+            )
+        
         try:
             itemDao.update(item)
         except NotExistError as e:
@@ -204,6 +218,10 @@ class SalesService:
                 details=e.details
             )
         return item
+    
+    @classmethod
+    def list_item(cls) -> list[Item]:
+        return itemDao.list()
     
     @classmethod
     def add_invoice(cls, invoice: Invoice):
@@ -243,7 +261,7 @@ class SalesService:
     @classmethod
     def get_invoice_journal(cls, invoice_id: str) -> Tuple[Invoice, Journal]:
         try:
-            jrn_id, invoice = invoiceDao.get(invoice_id)
+            invoice, jrn_id = invoiceDao.get(invoice_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Invoice id {invoice_id} does not exist',
@@ -272,13 +290,17 @@ class SalesService:
         # remove journal first
         # get journal
         try:
-            jrn_id, invoice = invoiceDao.get(invoice_id)
+            invoice, jrn_id  = invoiceDao.get(invoice_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Invoice id {invoice_id} does not exist',
                 details=e.details
             )
+            
+        # remove invoice first
+        invoiceDao.remove(invoice_id)
         
+        # then remove journal
         try:
             JournalService.delete_journal(jrn_id)
         except FKNoDeleteUpdateError as e:
@@ -287,9 +309,7 @@ class SalesService:
                 details=e.details
             )
             
-        # then remove invoice
-
-        invoiceDao.remove(invoice_id)
+        
         
     @classmethod
     def update_invoice(cls, invoice: Invoice):
