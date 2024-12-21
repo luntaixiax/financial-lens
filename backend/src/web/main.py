@@ -1,10 +1,13 @@
+from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse, JSONResponse
 from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
     FKNoDeleteUpdateError, NotMatchWithSystemError, OpNotPermittedError
 from src.web.api.v1.api import api_router
 
+BASE_PATH = Path(__file__).resolve().parent
 
 app = FastAPI(
     title="FastAPI", 
@@ -22,6 +25,11 @@ app.add_middleware(
     allow_headers = ["*"],
 )
 app.include_router(api_router, prefix="/api/v1")
+app.mount(
+    "/static",
+    StaticFiles(directory=BASE_PATH / "static"),
+    name="static",
+)
 
 # Already Exist Error
 @app.exception_handler(AlreadyExistError)

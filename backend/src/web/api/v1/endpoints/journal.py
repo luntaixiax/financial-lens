@@ -26,7 +26,7 @@ def delete_journal(journal_id: str):
 def get_journal(journal_id: str) -> Journal:
     return JournalService.get_journal(journal_id=journal_id)
 
-@router.get("/journal/list")
+@router.post("/journal/list")
 def list_journal(
     limit: int = 50,
     offset: int = 0,

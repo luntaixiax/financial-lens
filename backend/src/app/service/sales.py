@@ -8,12 +8,66 @@ from src.app.service.acct import AcctService
 from src.app.service.journal import JournalService
 from src.app.service.fx import FxService
 from src.app.model.accounts import Account
-from src.app.model.enums import AcctType, CurType, EntryType
-from src.app.model.invoice import _InvoiceBrief, Invoice, Item
+from src.app.model.enums import AcctType, CurType, EntryType, ItemType, UnitType
+from src.app.model.invoice import _InvoiceBrief, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
 
 
 class SalesService:
+    
+    @classmethod
+    def create_sample(cls):
+        item_consult = Item(
+            item_id='item-consul',
+            name='Item - Consulting',
+            item_type=ItemType.SERVICE,
+            unit=UnitType.HOUR,
+            unit_price=100,
+            currency=CurType.USD,
+            default_acct_id='acct-consul'
+        )
+        item_meeting = Item(
+            item_id='item-meet',
+            name='Item - Meeting',
+            item_type=ItemType.SERVICE,
+            unit=UnitType.HOUR,
+            unit_price=75,
+            currency=CurType.USD,
+            default_acct_id='acct-consul'
+        )
+        cls.add_item(item_consult)
+        cls.add_item(item_meeting)
+        
+        invoice = Invoice(
+            invoice_id='inv-sample',
+            invoice_num='INV-001',
+            invoice_dt=date(2024, 1, 1),
+            due_dt=date(2024, 1, 5),
+            customer_id='cust-sample',
+            subject='General Consulting - Jan 2024',
+            invoice_items=[
+                InvoiceItem(
+                    item=item_consult,
+                    quantity=5,
+                    description="Programming"
+                ),
+                InvoiceItem(
+                    item=item_meeting,
+                    quantity=10,
+                    description="Meeting Around",
+                    discount_rate=0.05,
+                )
+            ],
+            shipping=10,
+            note="Thanks for business"
+        )
+        cls.add_invoice(invoice)
+        
+    @classmethod
+    def clear_sample(cls):
+        cls.delete_invoice('inv-sample')
+        cls.delete_item('item-consul')
+        cls.delete_item('item-meet')
     
     @classmethod
     def create_journal_from_invoice(cls, invoice: Invoice) -> Journal:

@@ -1,5 +1,6 @@
 from datetime import date
 from functools import partial
+from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.utils.tools import get_default_tax_rate, id_generator

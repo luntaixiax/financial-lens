@@ -1,10 +1,16 @@
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 from typing import Any, Tuple
-from fastapi import APIRouter
-from src.app.model.enums import CurType
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from src.app.model.entity import Address, Contact, Customer
+from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.model.journal import Journal
-from src.app.model.invoice import Item, Invoice, _InvoiceBrief
+from src.app.model.invoice import InvoiceItem, Item, Invoice, _InvoiceBrief
 from src.app.service.sales import SalesService
+from src.app.service.entity import EntityService
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
@@ -46,7 +52,7 @@ def create_journal_from_new_invoice(invoice: Invoice) -> Journal:
 def get_invoice_journal(invoice_id: str) -> Tuple[Invoice, Journal]:
     return SalesService.get_invoice_journal(invoice_id=invoice_id)
 
-@router.get("/invoice/list")
+@router.post("/invoice/list")
 def list_invoice(
     limit: int = 50,
     offset: int = 0,
@@ -87,6 +93,45 @@ def update_invoice(invoice: Invoice):
 @router.delete("/invoice/delete/{invoice_id}")
 def delete_invoice(invoice_id: str):
     SalesService.delete_invoice(invoice_id=invoice_id)
+
+BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
+TEMPLATES = Jinja2Templates(directory=str(BASE_PATH / "templates"))
+
+
+@router.get("/invoice/preview", response_class=HTMLResponse)
+def preview_invoice(request: Request, invoice_id: str):
+    invoice, journal = SalesService.get_invoice_journal(invoice_id)
+    bill_to = EntityService.get_customer(invoice.customer_id)
     
+    # bill_from company
+    bill_from = Customer(
+        customer_name = 'LTX Intelligent Service Inc.',
+        is_business=True,
+        bill_contact=Contact(
+            name='Ailun Qian',
+            email='luntaix@ltxservice.ca',
+            phone='+1 (226)978-7365',
+            address=Address(
+                address1='01 XX St E',
+                suite_no=4321,
+                city='Toronto',
+                state='ON',
+                country='Canada',
+                postal_code='XYZABC'
+            )
+        ),
+        ship_same_as_bill=True
+    )
+    
+    data = {
+        'bill_from': bill_from.model_dump(mode='python'),
+        'bill_to': bill_to.model_dump(mode='python'),
+        'invoice': invoice.model_dump(mode='python')
+    }
+
+    return TEMPLATES.TemplateResponse(
+        "invoice.html", 
+        {"request": request} | data
+    )
 
     
