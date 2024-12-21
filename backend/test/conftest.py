@@ -7,14 +7,14 @@ from sqlalchemy.engine import Engine
 from sqlite3 import Connection as SQLite3Connection
 from src.app.dao.orm import SQLModel
 
-# @pytest.fixture(scope='module')
-# def engine():
-#     from src.app.dao.connection import get_engine
-
-#     engine = get_engine()
-#     SQLModel.metadata.create_all(engine)
-    
-#     yield engine
+@pytest.fixture(scope='session')
+def settings():
+    return {
+        'preferences': {
+            'base_cur': 'CAD',
+            'default_sales_tax_rate': 0.13
+        }
+    }
 
 @pytest.fixture(scope='session')
 def engine():
