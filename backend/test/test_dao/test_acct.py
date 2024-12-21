@@ -6,9 +6,11 @@ from src.app.model.enums import AcctType
 from src.app.model.accounts import Chart, ChartNode
 
 @pytest.fixture
-def engine_with_acct(engine, asset_node: ChartNode):
-    with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
+def engine_with_acct(engine, settings, asset_node: ChartNode):
+    with mock.patch("src.app.dao.connection.get_engine")  as mock_engine, \
+        mock.patch("src.app.utils.tools.get_settings") as mock_settings:
         mock_engine.return_value = engine
+        mock_settings.return_value = settings
         
         from src.app.dao.accounts import chartOfAcctDao
         # create chart of account
@@ -19,7 +21,6 @@ def engine_with_acct(engine, asset_node: ChartNode):
         # remove chart of account
         chartOfAcctDao.remove(asset_node.chart.acct_type)
     
-
 @mock.patch("src.app.dao.connection.get_engine")
 def test_account(mock_engine, engine_with_acct, sample_accounts):
     mock_engine.return_value = engine_with_acct

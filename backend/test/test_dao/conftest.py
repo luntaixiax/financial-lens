@@ -12,9 +12,11 @@ from src.app.model.journal import Entry, Journal
 
 
 @pytest.fixture(scope='module')
-def engine_with_basic_choa(engine):
-    with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
+def engine_with_basic_choa(engine, settings):
+    with mock.patch("src.app.dao.connection.get_engine")  as mock_engine, \
+        mock.patch("src.app.utils.tools.get_settings") as mock_settings:
         mock_engine.return_value = engine
+        mock_settings.return_value = settings
         
         from src.app.service.acct import AcctService
         
@@ -40,9 +42,11 @@ def engine_with_basic_choa(engine):
             AcctService.delete_coa(acct_type)
             
 @pytest.fixture(scope='module')
-def engine_with_sample_choa(engine_with_basic_choa):
-    with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
+def engine_with_sample_choa(engine_with_basic_choa, settings):
+   with mock.patch("src.app.dao.connection.get_engine")  as mock_engine, \
+        mock.patch("src.app.utils.tools.get_settings") as mock_settings:
         mock_engine.return_value = engine_with_basic_choa
+        mock_settings.return_value = settings
         
         from src.app.service.acct import AcctService
         
@@ -141,9 +145,13 @@ def sample_accounts(asset_node: ChartNode) -> list[Account]:
 
 
 @pytest.fixture
-def sample_journal_meal(engine_with_sample_choa) -> Generator[Journal, None, None]:
-    with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
+def sample_journal_meal(engine_with_sample_choa, settings) -> Generator[Journal, None, None]:
+        
+    with mock.patch("src.app.dao.connection.get_engine")  as mock_engine, \
+        mock.patch("src.app.utils.tools.get_settings") as mock_settings:
         mock_engine.return_value = engine_with_basic_choa
+        mock_settings.return_value = settings
+        
         
         from src.app.service.acct import AcctService
         
