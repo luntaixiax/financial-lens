@@ -1,5 +1,6 @@
 from datetime import date
 from functools import partial
+from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.utils.tools import get_default_tax_rate, id_generator
@@ -24,6 +25,14 @@ class Item(EnhancedBaseModel):
 class InvoiceItem(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
+    invoice_item_id: str = Field(
+        default_factory=partial(
+            id_generator,
+            prefix='invitem-',
+            length=8,
+        ),
+        frozen=True,
+    )
     item: Item
     quantity: float = Field(ge=0)
     acct_id: str = Field("") # will be overwritten in validator
@@ -63,6 +72,15 @@ class InvoiceItem(EnhancedBaseModel):
         # in item currency
         return self.amount_pre_tax * (1 + self.tax_rate)
     
+class _InvoiceBrief(EnhancedBaseModel):
+    invoice_id: str = Field(description='Invoice ID')
+    invoice_num: str = Field(description='Invoice number')
+    invoice_dt: date = Field(description='Invoice Date')
+    customer_id: str = Field(description='Customer id to sent the invoice')
+    subject: str = Field(description='Subject line of the invoice')
+    currency: CurType = Field(description='Currency used for the invoice')
+    num_invoice_items: int = Field(description='Total # of invoice items')
+    total_raw_amount: float = Field(description='Total amount in invoice currency')
 
 class Invoice(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)

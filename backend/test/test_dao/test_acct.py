@@ -1,163 +1,75 @@
 import pytest
 from unittest import mock
 from anytree import PreOrderIter
-from src.app.model.exceptions import NotExistError
-from src.app.model.const import SystemChartOfAcctNumber
+from src.app.model.exceptions import NotExistError, FKNotExistError
 from src.app.model.enums import AcctType
 from src.app.model.accounts import Chart, ChartNode
 
 @pytest.fixture
-def asset_node() -> ChartNode:
-    total_asset = ChartNode(
-        Chart(
-            chart_id=SystemChartOfAcctNumber.TOTAL_ASSET, 
-            name='1000 - Total Asset',
-            acct_type=AcctType.AST
-        )
-    )
-    current_asset = ChartNode(
-        Chart(
-            chart_id=SystemChartOfAcctNumber.CUR_ASSET,
-            name='1100 - Current Asset',
-            acct_type=AcctType.AST
-        ), 
-        parent = total_asset
-    )
-    bank_asset = ChartNode(
-        Chart(
-            chart_id=SystemChartOfAcctNumber.BANK_ASSET,
-            name='1110 - Bank Asset',
-            acct_type=AcctType.AST
-        ), 
-        parent = current_asset
-    )
-    noncurrent_asset = ChartNode(
-        Chart(
-            chart_id=SystemChartOfAcctNumber.NONCUR_ASSET,
-            name='1200 - Non-Current Asset',
-            acct_type=AcctType.AST
-        ), 
-        parent = total_asset
-    )
-    return total_asset
+def engine_with_acct(engine, asset_node: ChartNode):
+    with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
+        mock_engine.return_value = engine
+        
+        from src.app.dao.accounts import chartOfAcctDao
+        # create chart of account
+        chartOfAcctDao.save(asset_node)
+        
+        yield engine
+        
+        # remove chart of account
+        chartOfAcctDao.remove(asset_node.chart.acct_type)
+    
 
 @mock.patch("src.app.dao.connection.get_engine")
-def test_tree_save_load_delete(mock_engine, engine, asset_node):
-    mock_engine.return_value = engine
+def test_account(mock_engine, engine_with_acct, sample_accounts):
+    mock_engine.return_value = engine_with_acct
     
-    from src.app.dao.accounts import chartOfAcctDao
+    from src.app.dao.accounts import acctDao
     
+    # should not have any account
     with pytest.raises(NotExistError):
-        _node = chartOfAcctDao.load(AcctType.AST)
+        acctDao.get(sample_accounts[0].acct_id, sample_accounts[0].chart)
+    
+    for acct in sample_accounts:
+        acctDao.add(acct)
         
-    # should not raise error if not exist
-    chartOfAcctDao.remove(AcctType.AST) # should not exist
-    
-    # write a tree
-    chartOfAcctDao.save(asset_node)
-    
-    # load back the tree
-    _asset_node = chartOfAcctDao.load(AcctType.AST)
-    
-    # compare the new node
-    assert _asset_node.is_root
-    # iterate through the tree
-    for node in PreOrderIter(asset_node):
-        _node = _asset_node.find_node_by_id(chart_id=node.chart_id)
-        assert _node.chart == node.chart
+        # test get_chart_id_by_acct
+        assert acctDao.get_chart_id_by_acct(acct.acct_id) == acct.chart.chart_id
         
-    # remove the charts
-    chartOfAcctDao.remove(AcctType.AST)
+        # test get
+        _acct = acctDao.get(acct.acct_id, acct.chart)
+        assert _acct == acct
+        
+    # test update
+    _acct.acct_name = 'random name'
+    acctDao.update(_acct)
+    _acct2 = acctDao.get(acct.acct_id, acct.chart)
+    assert _acct == _acct2
     
-    # chart should not exist
+    # test remove 1 of the 3 accounts
     with pytest.raises(NotExistError):
-        _node = chartOfAcctDao.load(AcctType.AST)
-
-
-@mock.patch("src.app.dao.connection.get_engine")
-def test_tree_update_no_delete(mock_engine, engine, asset_node):
-    mock_engine.return_value = engine
+        acctDao.remove('random_acct_id')
+        
+    acctDao.remove(_acct.acct_id) # remove the last account
+    with pytest.raises(NotExistError):
+        acctDao.get(_acct.acct_id, _acct.chart)
     
-    from src.app.dao.accounts import chartOfAcctDao
-    
-    # write a tree
-    chartOfAcctDao.save(asset_node)
-    
-    # update the tree (no deletion of existing node)
-    _asset_node = chartOfAcctDao.load(AcctType.AST)
-    # move bank asset to be under non-current asset
-    _bank = _asset_node.find_node_by_name('1110 - Bank Asset')
-    _noncur = _asset_node.find_node_by_name('1200 - Non-Current Asset')
-    _bank.parent = _noncur
-    _bank.chart.name = '1210 - Bank Asset' # change node chart name
-    
-    # add new node (bank check) under bank account
-    bank_check = ChartNode(
-        Chart(
-            name='1211 - Checking Accounts',
-            acct_type=AcctType.AST
-        ), 
-        parent = _bank
+    # test no update on non-exist acct (removed from last step)
+    with pytest.raises(NotExistError):
+        acctDao.update(_acct)
+        
+    # test update the chart to a non-existing chart
+    acct = sample_accounts[0]
+    acct.chart = Chart(
+        chart_id='random_chart_id', 
+        name='random chart', 
+        acct_type = AcctType.AST
     )
+    with pytest.raises(FKNotExistError):
+        acctDao.update(acct)
     
-    # add new node (fixed asset) under non-current account
-    fixed_asset = ChartNode(
-        Chart(
-            name='1220 - Fixed Asset',
-            acct_type=AcctType.AST
-        ), 
-        parent = _noncur
-    )
+    # remove the first 2 accounts to clean up
+    acctDao.remove(sample_accounts[0].acct_id)
+    acctDao.remove(sample_accounts[1].acct_id)
     
-    # save the updated node
-    chartOfAcctDao.save(_asset_node)
     
-    # see if same
-    _asset_node_reload = chartOfAcctDao.load(AcctType.AST)
-    assert _asset_node_reload.is_root
-    # iterate through the tree
-    for node in PreOrderIter(_asset_node):
-        _node = _asset_node_reload.find_node_by_id(chart_id=node.chart_id)
-        assert _node.chart == node.chart
-        
-    # remove the charts
-    chartOfAcctDao.remove(AcctType.AST)
-    
-    # chart should not exist
-    with pytest.raises(NotExistError):
-        _node = chartOfAcctDao.load(AcctType.AST)
-        
-
-@mock.patch("src.app.dao.connection.get_engine")
-def test_tree_update_with_delete(mock_engine, engine, asset_node):
-    mock_engine.return_value = engine
-    
-    from src.app.dao.accounts import chartOfAcctDao
-    
-    # write a tree
-    chartOfAcctDao.save(asset_node)
-    
-    # update the tree (with deletion of existing node)
-    _asset_node = chartOfAcctDao.load(AcctType.AST)
-    
-    # which can be replace as a subset of the original tree
-    _curasset = _asset_node.find_node_by_name('1100 - Current Asset')
-    _curasset.parent = None # set it to root
-    
-    # save the updated tree
-    chartOfAcctDao.save(_curasset)
-    
-    # see if same
-    _asset_node_reload = chartOfAcctDao.load(AcctType.AST)
-    assert _asset_node_reload.is_root
-    # iterate through the tree
-    for node in PreOrderIter(_curasset):
-        _node = _asset_node_reload.find_node_by_id(chart_id=node.chart_id)
-        assert _node.chart == node.chart
-        
-    # remove the charts
-    chartOfAcctDao.remove(AcctType.AST)
-        
-    # chart should not exist
-    with pytest.raises(NotExistError):
-        _node = chartOfAcctDao.load(AcctType.AST)

@@ -17,14 +17,14 @@ def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  F
         if during_creation:
             # during object creation, error = entry does not exist in child/lower level table
             # e.g., if contact does not exist, customer should not be created
-            return FKNotExistError(e)
+            return FKNotExistError(details=str(e))
         else:
             # during update/delete, error = on_delete/on_update failed
-            return FKNoDeleteUpdateError(e)
+            return FKNoDeleteUpdateError(details=str(e))
     if 'unique' in origin_message or 'duplicate' in origin_message:
         # sqlite message: UNIQUE constraint failed
         # mysql message: Duplicate entry
-        return AlreadyExistError(e)
+        return AlreadyExistError(details=str(e))
     
     return e
     
@@ -44,7 +44,7 @@ class FxORM(SQLModel, table=True):
         sa_column=Column(Date(), primary_key = True, nullable = False)
     )
     rate: float = Field(
-        sa_column=Column(Float(), nullable = False)
+        sa_column=Column(DECIMAL(15, 5, asdecimal=False), nullable = False)
     )
     
     
@@ -93,7 +93,7 @@ class CustomerORM(SQLModel, table=True):
             nullable = False
         )
     )
-    ship_same_as_bill: EntryType = Field(
+    ship_same_as_bill: bool = Field(
         sa_column=Column(
             Boolean(create_constraint=True), 
             default = True, 
@@ -197,7 +197,7 @@ class AcctORM(SQLModel, table=True):
     __tablename__ = "accounts"
     
     acct_id: str = Field(
-        sa_column=Column(String(length = 13), primary_key = True, nullable = False)
+        sa_column=Column(String(length = 15), primary_key = True, nullable = False)
     )
     acct_name: str = Field(
         sa_column=Column(String(length = 50), nullable = False, unique = True)
@@ -226,7 +226,7 @@ class BankAcctORM(SQLModel, table=True):
     
     linked_acct_id: str = Field(
         sa_column=Column(
-            String(length = 13), 
+            String(length = 15), 
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
@@ -263,7 +263,7 @@ class JournalORM(SQLModel, table=True):
     __tablename__ = "journals"
     
     journal_id: str = Field(
-        sa_column=Column(String(length = 17), primary_key = True, nullable = False)
+        sa_column=Column(String(length = 20), primary_key = True, nullable = False)
     )
     jrn_date: date = Field(sa_column=Column(Date(), nullable = False))
     is_manual: bool = Field(
@@ -278,15 +278,18 @@ class JournalORM(SQLModel, table=True):
 class EntryORM(SQLModel, table=True):
     __tablename__ = "entries"
     
+    entry_id: str = Field(
+        sa_column=Column(String(length = 20), primary_key = True, nullable = False)
+    )
     journal_id: str = Field(
         sa_column=Column(
-            String(length = 17),
+            String(length = 20),
             ForeignKey(
                 'journals.journal_id', 
                 onupdate = 'CASCADE', 
                 ondelete = 'CASCADE'
             ),
-            primary_key = True, 
+            primary_key = False, 
             nullable = False
         )
     )
@@ -295,21 +298,21 @@ class EntryORM(SQLModel, table=True):
     )
     acct_id: str = Field(
         sa_column=Column(
-            String(length = 13), 
+            String(length = 15), 
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
                 ondelete = 'RESTRICT'
             ),
-            primary_key = True, 
+            primary_key = False, 
             nullable = False
         )
     )
     cur_incexp: CurType | None = Field(
         sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
     )
-    amount: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
-    amount_base: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
+    amount: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    amount_base: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
     
@@ -328,13 +331,13 @@ class ItemORM(SQLModel, table=True):
     unit: UnitType = Field(
         sa_column=Column(ChoiceType(UnitType, impl = Integer()), nullable = False)
     )
-    unit_price: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
+    unit_price: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     currency: CurType | None = Field(
         sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
     )
     default_acct_id: str = Field(
         sa_column=Column(
-            String(length = 13), 
+            String(length = 15), 
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
@@ -372,10 +375,10 @@ class InvoiceORM(SQLModel, table=True):
     subject: str = Field(
         sa_column=Column(String(length = 50), primary_key = False, nullable = False)
     )
-    shipping: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
+    shipping: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     journal_id: str = Field(
         sa_column=Column(
-            String(length = 17),
+            String(length = 20),
             ForeignKey(
                 'journals.journal_id', 
                 onupdate = 'CASCADE', 
@@ -391,6 +394,9 @@ class InvoiceORM(SQLModel, table=True):
 class InvoiceItemORM(SQLModel, table=True):
     __tablename__ = "invoice_item"
     
+    invoice_item_id: str = Field(
+        sa_column=Column(String(length = 17), primary_key = True, nullable = False)
+    )
     invoice_id: str = Field(
         sa_column=Column(
             String(length = 13), 
@@ -399,7 +405,7 @@ class InvoiceItemORM(SQLModel, table=True):
                 onupdate = 'CASCADE', 
                 ondelete = 'CASCADE'
             ),
-            primary_key = True, 
+            primary_key = False, 
             nullable = False
         )
     )
@@ -415,20 +421,20 @@ class InvoiceItemORM(SQLModel, table=True):
             nullable = False
         )
     )
-    quantity: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
+    quantity: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     acct_id: str = Field(
         sa_column=Column(
-            String(length = 13), 
+            String(length = 15), 
             ForeignKey(
                 'accounts.acct_id', 
                 onupdate = 'CASCADE', 
                 ondelete = 'RESTRICT'
             ),
-            primary_key = True, 
+            primary_key = False, 
             nullable = False
         )
     )
-    tax_rate: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
-    discount_rate: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
+    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    discount_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     

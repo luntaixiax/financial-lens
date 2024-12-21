@@ -12,6 +12,14 @@ from src.app.utils.base import EnhancedBaseModel
 class Entry(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
+    entry_id: str = Field(
+        default_factory=partial(
+            id_generator,
+            prefix='entr-',
+            length=13,
+        ),
+        frozen=True,
+    )
     entry_type: EntryType
     acct: Account
     cur_incexp: CurType | None = Field(None) # for inc/exp account, need specify currency
@@ -34,6 +42,14 @@ class Entry(EnhancedBaseModel):
                 f"Acct Currency is base currency, Amount {self.amount} not equal to base amount {self.amount_base}"
         return self
 
+
+class _JournalBrief(EnhancedBaseModel):
+    journal_id: str
+    jrn_date: date
+    is_manual: bool
+    num_entries: int
+    total_base_amount: float
+    note: str
     
 class Journal(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
@@ -60,7 +76,6 @@ class Journal(EnhancedBaseModel):
         reduced = map(lambda x: (x.acct.acct_id, x.entry_type, x.cur_incexp), self.entries)
         
         return len(self.entries) > len(set(reduced))
-        
     
     def reduce_entries(self):
         # combine same entry and add up amounts
@@ -71,6 +86,7 @@ class Journal(EnhancedBaseModel):
             if pk in reduced:
                 _entry = reduced[pk]
                 reduced[pk] = Entry(
+                    # entry id will be the new one
                     entry_type = entry.entry_type,
                     acct = entry.acct,
                     cur_incexp = entry.cur_incexp,
@@ -113,6 +129,34 @@ class Journal(EnhancedBaseModel):
     def validate_balance(self):
         debits = self.total_debits
         credits = self.total_credits
-        assert abs(debits - credits) <= 1e-4, \
+        assert abs(debits - credits) / abs(debits) <= 1e-6, \
             f"Total debits: {debits} not equal to total credits: {credits}"
         return self
+    
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Journal):
+            return False
+        
+        if (
+            other.journal_id == self.journal_id
+            and other.jrn_date == self.jrn_date
+            and other.is_manual == self.is_manual
+            and other.note == self.note
+        ):
+            # sequence not important
+            if len(self.entries) == len(other.entries):
+                # sort both entries by entry id
+                sort_func = lambda e: e.entry_id
+                for e, o in zip(
+                    sorted(self.entries, key=sort_func), 
+                    sorted(other.entries, key=sort_func)
+                ):
+                    if not e == o:
+                        return False
+                
+                return True
+            else:
+                return False
+        
+        else:
+            return False

@@ -16,7 +16,7 @@ from src.app.dao.orm import SQLModel
     
 #     yield engine
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def engine():
     
     @event.listens_for(Engine, "connect")

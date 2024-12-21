@@ -1,7 +1,0 @@
-paths:
-  static:
-    images: '/home/luntaixia/Pictures/Images/finlens-images'
-    
-preferences:
-  base_cur: 'CAD'
-  default_sales_tax_rate: 0.13

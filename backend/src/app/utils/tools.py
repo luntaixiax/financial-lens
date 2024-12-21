@@ -28,3 +28,8 @@ def get_base_cur() -> CurType:
 def get_default_tax_rate() -> float:
     settings = get_settings()
     return settings['preferences']['default_sales_tax_rate']
+
+def get_company() -> dict:
+    settings = get_settings()
+    return settings['company_settings']
+    

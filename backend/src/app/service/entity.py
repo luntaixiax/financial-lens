@@ -2,9 +2,42 @@ import logging
 
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
 from src.app.dao.entity import contactDao, customerDao
-from src.app.model.entity import Contact, Customer
+from src.app.model.entity import _ContactBrief, _CustomerBrief, Address, Contact, Customer
 
 class EntityService:
+    
+    @classmethod
+    def create_sample(cls):
+        # create contact
+        contact = Contact(
+            contact_id='cont-sample',
+            name='Sample Inc.',
+            email='questionme@sample.inc',
+            phone='+1(234)567-8910',
+            address=Address(
+                address1='00 XX St E',
+                suite_no=1234,
+                city='Toronto',
+                state='ON',
+                country='Canada',
+                postal_code='XYZABC'
+            )
+        )
+        cls.add_contact(contact)
+        # create customer
+        customer = Customer(
+            cust_id='cust-sample',
+            customer_name = 'LTX Company',
+            is_business=True,
+            bill_contact=contact,
+            ship_same_as_bill=True
+        )
+        cls.add_customer(customer)
+        
+    @classmethod
+    def clear_sample(cls):
+        cls.remove_customer('cust-sample')
+        cls.remove_contact('cont-sample')
     
     @classmethod
     def add_contact(cls, contact: Contact, ignore_exist: bool = False):
@@ -12,7 +45,7 @@ class EntityService:
             contactDao.add(contact)
         except AlreadyExistError as e:
             if not ignore_exist:
-                raise AlreadyExistError(e)
+                raise e
             
     @classmethod
     def update_contact(cls, contact: Contact, ignore_nonexist: bool = False):
@@ -20,7 +53,7 @@ class EntityService:
             contactDao.update(contact)
         except NotExistError as e:
             if not ignore_nonexist:
-                raise NotExistError(e)
+                raise e
             
     @classmethod
     def upsert_contact(cls, contact: Contact):
@@ -35,14 +68,19 @@ class EntityService:
             contactDao.remove(contact_id)
         except NotExistError as e:
             if not ignore_nonexist:
-                raise NotExistError(e)
+                raise e
         except FKNoDeleteUpdateError as e:
-            raise FKNoDeleteUpdateError(e)
+            raise e
         
     @classmethod
     def get_contact(cls, contact_id: str) -> Contact:
         contact = contactDao.get(contact_id)
         return contact
+    
+    @classmethod
+    def list_contact(cls) -> list[_ContactBrief]:
+        contacts = contactDao.list_contact()
+        return contacts
     
     @classmethod
     def add_customer(cls, customer: Customer, ignore_exist: bool = False):
@@ -58,9 +96,9 @@ class EntityService:
             customerDao.add(customer)
         except AlreadyExistError as e:
             if not ignore_exist:
-                raise AlreadyExistError(e)
+                raise e
         except FKNotExistError as e:
-            raise FKNotExistError(e)
+            raise e
             
     @classmethod
     def remove_customer(cls, cust_id: str, ignore_nonexist: bool = False):
@@ -68,9 +106,9 @@ class EntityService:
             customerDao.remove(cust_id)
         except NotExistError as e:
             if not ignore_nonexist:
-                raise NotExistError(e)
+                raise e
         except FKNoDeleteUpdateError as e:
-            raise FKNoDeleteUpdateError(e)
+            raise e
             
     @classmethod
     def update_customer(cls, customer: Customer, ignore_nonexist: bool = False):
@@ -87,7 +125,7 @@ class EntityService:
             customerDao.update(customer)
         except NotExistError as e:
             if not ignore_nonexist:
-                raise NotExistError(e)
+                raise e
             
     @classmethod
     def upsert_customer(cls, customer: Customer):
@@ -96,7 +134,7 @@ class EntityService:
         except AlreadyExistError:
             cls.update_customer(customer)
         except FKNotExistError as e:
-            raise FKNotExistError(e) # contact does not exist
+            raise e # contact does not exist
             
     @classmethod
     def get_customer(cls, cust_id: str) -> Customer:
@@ -106,7 +144,7 @@ class EntityService:
             )
         except NotExistError as e:
             # customer not even exist
-            raise NotExistError(e)
+            raise e
         
         # get contacts
         bill_contact = cls.get_contact(bill_contact_id)
@@ -116,3 +154,8 @@ class EntityService:
         # get customer
         customer = customerDao.get(cust_id, bill_contact, ship_contact)
         return customer
+    
+    @classmethod
+    def list_customer(cls) -> list[_CustomerBrief]:
+        customers = customerDao.list_customer()
+        return customers

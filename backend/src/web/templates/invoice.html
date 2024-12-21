@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}" type="text/css" media="all" />
+</head>
+
+<body>
+  <div>
+    <div class="py-4">
+      <div class="px-14 py-6">
+        <table class="w-full border-collapse border-spacing-0">
+          <tbody>
+            <tr>
+              <td class="w-full align-top">
+                <div>
+                  <img src="{{ url_for('static', path='/images/'+logo) }}" class="h-12" />
+                </div>
+              </td>
+
+              <td class="align-top">
+                <div class="text-sm">
+                  <table class="border-collapse border-spacing-0">
+                    <tbody>
+                      <tr>
+                        <td class="border-r pr-4">
+                          <div>
+                            <p class="whitespace-nowrap text-slate-400 text-right">Date</p>
+                            <p class="whitespace-nowrap font-bold text-main text-right">{{ invoice.invoice_dt.strftime('%B %d, %Y') }}</p>
+                          </div>
+                        </td>
+                        <td class="pl-4">
+                          <div>
+                            <p class="whitespace-nowrap text-slate-400 text-right">Invoice #</p>
+                            <p class="whitespace-nowrap font-bold text-main text-right">{{ invoice.invoice_num }}</p>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="bg-slate-100 px-14 py-6 text-sm">
+        <table class="w-full border-collapse border-spacing-0">
+          <tbody>
+            <tr>
+              <td class="w-1/2 align-top">
+                Bill To:
+                <div class="text-sm text-neutral-600">
+                  <p class="font-bold">{{ bill_to.customer_name }}</p>
+                  <p>✉ {{ bill_to.bill_contact.email }}</p>
+                  <p>☎︎ {{ bill_to.bill_contact.phone }}</p>
+                  <p>🏠︎ {{ bill_to.bill_contact.address.suite_no }}-{{ bill_to.bill_contact.address.address1 }}</p>
+                  <p>   {{ bill_to.bill_contact.address.city }}, {{ bill_to.bill_contact.address.state }}, {{ bill_to.bill_contact.address.postal_code }}</p>
+                  <p>   {{ bill_to.bill_contact.address.country }}</p>
+                </div>
+              </td>
+
+              
+              <td class="w-1/2 align-top text-right">
+                Bill From:
+                <div class="text-sm text-neutral-600">
+                  <p class="font-bold">{{ bill_from.customer_name }}</p>
+                  <p>✉ {{ bill_from.bill_contact.email }}</p>
+                  <p>☎︎ {{ bill_from.bill_contact.phone }}</p>
+                  <p>🏠︎ {{ bill_from.bill_contact.address.suite_no }}-{{ bill_from.bill_contact.address.address1 }}</p>
+                  <p>   {{ bill_from.bill_contact.address.city }}, {{ bill_from.bill_contact.address.state }}, {{ bill_from.bill_contact.address.postal_code }}</p>
+                  <p>   {{ bill_from.bill_contact.address.country }}</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+
+    </br>
+      <div class="px-14 text-sm text-neutral-700">
+        <p class="text-main font-bold">Subject</p>
+        <p>{{ invoice.subject }}</p>
+      </div>
+
+      <div class="px-14 py-10 text-sm text-neutral-700">
+        <table class="w-full border-collapse border-spacing-0">
+          <thead>
+            <tr>
+              <td class="border-b-2 border-main pb-3 pl-3 font-bold text-main">#</td>
+              <td class="border-b-2 border-main pb-3 pl-2 font-bold text-main">Item</td>
+              <td class="border-b-2 border-main pb-3 pl-2 text-center font-bold text-main">Price</td>
+              <td class="border-b-2 border-main pb-3 pl-2 text-center font-bold text-main">Qty.</td>
+              <td class="border-b-2 border-main pb-3 pl-2 text-center font-bold text-main">Unit</td>
+              <td class="border-b-2 border-main pb-3 pl-2 text-center font-bold text-main">Discount</td>
+              <td class="border-b-2 border-main pb-3 pl-2 text-center font-bold text-main">Tax Rate</td>
+              <td class="border-b-2 border-main pb-3 pl-2 pr-3 text-right font-bold text-main">Pretax Subtotal</td>
+            </tr>
+          </thead>
+          <tbody>
+
+            {% for invoice_item in invoice.invoice_items %}
+              <tr>
+                <td class="border-b py-3 pl-3">{{ loop.index }}.</td>
+                <td class="border-b py-3 pl-2">{{ invoice_item.item.name }}</td>
+                <td class="border-b py-3 pl-2 text-center">{{  "{:0,.2f}".format(invoice_item.item.unit_price) }}</td>
+                <td class="border-b py-3 pl-2 text-center">{{ invoice_item.quantity }}</td>
+                <td class="border-b py-3 pl-2 text-center">{{ invoice_item.item.unit.name }}</td>
+                <td class="border-b py-3 pl-2 text-center" style="color: #b63b3b">
+                  {% if invoice_item.discount_rate > 0 %}
+                  {{ '%.0f%%'| format(- invoice_item.discount_rate * 100) }}
+                  {% else %}
+                    - 
+                  {% endif %}
+                </td>
+                <td class="border-b py-3 pl-2 text-center">{{ '%.0f%%'| format(invoice_item.tax_rate * 100) }}</td>
+                <td class="border-b py-3 pl-2 pr-3 text-right">{{ "{:0,.2f}".format(invoice_item.amount_pre_tax) }}</td>
+              </tr>
+            {% endfor %}
+
+
+            <tr>
+              <td colspan="8">
+                <table class="w-full border-collapse border-spacing-0">
+                  <tbody>
+                    <tr>
+                      <td class="w-full"></td>
+                      <td>
+                        <table class="w-full border-collapse border-spacing-0">
+                          <tbody>
+                            <tr>
+                              <td class="p-3">
+                                <div class="whitespace-nowrap text-slate-400">Net total:</div>
+                              </td>
+                              <td class="p-3 text-right">
+                                <div class="whitespace-nowrap font-bold text-main">{{ "{:0,.2f}".format(invoice.subtotal) }}</div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="p-3">
+                                <div class="whitespace-nowrap text-slate-400">Tax Amount:</div>
+                              </td>
+                              <td class="p-3 text-right">
+                                <div class="whitespace-nowrap font-bold text-main">{{ "{:0,.2f}".format(invoice.tax_amount) }}</div>
+                              </td>
+                            </tr>
+                            
+                            {% if shipping != 0 %}
+                            <tr>
+                              <td class="p-3">
+                                <div class="whitespace-nowrap text-slate-400">Shipping/Handling:</div>
+                              </td>
+                              <td class="p-3 text-right">
+                                <div class="whitespace-nowrap font-bold text-main">{{ "{:0,.2f}".format(invoice.shipping) }}</div>
+                              </td>
+                            </tr>
+                            {% else %}
+                            
+                            {% endif %}
+
+                            <tr>
+                              <td class="bg-main p-3">
+                                <div class="whitespace-nowrap font-bold text-white">Total:</div>
+                              </td>
+                              <td class="bg-main p-3 text-right">
+                                <div class="whitespace-nowrap font-bold text-white">{{ invoice.currency.name }} {{ "{:0,.2f}".format(invoice.total) }}</div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+
+      <div class="px-14 py-10 text-sm text-neutral-700">
+        <p class="text-main font-bold">Notes</p>
+        <p class="italic">{{ invoice.note }}</p>
+        </dvi>
+
+        <footer class="fixed bottom-0 left-0 bg-slate-100 w-full text-neutral-600 text-center text-xs py-3">
+          {{ bill_from.customer_name }}
+          <span class="text-slate-300 px-2">|</span>
+          {{ bill_from.bill_contact.email }}
+          <span class="text-slate-300 px-2">|</span>
+          {{ bill_from.bill_contact.phone }}
+        </footer>
+      </div>
+    </div>
+</body>
+
+</html>

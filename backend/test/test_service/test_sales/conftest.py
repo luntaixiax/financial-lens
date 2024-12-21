@@ -8,49 +8,40 @@ from src.app.model.enums import AcctType, CurType, ItemType, UnitType
 from src.app.model.accounts import Account
 
 @pytest.fixture
-def sample_invoice(engine_with_test_choa) -> Generator[Invoice, None, None]:
+def sample_invoice(engine_with_sample_choa) -> Generator[Invoice, None, None]:
     with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
-        mock_engine.return_value = engine_with_test_choa
+        mock_engine.return_value = engine_with_sample_choa
         
-        # non-model module need to import under mock replacement
-        from src.app.service.chart_of_accounts import AcctService
-        
-        
-        # create accounts (consulting income)
-        rev_acct = Account(
-            acct_name='Consulting Income',
-            acct_type=AcctType.INC,
-            chart=AcctService.get_coa(AcctType.INC).find_node_by_id(
-                chart_id=SystemChartOfAcctNumber.TOTAL_INC
-            ).chart
-        )
-        AcctService.add_account(rev_acct)
-        print(f"Added account: {rev_acct}")
+        from src.app.dao.invoice import itemDao
         
         # create items
         item_consult = Item(
+            item_id='item-consul',
             name='Item - Consulting',
             item_type=ItemType.SERVICE,
             unit=UnitType.HOUR,
             unit_price=100,
             currency=CurType.USD,
-            default_acct_id=rev_acct.acct_id
+            default_acct_id='acct-consul'
         )
         item_meeting = Item(
+            item_id='item-meet',
             name='Item - Meeting',
             item_type=ItemType.SERVICE,
             unit=UnitType.HOUR,
             unit_price=75,
             currency=CurType.USD,
-            default_acct_id=rev_acct.acct_id
+            default_acct_id='acct-consul'
         )
+        itemDao.add(item_consult)
+        itemDao.add(item_meeting)
         
         # create invoice
         invoice = Invoice(
             invoice_num='INV-001',
             invoice_dt=date(2024, 1, 1),
             due_dt=date(2024, 1, 5),
-            customer_id='C123',
+            customer_id='cust-sample',
             subject='General Consulting - Jan 2024',
             invoice_items=[
                 InvoiceItem(
@@ -72,5 +63,5 @@ def sample_invoice(engine_with_test_choa) -> Generator[Invoice, None, None]:
         
         yield invoice
         
-        # delete account
-        AcctService.delete_account(rev_acct.acct_id)
+        itemDao.remove(item_consult.item_id)
+        itemDao.remove(item_meeting.item_id)
