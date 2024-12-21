@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from src.app.utils.tools import get_company
 from src.app.model.entity import Address, Contact, Customer
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.model.journal import Journal
@@ -104,26 +105,16 @@ def preview_invoice(request: Request, invoice_id: str):
     bill_to = EntityService.get_customer(invoice.customer_id)
     
     # bill_from company
+    bill_from_company = get_company()
     bill_from = Customer(
-        customer_name = 'LTX Intelligent Service Inc.',
+        customer_name = bill_from_company['name'],
         is_business=True,
-        bill_contact=Contact(
-            name='Ailun Qian',
-            email='luntaix@ltxservice.ca',
-            phone='+1 (226)978-7365',
-            address=Address(
-                address1='01 XX St E',
-                suite_no=4321,
-                city='Toronto',
-                state='ON',
-                country='Canada',
-                postal_code='XYZABC'
-            )
-        ),
+        bill_contact=Contact.model_validate(bill_from_company['contact']),
         ship_same_as_bill=True
     )
     
     data = {
+        'logo': bill_from_company['logo'],
         'bill_from': bill_from.model_dump(mode='python'),
         'bill_to': bill_to.model_dump(mode='python'),
         'invoice': invoice.model_dump(mode='python')

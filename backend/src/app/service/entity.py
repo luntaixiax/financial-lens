@@ -11,9 +11,9 @@ class EntityService:
         # create contact
         contact = Contact(
             contact_id='cont-sample',
-            name='luntaixia',
-            email='infodesk@ltxservice.ca',
-            phone='123456789',
+            name='Sample Inc.',
+            email='questionme@sample.inc',
+            phone='+1(234)567-8910',
             address=Address(
                 address1='00 XX St E',
                 suite_no=1234,
