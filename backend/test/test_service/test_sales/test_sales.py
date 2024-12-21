@@ -3,7 +3,7 @@ import logging
 import pytest
 from unittest import mock
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, NotMatchWithSystemError
-from src.app.model.enums import CurType, ItemType, UnitType
+from src.app.model.enums import CurType, ItemType, JournalSrc, UnitType
 from src.app.model.invoice import Invoice, InvoiceItem, Item
 from src.app.model.const import SystemAcctNumber
 
@@ -20,7 +20,7 @@ def test_create_journal_from_invoice(mock_engine, engine_with_sample_choa, sampl
     journal = SalesService.create_journal_from_invoice(sample_invoice)
     
     # should not be manual journal
-    assert not journal.is_manual
+    assert journal.jrn_src == JournalSrc.INVOICE
     # should be non-redudant, i.e, similar entries have been combined
     assert not journal.is_redundant
     # total amount from invoice should be same to total amount from journal (base currency)
@@ -153,6 +153,7 @@ def test_validate_invoice(mock_engine, engine_with_sample_choa):
         due_dt=date(2024, 1, 5),
         customer_id='cust-random',
         subject='General Consulting - Jan 2024',
+        currency=CurType.USD,
         invoice_items=[
             InvoiceItem(
                 item=item_consult,

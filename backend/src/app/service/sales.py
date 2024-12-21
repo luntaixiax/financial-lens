@@ -8,7 +8,7 @@ from src.app.service.acct import AcctService
 from src.app.service.journal import JournalService
 from src.app.service.fx import FxService
 from src.app.model.accounts import Account
-from src.app.model.enums import AcctType, CurType, EntryType, ItemType, UnitType
+from src.app.model.enums import AcctType, CurType, EntryType, ItemType, JournalSrc, UnitType
 from src.app.model.invoice import _InvoiceBrief, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
 
@@ -45,6 +45,7 @@ class SalesService:
             due_dt=date(2024, 1, 5),
             customer_id='cust-sample',
             subject='General Consulting - Jan 2024',
+            currency=CurType.USD,
             invoice_items=[
                 InvoiceItem(
                     item=item_consult,
@@ -156,7 +157,7 @@ class SalesService:
         journal = Journal(
             jrn_date=invoice.invoice_dt,
             entries=entries,
-            is_manual=False,
+            jrn_src=JournalSrc.INVOICE,
             note=invoice.note
         )
         journal.reduce_entries()

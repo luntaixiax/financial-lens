@@ -49,6 +49,7 @@ def sample_invoice(engine_with_sample_choa, sample_items, customer1) -> Generato
             due_dt=date(2024, 1, 5),
             customer_id=customer1.cust_id,
             subject='General Consulting - Jan 2024',
+            currency=CurType.USD,
             invoice_items=[
                 InvoiceItem(
                     item=sample_items[0],
@@ -149,7 +150,7 @@ def test_invoice(mock_engine, engine, sample_invoice, sample_journal_meal):
     _invoices = invoiceDao.list(num_invoice_items=3)
     assert len(_invoices) == 0
     _invoices = invoiceDao.list(max_amount=1000)
-    assert len(_invoices) == 0
+    assert len(_invoices) == 1
     
     
     # test remove invoice

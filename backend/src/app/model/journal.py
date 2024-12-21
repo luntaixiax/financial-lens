@@ -5,7 +5,7 @@ from functools import partial
 from typing import Tuple
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from src.app.model.accounts import Account
-from src.app.model.enums import CurType, EntryType
+from src.app.model.enums import CurType, EntryType, JournalSrc
 from src.app.utils.tools import get_base_cur, id_generator
 from src.app.utils.base import EnhancedBaseModel
 
@@ -46,7 +46,7 @@ class Entry(EnhancedBaseModel):
 class _JournalBrief(EnhancedBaseModel):
     journal_id: str
     jrn_date: date
-    is_manual: bool
+    jrn_src: JournalSrc
     num_entries: int
     total_base_amount: float
     note: str
@@ -66,7 +66,10 @@ class Journal(EnhancedBaseModel):
     entries: list[Entry] = Field(
         min_length=2
     )
-    is_manual: bool = Field(True)
+    jrn_src: JournalSrc = Field(
+        JournalSrc.MANUAL,
+        description='Journal Source, e.g., Manual/Expense/Invoice/Purchase/Payment'
+    )
     note: str | None = Field(None)
     
     @property
@@ -140,7 +143,7 @@ class Journal(EnhancedBaseModel):
         if (
             other.journal_id == self.journal_id
             and other.jrn_date == self.jrn_date
-            and other.is_manual == self.is_manual
+            and other.jrn_src == self.jrn_src
             and other.note == self.note
         ):
             # sequence not important

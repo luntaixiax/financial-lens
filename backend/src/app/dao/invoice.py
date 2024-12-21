@@ -3,9 +3,9 @@ import logging
 from typing import Tuple
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from src.app.model.enums import CurType
+from src.app.model.enums import CurType, EntryType
 from src.app.model.invoice import _InvoiceBrief, InvoiceItem, Item, Invoice
-from src.app.dao.orm import InvoiceItemORM, InvoiceORM, ItemORM, infer_integrity_error
+from src.app.dao.orm import InvoiceItemORM, InvoiceORM, ItemORM, EntryORM, infer_integrity_error
 from src.app.dao.connection import get_engine
 from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNoDeleteUpdateError
 
@@ -137,6 +137,7 @@ class invoiceDao:
             due_dt=invoice.due_dt,
             customer_id=invoice.customer_id,
             subject=invoice.subject,
+            currency=invoice.currency,
             shipping=invoice.shipping,
             note=invoice.note,
             journal_id=journal_id # TODO
@@ -151,6 +152,7 @@ class invoiceDao:
             due_dt=invoice_orm.due_dt,
             customer_id=invoice_orm.customer_id,
             subject=invoice_orm.subject,
+            currency=invoice_orm.currency,
             invoice_items=[
                 cls.toInvoiceItem(invoice_item_orm) 
                 for invoice_item_orm in invoice_item_orms  
@@ -270,7 +272,7 @@ class invoiceDao:
             invoice_item_joined = (
                 select(
                     InvoiceItemORM.invoice_id,
-                    f.max(ItemORM.currency).label('currency'), # bug that only support min/max
+                    #f.max(ItemORM.currency).label('currency'), # bug that only support min/max
                     f.count(InvoiceItemORM.invoice_item_id).label('num_invoice_items'),
                     f.sum(
                         InvoiceItemORM.quantity 
@@ -281,7 +283,7 @@ class invoiceDao:
                 )
                 .join(
                     ItemORM, 
-                    onclause=InvoiceItemORM.item_id  == ItemORM.item_id, 
+                    onclause=InvoiceItemORM.item_id == ItemORM.item_id, 
                     isouter=False
                 )
                 .group_by(
@@ -290,15 +292,28 @@ class invoiceDao:
                 )
                 .subquery()
             )
+            journal_summary = (
+                select(
+                    EntryORM.journal_id,
+                    f.sum(EntryORM.amount_base).label('amount_base')
+                )
+                .where(
+                    EntryORM.entry_type == EntryType.DEBIT
+                )
+                .group_by(
+                    EntryORM.journal_id
+                )
+                .subquery()
+            )
             # add currency filter
             if currency is not None:
-                inv_filters.append(invoice_item_joined.c.currency == currency)
+                inv_filters.append(InvoiceORM.currency == currency)
             # add num items filter
             if num_invoice_items is not None:
                 inv_filters.append(invoice_item_joined.c.num_invoice_items == num_invoice_items)
             # add amount filter (raw amount):
             inv_filters.append(
-                (InvoiceORM.shipping + invoice_item_joined.c.total_raw_amount)
+                journal_summary.c.amount_base
                 .between(min_amount, max_amount)
             )
             invoice_joined = (
@@ -308,13 +323,19 @@ class invoiceDao:
                     InvoiceORM.invoice_dt,
                     InvoiceORM.customer_id,
                     InvoiceORM.subject,
-                    invoice_item_joined.c.currency,
+                    InvoiceORM.currency,
                     invoice_item_joined.c.num_invoice_items,
                     (InvoiceORM.shipping + invoice_item_joined.c.total_raw_amount).label('total_raw_amount'),
+                    journal_summary.c.amount_base.label('total_base_amount')
                 )
                 .join(
                     invoice_item_joined,
                     onclause=InvoiceORM.invoice_id  == invoice_item_joined.c.invoice_id, 
+                    isouter=False
+                )
+                .join(
+                    journal_summary,
+                    onclause=InvoiceORM.journal_id  == journal_summary.c.journal_id, 
                     isouter=False
                 )
                 .where(
@@ -337,6 +358,7 @@ class invoiceDao:
                 currency=invoice.currency,
                 num_invoice_items=invoice.num_invoice_items,
                 total_raw_amount=invoice.total_raw_amount,
+                total_base_amount=invoice.total_base_amount,
             ) 
             for invoice in invoices
         ]

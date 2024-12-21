@@ -53,3 +53,10 @@ class UnitType(IntEnum):
     PIECE = 5
     KG = 6
     
+@unique
+class JournalSrc(IntEnum):
+    MANUAL = 1
+    INVOICE = 2
+    PURCHASE = 3
+    PAYMENT = 4
+    EXPENSE = 5

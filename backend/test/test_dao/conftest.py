@@ -6,7 +6,7 @@ import pytest
 from src.app.utils.tools import get_base_cur
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.model.const import SystemAcctNumber, SystemChartOfAcctNumber
-from src.app.model.enums import AcctType, CurType, EntryType
+from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
 from src.app.model.entity import Address, Contact, Customer
 from src.app.model.journal import Entry, Journal
 
@@ -189,7 +189,7 @@ def sample_journal_meal(engine_with_sample_choa, settings) -> Generator[Journal,
                     description=None
                 ),
             ],
-            is_manual=True,
+            jrn_src=JournalSrc.MANUAL,
             note='sample meal journal'
         )
         

@@ -1,6 +1,6 @@
 
 from datetime import date
-from src.app.model.enums import CurType, EntryType
+from src.app.model.enums import CurType, EntryType, JournalSrc
 from src.app.model.exceptions import FKNoDeleteUpdateError, NotExistError, AlreadyExistError, FKNotExistError
 from src.app.dao.journal import journalDao
 from src.app.model.journal import _JournalBrief, Entry, Journal
@@ -49,7 +49,7 @@ class JournalService:
                     description=None
                 ),
             ],
-            is_manual=True,
+            jrn_src=JournalSrc.MANUAL,
             note='sample meal journal'
         )
         journal2 = Journal(
@@ -94,7 +94,7 @@ class JournalService:
                     description='pay HST with credit card'
                 ),
             ],
-            is_manual=True,
+            jrn_src=JournalSrc.MANUAL,
             note='samples rental at foreign country'
         )
         journal3 = Journal(
@@ -117,7 +117,7 @@ class JournalService:
                     description='Record as A/R'
                 ),
             ],
-            is_manual=False, # this is non-manual entry journal
+            jrn_src=JournalSrc.EXPENSE, # this is non-manual entry journal
             note='sample invoice journal'
         )
         cls.add_journal(journal1)
@@ -169,7 +169,7 @@ class JournalService:
         limit: int = 50,
         offset: int = 0,
         jrn_ids: list[str] | None = None,
-        is_manual: bool | None = None, 
+        jrn_src: JournalSrc | None = None, 
         min_dt: date = date(1970, 1, 1), 
         max_dt: date = date(2099, 12, 31), 
         note_keyword: str = '', 
@@ -181,7 +181,7 @@ class JournalService:
             limit = limit,
             offset = offset,
             jrn_ids = jrn_ids,
-            is_manual = is_manual,
+            jrn_src = jrn_src,
             min_dt = min_dt,
             max_dt = max_dt,
             note_keyword = note_keyword,

@@ -43,6 +43,7 @@ def sample_invoice(engine_with_sample_choa) -> Generator[Invoice, None, None]:
             due_dt=date(2024, 1, 5),
             customer_id='cust-sample',
             subject='General Consulting - Jan 2024',
+            currency=CurType.USD,
             invoice_items=[
                 InvoiceItem(
                     item=item_consult,

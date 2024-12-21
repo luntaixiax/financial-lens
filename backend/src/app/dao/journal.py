@@ -2,7 +2,7 @@ from datetime import date
 import logging
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from src.app.model.enums import EntryType
+from src.app.model.enums import EntryType, JournalSrc
 from src.app.dao.orm import EntryORM, JournalORM, infer_integrity_error
 from src.app.model.journal import _JournalBrief, Entry, Journal
 from src.app.dao.accounts import acctDao, chartOfAcctDao
@@ -45,7 +45,7 @@ class journalDao:
         return JournalORM(
             journal_id=journal.journal_id,
             jrn_date=journal.jrn_date,
-            is_manual=journal.is_manual,
+            jrn_src=journal.jrn_src,
             note=journal.note
         )
         
@@ -57,7 +57,7 @@ class journalDao:
             entries=[
                 cls.toEntry(entry_orm) for entry_orm in entry_orms
             ],
-            is_manual=journal_orm.is_manual,
+            jrn_src=journal_orm.jrn_src,
             note=journal_orm.note,
         )
         
@@ -157,7 +157,7 @@ class journalDao:
         limit: int = 50,
         offset: int = 0,
         jrn_ids: list[str] | None = None,
-        is_manual: bool | None = None, 
+        jrn_src: JournalSrc | None = None, 
         min_dt: date = date(1970, 1, 1), 
         max_dt: date = date(2099, 12, 31), 
         note_keyword: str = '', 
@@ -172,8 +172,8 @@ class journalDao:
             ]
             if jrn_ids is not None:
                 jrn_filters.append(JournalORM.journal_id.in_(jrn_ids))
-            if is_manual is not None:
-                jrn_filters.append(JournalORM.is_manual is is_manual)
+            if jrn_src is not None:
+                jrn_filters.append(JournalORM.jrn_src == jrn_src)
             
             
             entry_filters = [
@@ -203,7 +203,7 @@ class journalDao:
                 select(
                     JournalORM.journal_id, 
                     JournalORM.jrn_date, 
-                    JournalORM.is_manual, 
+                    JournalORM.jrn_src, 
                     entry_agg.c.num_entries,
                     entry_agg.c.total_base_amount,
                     JournalORM.note
@@ -225,7 +225,7 @@ class journalDao:
             _JournalBrief(
                 journal_id=jrn.journal_id,
                 jrn_date=jrn.jrn_date,
-                is_manual=jrn.is_manual,
+                jrn_src=jrn.jrn_src,
                 num_entries=jrn.num_entries,
                 total_base_amount=jrn.total_base_amount,
                 note=jrn.note

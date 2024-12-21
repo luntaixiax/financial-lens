@@ -57,7 +57,7 @@ def test_journal(mock_engine, engine_with_sample_choa, sample_journal_meal):
     
     # test list
     jb = journalDao.list(
-        is_manual = None,
+        jrn_src = None,
         num_entries=4
     )
     assert len(jb) == 1

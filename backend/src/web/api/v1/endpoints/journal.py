@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Any
 from fastapi import APIRouter
+from src.app.model.enums import JournalSrc
 from src.app.model.journal import _JournalBrief, Journal
 from src.app.service.journal import JournalService
 
@@ -31,7 +32,7 @@ def list_journal(
     limit: int = 50,
     offset: int = 0,
     jrn_ids: list[str] | None = None,
-    is_manual: bool | None = None, 
+    jrn_src: JournalSrc | None = None, 
     min_dt: date = date(1970, 1, 1), 
     max_dt: date = date(2099, 12, 31), 
     note_keyword: str = '', 
@@ -43,7 +44,7 @@ def list_journal(
         limit = limit,
         offset = offset,
         jrn_ids = jrn_ids,
-        is_manual = is_manual,
+        jrn_src = jrn_src,
         min_dt = min_dt,
         max_dt = max_dt,
         note_keyword = note_keyword,
