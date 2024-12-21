@@ -44,7 +44,7 @@ class FxORM(SQLModel, table=True):
         sa_column=Column(Date(), primary_key = True, nullable = False)
     )
     rate: float = Field(
-        sa_column=Column(Float(), nullable = False)
+        sa_column=Column(DECIMAL(15, 5, asdecimal=False), nullable = False)
     )
     
     
@@ -311,8 +311,8 @@ class EntryORM(SQLModel, table=True):
     cur_incexp: CurType | None = Field(
         sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
     )
-    amount: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
-    amount_base: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
+    amount: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    amount_base: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
     
@@ -331,7 +331,7 @@ class ItemORM(SQLModel, table=True):
     unit: UnitType = Field(
         sa_column=Column(ChoiceType(UnitType, impl = Integer()), nullable = False)
     )
-    unit_price: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
+    unit_price: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     currency: CurType | None = Field(
         sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
     )
@@ -375,7 +375,7 @@ class InvoiceORM(SQLModel, table=True):
     subject: str = Field(
         sa_column=Column(String(length = 50), primary_key = False, nullable = False)
     )
-    shipping: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
+    shipping: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     journal_id: str = Field(
         sa_column=Column(
             String(length = 20),
@@ -421,7 +421,7 @@ class InvoiceItemORM(SQLModel, table=True):
             nullable = False
         )
     )
-    quantity: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
+    quantity: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     acct_id: str = Field(
         sa_column=Column(
             String(length = 15), 
@@ -434,7 +434,7 @@ class InvoiceItemORM(SQLModel, table=True):
             nullable = False
         )
     )
-    tax_rate: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
-    discount_rate: float = Field(sa_column=Column(Float(), nullable = False, server_default = "0.0"))
+    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    discount_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
