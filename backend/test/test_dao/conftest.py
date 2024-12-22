@@ -149,7 +149,7 @@ def sample_journal_meal(engine_with_sample_choa, settings) -> Generator[Journal,
         
     with mock.patch("src.app.dao.connection.get_engine")  as mock_engine, \
         mock.patch("src.app.utils.tools.get_settings") as mock_settings:
-        mock_engine.return_value = engine_with_basic_choa
+        mock_engine.return_value = engine_with_sample_choa
         mock_settings.return_value = settings
         
         

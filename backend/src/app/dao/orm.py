@@ -459,9 +459,21 @@ class ExpenseORM(SQLModel, table=True):
             nullable = False
         )
     )
-    merchant: dict | None = Field(sa_column=Column(JSON(), nullable = True))
+    merchant: dict = Field(sa_column=Column(JSON(), nullable = True))
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     receipts: list[str] | None = Field(sa_column=Column(JSON(), nullable = True))
+    journal_id: str = Field(
+        sa_column=Column(
+            String(length = 20),
+            ForeignKey(
+                'journals.journal_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT' # TODO: review this
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    ) # TODO: in dao, need to add journal (auto mode) first, then add expense
     
     
 class ExpenseItemORM(SQLModel, table=True):

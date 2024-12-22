@@ -43,6 +43,12 @@ class ExpenseItem(EnhancedBaseModel):
         # in item currency
         return self.amount_pre_tax * (1 + self.tax_rate)
 
+class _ExpenseBrief(EnhancedBaseModel):
+    expense_id: str
+    expense_dt: date
+    currency: CurType
+    total_raw_amount: float = Field(description='Total amount in expense currency (after tax)')
+    total_base_amount: float = Field(description='Total amount in base currency (after tax)')
 
 class Expense(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)

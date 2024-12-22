@@ -205,6 +205,9 @@ class AcctService:
         noncur_chart = AcctService.get_chart(
             chart_id=SystemChartOfAcctNumber.NONCUR_ASSET
         )
+        curlib_chart = AcctService.get_chart(
+            chart_id=SystemChartOfAcctNumber.CUR_LIB
+        )
         ncurlib_chart = AcctService.get_chart(
             chart_id=SystemChartOfAcctNumber.NONCUR_LIB
         )
@@ -259,6 +262,13 @@ class AcctService:
             acct_name="Credit Acct",
             acct_type=AcctType.LIB,
             currency=get_base_cur(),
+            chart=curlib_chart
+        )
+        shareholder_loan = Account(
+            acct_id='acct-shareloan',
+            acct_name="Shareholder Loan",
+            acct_type=AcctType.LIB,
+            currency=get_base_cur(),
             chart=ncurlib_chart
         )
         
@@ -271,6 +281,7 @@ class AcctService:
         AcctService.add_account(bank_foreign)
         AcctService.add_account(fixed_asset)
         AcctService.add_account(credit)
+        AcctService.add_account(shareholder_loan)
         
     @classmethod
     def clear_sample(cls):
