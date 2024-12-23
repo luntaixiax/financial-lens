@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any, Tuple
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from src.app.utils.tools import get_company
 from src.app.model.entity import Address, Contact, Customer

@@ -46,9 +46,11 @@ class ExpenseItem(EnhancedBaseModel):
 class _ExpenseBrief(EnhancedBaseModel):
     expense_id: str
     expense_dt: date
+    merchant: str | None
     currency: CurType
     total_raw_amount: float = Field(description='Total amount in expense currency (after tax)')
     total_base_amount: float = Field(description='Total amount in base currency (after tax)')
+    has_receipt: bool
 
 class Expense(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
@@ -69,6 +71,9 @@ class Expense(EnhancedBaseModel):
     expense_items: list[ExpenseItem] = Field(min_length=1)
     payment_acct_id: str = Field(
         description='Use which account to make payment (Credit to)'
+    )
+    payment_amount: float = Field(
+        description='Payment amount, in payment account currency. If payment account equals expense account, this amount should equal to self.total'
     )
     merchant: Merchant
     note: str | None = Field(None)

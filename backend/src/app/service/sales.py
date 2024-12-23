@@ -283,7 +283,7 @@ class SalesService:
         
         # see if invoice already exist
         try:
-            _jrn_id, _invoice = invoiceDao.get(invoice.invoice_id)
+            _invoice, _jrn_id  = invoiceDao.get(invoice.invoice_id)
         except NotExistError as e:
             # if not exist, can safely create it
             # validate it first

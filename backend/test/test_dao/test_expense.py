@@ -29,6 +29,7 @@ def sample_expense_meal() -> Expense:
             )
         ],
         payment_acct_id='acct-credit',
+        payment_amount=123.74,
         merchant=Merchant(
             merchant='Good Taste Sushi',
             platform='Uber Eats',
@@ -57,6 +58,7 @@ def sample_expense_rent() -> Expense:
             )
         ],
         payment_acct_id='acct-shareloan',
+        payment_amount=110.74,
         merchant=Merchant(
             merchant='Shareholder',
             platform=None,

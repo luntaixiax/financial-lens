@@ -459,6 +459,7 @@ class ExpenseORM(SQLModel, table=True):
             nullable = False
         )
     )
+    payment_amount: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     merchant: dict = Field(sa_column=Column(JSON(), nullable = True))
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     receipts: list[str] | None = Field(sa_column=Column(JSON(), nullable = True))

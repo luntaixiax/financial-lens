@@ -1,10 +1,12 @@
 from datetime import date
 import logging
 from typing import Tuple
+from sqlalchemy import JSON
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from src.app.model.expense import ExpenseItem, Expense, Merchant
-from src.app.dao.orm import ExpenseItemORM, ExpenseORM, infer_integrity_error
+from src.app.model.enums import CurType, EntryType
+from src.app.model.expense import _ExpenseBrief, ExpenseItem, Expense, Merchant
+from src.app.dao.orm import EntryORM, ExpenseItemORM, ExpenseORM, infer_integrity_error
 from src.app.dao.connection import get_engine
 from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNoDeleteUpdateError
 
@@ -38,6 +40,7 @@ class expenseDao:
             expense_dt=expense.expense_dt,
             currency=expense.currency,
             payment_acct_id=expense.payment_acct_id,
+            payment_amount=expense.payment_amount,
             merchant=expense.merchant.model_dump(),
             receipts=expense.receipts,
             note=expense.note,
@@ -55,6 +58,7 @@ class expenseDao:
                 for expense_item_orm in expense_item_orms
             ],
             payment_acct_id=expense_orm.payment_acct_id,
+            payment_amount=expense_orm.payment_amount,
             merchant=Merchant.model_validate(expense_orm.merchant),
             receipts=expense_orm.receipts,
             note=expense_orm.note,
@@ -137,5 +141,110 @@ class expenseDao:
             )
             jrn_id = expense_orm.journal_id
         return expense, jrn_id
-        
     
+    @classmethod
+    def list(
+        cls,
+        limit: int = 50,
+        offset: int = 0,
+        expense_ids: list[str] | None = None,
+        min_dt: date = date(1970, 1, 1), 
+        max_dt: date = date(2099, 12, 31), 
+        currency: CurType | None = None,
+        payment_acct_id: str | None = None,
+        min_amount: float = -999999999,
+        max_amount: float = 999999999,
+        has_receipt: bool | None = None
+    ) -> list[_ExpenseBrief]:
+        with Session(get_engine()) as s:
+            
+            expense_summary = (
+                select(
+                    ExpenseItemORM.expense_id,
+                    f.sum(
+                        ExpenseItemORM.amount_pre_tax * (1 + ExpenseItemORM.tax_rate)
+                    ).label('total_raw_amount')
+                )
+                .group_by(
+                    ExpenseItemORM.expense_id
+                )
+                .subquery()
+            )
+            journal_summary = (
+                select(
+                    EntryORM.journal_id,
+                    f.sum(EntryORM.amount_base).label('amount_base')
+                )
+                .where(
+                    EntryORM.entry_type == EntryType.DEBIT
+                )
+                .group_by(
+                    EntryORM.journal_id
+                )
+                .subquery()
+            )
+            
+            exp_filters = [
+                ExpenseORM.expense_dt.between(min_dt, max_dt), 
+                journal_summary.c.amount_base
+                .between(min_amount, max_amount)
+            ]
+            # add currency filter
+            if currency is not None:
+                exp_filters.append(ExpenseORM.currency == currency)
+            if expense_ids is not None:
+                exp_filters.append(ExpenseORM.expense_id.in_(expense_ids))
+            if payment_acct_id is not None:
+                exp_filters.append(ExpenseORM.payment_acct_id == payment_acct_id)
+            if has_receipt is not None:
+                exp_filters.append(
+                    case(
+                        (ExpenseORM.receipts.is_(JSON.NULL), False),
+                        else_=True
+                    ) == has_receipt
+                )
+            expense_joined = (
+                select(
+                    ExpenseORM.expense_id,
+                    ExpenseORM.expense_dt,
+                    ExpenseORM.merchant, # TODO, extract merchant
+                    ExpenseORM.currency,
+                    expense_summary.c.total_raw_amount,
+                    journal_summary.c.amount_base.label('total_base_amount'),
+                    case(
+                        (ExpenseORM.receipts.is_(None), False),
+                        else_=True
+                    ).label('has_receipt')
+                )
+                .join(
+                    expense_summary,
+                    onclause=ExpenseORM.expense_id  == expense_summary.c.expense_id, 
+                    isouter=False
+                )
+                .join(
+                    journal_summary,
+                    onclause=ExpenseORM.journal_id  == journal_summary.c.journal_id, 
+                    isouter=False
+                )
+                .where(
+                    *exp_filters
+                )
+                .order_by(ExpenseORM.expense_dt.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+            
+            expenses = s.exec(expense_joined).all()
+            
+        return [
+            _ExpenseBrief(
+                expense_id=expense.expense_id,
+                expense_dt=expense.expense_dt,
+                merchant=Merchant.model_validate(expense.merchant).merchant,
+                currency=expense.currency,
+                total_raw_amount=expense.total_raw_amount,
+                total_base_amount=expense.total_base_amount,
+                has_receipt=expense.has_receipt
+            ) 
+            for expense in expenses
+        ]

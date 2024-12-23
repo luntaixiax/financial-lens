@@ -16,6 +16,7 @@ def init():
     from src.app.service.journal import JournalService
     from src.app.service.entity import EntityService
     from src.app.service.sales import SalesService
+    from src.app.service.expense import ExpenseService
     
     SQLModel.metadata.create_all(get_engine())
     # create basic account structure *standard
@@ -28,6 +29,8 @@ def init():
     EntityService.create_sample()
     # create sample item and invoice
     SalesService.create_sample()
+    # create sample expense
+    ExpenseService.create_sample()
     
 
 @router.delete("/clear_sample")
@@ -37,8 +40,10 @@ def init():
     from src.app.service.journal import JournalService
     from src.app.service.entity import EntityService
     from src.app.service.sales import SalesService
+    from src.app.service.expense import ExpenseService
     
     SalesService.clear_sample()
     JournalService.clear_sample()
     EntityService.clear_sample()
     AcctService.clear_sample()
+    ExpenseService.clear_sample()

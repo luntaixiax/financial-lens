@@ -2,6 +2,7 @@
 
 from datetime import date
 from functools import partial
+import math
 from typing import Tuple
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from src.app.model.accounts import Account
@@ -132,7 +133,7 @@ class Journal(EnhancedBaseModel):
     def validate_balance(self):
         debits = self.total_debits
         credits = self.total_credits
-        assert abs(debits - credits) / abs(debits) <= 1e-6, \
+        assert math.isclose(debits, credits, rel_tol=1e-9), \
             f"Total debits: {debits} not equal to total credits: {credits}"
         return self
     

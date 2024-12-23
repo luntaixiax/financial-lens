@@ -15,6 +15,7 @@ class SystemAcctNumber(str, Enum):
     OTH_COMP_INC = "acct-oci"
     SHIP_CHARGE = "acct-spc"
     DISCOUNT = "acct-disc"
+    FX_GAIN = "acct-fxgain"
     
     @classmethod
     def list(cls) -> list[str]:

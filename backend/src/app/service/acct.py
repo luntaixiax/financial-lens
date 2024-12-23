@@ -179,6 +179,12 @@ class AcctService:
             acct_type=AcctType.INC,
             chart=total_income.chart
         )
+        fx_gain = Account(
+            acct_id=SystemAcctNumber.FX_GAIN,
+            acct_name="FX Gain",
+            acct_type=AcctType.INC,
+            chart=total_income.chart
+        )
         
         cls.add_account(input_tax)
         cls.add_account(output_tax)
@@ -190,6 +196,7 @@ class AcctService:
         cls.add_account(oci)
         cls.add_account(sc)
         cls.add_account(disc)
+        cls.add_account(fx_gain)
         
     @classmethod
     def create_sample(cls):
