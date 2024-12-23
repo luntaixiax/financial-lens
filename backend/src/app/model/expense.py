@@ -73,7 +73,7 @@ class Expense(EnhancedBaseModel):
         description='Use which account to make payment (Credit to)'
     )
     payment_amount: float = Field(
-        description='Payment amount, in payment account currency. If payment account equals expense account, this amount should equal to self.total'
+        description='Payment amount, in payment account currency. If payment currency equals expense currency, this amount should equal to self.total'
     )
     merchant: Merchant
     note: str | None = Field(None)

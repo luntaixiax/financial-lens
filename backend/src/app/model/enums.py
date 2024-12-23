@@ -60,3 +60,8 @@ class JournalSrc(IntEnum):
     PURCHASE = 3
     PAYMENT = 4
     EXPENSE = 5
+    
+@unique
+class PaymentDirection(IntEnum):
+    PAY = 1
+    RECEIVE = 2

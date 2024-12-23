@@ -120,7 +120,7 @@ class Invoice(EnhancedBaseModel):
     )
     invoice_num: str
     invoice_dt: date
-    due_dt: date | None = None
+    due_dt: date | None = Field(None)
     customer_id: str
     subject: str
     currency: CurType
