@@ -2,8 +2,9 @@
 import logging
 from sqlmodel import Session, select
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from src.app.dao.orm import ContactORM, CustomerORM, SupplierORM, infer_integrity_error
-from src.app.model.entity import _ContactBrief, _CustomerBrief, Address, Contact, Customer, Supplier
+from src.app.model.enums import EntityType
+from src.app.dao.orm import ContactORM, EntityORM, EntityORM, infer_integrity_error
+from src.app.model.entity import _ContactBrief, _CustomerBrief, _SupplierBrief, Address, Contact, Customer, Supplier
 from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNoDeleteUpdateError
 from src.app.dao.connection import get_engine
 
@@ -112,10 +113,11 @@ class contactDao:
 
 class customerDao:
     @classmethod
-    def fromCustomer(cls, customer: Customer) -> CustomerORM:
-        return CustomerORM(
-            cust_id=customer.cust_id,
-            customer_name=customer.customer_name,
+    def fromCustomer(cls, customer: Customer) -> EntityORM:
+        return EntityORM(
+            entity_id=customer.cust_id,
+            entity_type=EntityType.CUSTOMER,
+            entity_name=customer.customer_name,
             is_business=customer.is_business,
             bill_contact_id=customer.bill_contact.contact_id,
             ship_same_as_bill=customer.ship_same_as_bill,
@@ -123,10 +125,10 @@ class customerDao:
         )
         
     @classmethod
-    def toCustomer(cls, customer_orm: CustomerORM, bill_contact: Contact, ship_contact: Contact | None) -> Customer:
+    def toCustomer(cls, customer_orm: EntityORM, bill_contact: Contact, ship_contact: Contact | None) -> Customer:
         return Customer(
-            cust_id=customer_orm.cust_id,
-            customer_name=customer_orm.customer_name,
+            cust_id=customer_orm.entity_id,
+            customer_name=customer_orm.entity_name,
             is_business=customer_orm.is_business,
             bill_contact=bill_contact,
             ship_same_as_bill=customer_orm.ship_same_as_bill,
@@ -149,7 +151,10 @@ class customerDao:
     @classmethod
     def remove(cls, cust_id: str):
         with Session(get_engine()) as s:
-            sql = select(CustomerORM).where(CustomerORM.cust_id == cust_id)
+            sql = select(EntityORM).where(
+                EntityORM.entity_id == cust_id,
+                EntityORM.entity_type == EntityType.CUSTOMER
+            )
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
@@ -167,8 +172,9 @@ class customerDao:
     def update(cls, customer: Customer):
         customer_orm = cls.fromCustomer(customer)
         with Session(get_engine()) as s:
-            sql = select(CustomerORM).where(
-                CustomerORM.cust_id == customer_orm.cust_id
+            sql = select(EntityORM).where(
+                EntityORM.entity_id == customer_orm.entity_id,
+                EntityORM.entity_type == EntityType.CUSTOMER
             )
             try:
                 p = s.exec(sql).one()
@@ -177,7 +183,7 @@ class customerDao:
             
             # update
             if not p == customer_orm:
-                p.customer_name = customer_orm.customer_name
+                p.entity_name = customer_orm.entity_name
                 p.is_business = customer_orm.is_business
                 p.bill_contact_id = customer_orm.bill_contact_id
                 p.ship_same_as_bill = customer_orm.ship_same_as_bill
@@ -192,8 +198,9 @@ class customerDao:
     @classmethod
     def get(cls, cust_id: str, bill_contact: Contact, ship_contact: Contact | None) -> Customer:
         with Session(get_engine()) as s:
-            sql = select(CustomerORM).where(
-                CustomerORM.cust_id == cust_id
+            sql = select(EntityORM).where(
+                EntityORM.entity_id == cust_id,
+                EntityORM.entity_type == EntityType.CUSTOMER
             )
             try:
                 p = s.exec(sql).one() # get the customer
@@ -206,8 +213,9 @@ class customerDao:
     def get_bill_ship_contact_ids(cls, cust_id: str) -> tuple[str, str | None]:
         # return bill_contact_id, ship_contact_id
         with Session(get_engine()) as s:
-            sql = select(CustomerORM).where(
-                CustomerORM.cust_id == cust_id
+            sql = select(EntityORM).where(
+                EntityORM.entity_id == cust_id,
+                EntityORM.entity_type == EntityType.CUSTOMER
             )
             try:
                 p = s.exec(sql).one() # get the customer
@@ -219,13 +227,16 @@ class customerDao:
     @classmethod
     def list_customer(cls) -> list[_CustomerBrief]:
         with Session(get_engine()) as s:
-            sql = select(CustomerORM.cust_id, CustomerORM.customer_name, CustomerORM.is_business)
+            sql = (
+                select(EntityORM.entity_id, EntityORM.entity_name, EntityORM.is_business)
+                .where(EntityORM.entity_type == EntityType.CUSTOMER)
+            )
             customers = s.exec(sql).all()
 
         return [
             _CustomerBrief(
-                cust_id=c.cust_id, 
-                customer_name=c.customer_name,
+                cust_id=c.entity_id, 
+                customer_name=c.entity_name,
                 is_business=c.is_business
             ) 
             for c in customers
@@ -234,10 +245,11 @@ class customerDao:
     
 class supplierDao:
     @classmethod
-    def fromSupplier(cls, supplier: Supplier) -> SupplierORM:
-        return SupplierORM(
-            supplier_id=supplier.supplier_id,
-            supplier_name=supplier.supplier_name,
+    def fromSupplier(cls, supplier: Supplier) -> EntityORM:
+        return EntityORM(
+            entity_id=supplier.supplier_id,
+            entity_type=EntityType.SUPPLIER,
+            entity_name=supplier.supplier_name,
             is_business=supplier.is_business,
             bill_contact_id=supplier.bill_contact.contact_id,
             ship_same_as_bill=supplier.ship_same_as_bill,
@@ -245,10 +257,10 @@ class supplierDao:
         )
         
     @classmethod
-    def toSupplier(cls, supplier_orm: SupplierORM, bill_contact: Contact, ship_contact: Contact | None) -> Supplier:
+    def toSupplier(cls, supplier_orm: EntityORM, bill_contact: Contact, ship_contact: Contact | None) -> Supplier:
         return Supplier(
-            supplier_id=supplier_orm.supplier_id,
-            supplier_name=supplier_orm.supplier_name,
+            supplier_id=supplier_orm.entity_id,
+            supplier_name=supplier_orm.entity_name,
             is_business=supplier_orm.is_business,
             bill_contact=bill_contact,
             ship_same_as_bill=supplier_orm.ship_same_as_bill,
@@ -271,7 +283,10 @@ class supplierDao:
     @classmethod
     def remove(cls, supplier_id: str):
         with Session(get_engine()) as s:
-            sql = select(SupplierORM).where(SupplierORM.supplier_id == supplier_id)
+            sql = select(EntityORM).where(
+                EntityORM.entity_id == supplier_id,
+                EntityORM.entity_type == EntityType.SUPPLIER
+            )
             try:
                 p = s.exec(sql).one()
             except NoResultFound as e:
@@ -286,8 +301,9 @@ class supplierDao:
     def update(cls, supplier: Supplier):
         supplier_orm = cls.fromSupplier(supplier)
         with Session(get_engine()) as s:
-            sql = select(SupplierORM).where(
-                SupplierORM.supplier_id == supplier_orm.supplier_id
+            sql = select(EntityORM).where(
+                EntityORM.entity_id == supplier_orm.entity_id,
+                EntityORM.entity_type == EntityType.SUPPLIER
             )
             try:
                 p = s.exec(sql).one()
@@ -296,7 +312,7 @@ class supplierDao:
             
             if not p == supplier_orm:
                 # update
-                p.supplier_name = supplier_orm.supplier_name
+                p.entity_name = supplier_orm.entity_name
                 p.is_business = supplier_orm.is_business
                 p.bill_contact_id = supplier_orm.bill_contact_id
                 p.ship_same_as_bill = supplier_orm.ship_same_as_bill
@@ -311,8 +327,9 @@ class supplierDao:
     @classmethod
     def get(cls, supplier_id: str, bill_contact: Contact, ship_contact: Contact | None) -> Supplier:
         with Session(get_engine()) as s:
-            sql = select(SupplierORM).where(
-                SupplierORM.supplier_id == supplier_id
+            sql = select(EntityORM).where(
+                EntityORM.entity_id == supplier_id,
+                EntityORM.entity_type == EntityType.SUPPLIER
             )
             try:
                 p = s.exec(sql).one() # get the supplier
@@ -320,3 +337,36 @@ class supplierDao:
                 raise NotExistError(details=str(e))
             
         return cls.toSupplier(p, bill_contact, ship_contact)
+    
+    @classmethod
+    def get_bill_ship_contact_ids(cls, supplier_id: str) -> tuple[str, str | None]:
+        # return bill_contact_id, ship_contact_id
+        with Session(get_engine()) as s:
+            sql = select(EntityORM).where(
+                EntityORM.entity_id == supplier_id,
+                EntityORM.entity_type == EntityType.SUPPLIER
+            )
+            try:
+                p = s.exec(sql).one() # get the supplier
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
+        
+        return p.bill_contact_id, p.ship_contact_id
+    
+    @classmethod
+    def list_supplier(cls) -> list[_SupplierBrief]:
+        with Session(get_engine()) as s:
+            sql = (
+                select(EntityORM.entity_id, EntityORM.entity_name, EntityORM.is_business)
+                .where(EntityORM.entity_type == EntityType.SUPPLIER)
+            )
+            suppliers = s.exec(sql).all()
+
+        return [
+            _SupplierBrief(
+                supplier_id=s.entity_id, 
+                supplier_name=s.entity_name,
+                is_business=s.is_business
+            ) 
+            for s in suppliers
+        ]

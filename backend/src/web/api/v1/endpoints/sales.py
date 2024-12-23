@@ -34,26 +34,26 @@ def get_item(item_id: str) -> Item:
 def list_item() -> list[Item]:
     return SalesService.list_item()
 
-@router.post("/invoice/validate")
-def validate_invoice(invoice: Invoice):
+@router.post("/sales/invoice/validate")
+def validate_sales(invoice: Invoice):
     SalesService._validate_invoice(invoice)
 
 @router.get(
-    "/invoice/trial_journal",
-    description='use to generate journal during new invoice creation'
+    "/sales/trial_journal",
+    description='use to generate journal during new sales invoice creation'
 )
-def create_journal_from_new_invoice(invoice: Invoice) -> Journal:
+def create_journal_from_new_sales_invoice(invoice: Invoice) -> Journal:
     return SalesService.create_journal_from_invoice(invoice)
 
 @router.get(
-    "/invoice/get_invoice_journal/{invoice_id}",
-    description='get existing invoice and journal from database'
+    "/sales/get_invoice_journal/{invoice_id}",
+    description='get existing sales invoice and journal from database'
 )
-def get_invoice_journal(invoice_id: str) -> Tuple[Invoice, Journal]:
+def get_sales_invoice_journal(invoice_id: str) -> Tuple[Invoice, Journal]:
     return SalesService.get_invoice_journal(invoice_id=invoice_id)
 
-@router.post("/invoice/list")
-def list_invoice(
+@router.post("/sales/invoice/list")
+def list_sales_invoice(
     limit: int = 50,
     offset: int = 0,
     invoice_ids: list[str] | None = None,
@@ -82,24 +82,24 @@ def list_invoice(
         num_invoice_items=num_invoice_items
     )
 
-@router.post("/invoice/add")
-def add_invoice(invoice: Invoice):
+@router.post("/sales/invoice/add")
+def add_sales_invoice(invoice: Invoice):
     SalesService.add_invoice(invoice=invoice)
     
-@router.put("/invoice/update")
-def update_invoice(invoice: Invoice):
+@router.put("/sales/invoice/update")
+def update_sales_invoice(invoice: Invoice):
     SalesService.update_invoice(invoice=invoice)
     
-@router.delete("/invoice/delete/{invoice_id}")
-def delete_invoice(invoice_id: str):
+@router.delete("/invoice/sales/delete/{invoice_id}")
+def delete_sales_invoice(invoice_id: str):
     SalesService.delete_invoice(invoice_id=invoice_id)
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_PATH / "templates"))
 
 
-@router.get("/invoice/preview", response_class=HTMLResponse)
-def preview_invoice(request: Request, invoice_id: str):
+@router.get("/sales/invoice/preview", response_class=HTMLResponse)
+def preview_sales_invoice(request: Request, invoice_id: str):
     invoice, journal = SalesService.get_invoice_journal(invoice_id)
     bill_to = EntityService.get_customer(invoice.customer_id)
     

@@ -2,7 +2,7 @@ from datetime import date
 from functools import partial
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
-from src.app.model.enums import CurType, ItemType, UnitType
+from src.app.model.enums import CurType, EntityType, ItemType, UnitType
 from src.app.utils.tools import get_default_tax_rate, id_generator
 from src.app.utils.base import EnhancedBaseModel
 
@@ -100,7 +100,7 @@ class _InvoiceBrief(EnhancedBaseModel):
     invoice_id: str = Field(description='Invoice ID')
     invoice_num: str = Field(description='Invoice number')
     invoice_dt: date = Field(description='Invoice Date')
-    customer_id: str = Field(description='Customer id to sent the invoice')
+    entity_id: str = Field(description='Customer/Supplier id to sent the invoice')
     subject: str = Field(description='Subject line of the invoice')
     currency: CurType = Field(description='Currency used for the invoice')
     num_invoice_items: int = Field(description='Total # of invoice items')
@@ -118,10 +118,13 @@ class Invoice(EnhancedBaseModel):
         ),
         frozen=True,
     )
+    entity_type: EntityType
+    entity_id: str = Field(
+        description='Customer/Supplier Id'
+    )
     invoice_num: str
     invoice_dt: date
     due_dt: date | None = Field(None)
-    customer_id: str
     subject: str
     currency: CurType
     invoice_items: list[InvoiceItem] = Field(min_length=1)

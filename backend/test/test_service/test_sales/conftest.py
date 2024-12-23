@@ -4,7 +4,7 @@ import pytest
 from unittest import mock
 from src.app.model.const import SystemChartOfAcctNumber
 from src.app.model.invoice import Invoice, InvoiceItem, Item
-from src.app.model.enums import AcctType, CurType, ItemType, UnitType
+from src.app.model.enums import AcctType, CurType, EntityType, ItemType, UnitType
 from src.app.model.accounts import Account
 
 @pytest.fixture
@@ -41,7 +41,8 @@ def sample_invoice(engine_with_sample_choa) -> Generator[Invoice, None, None]:
             invoice_num='INV-001',
             invoice_dt=date(2024, 1, 1),
             due_dt=date(2024, 1, 5),
-            customer_id='cust-sample',
+            entity_id='cust-sample',
+            entity_type=EntityType.CUSTOMER,
             subject='General Consulting - Jan 2024',
             currency=CurType.USD,
             invoice_items=[

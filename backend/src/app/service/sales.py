@@ -2,13 +2,14 @@ from datetime import date
 from typing import Tuple
 from src.app.service.entity import EntityService
 from src.app.dao.invoice import itemDao, invoiceDao
-from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError
+from src.app.model.exceptions import OpNotPermittedError, AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, \
+    NotExistError, NotMatchWithSystemError
 from src.app.model.const import SystemAcctNumber
 from src.app.service.acct import AcctService
 from src.app.service.journal import JournalService
 from src.app.service.fx import FxService
 from src.app.model.accounts import Account
-from src.app.model.enums import AcctType, CurType, EntryType, ItemType, JournalSrc, UnitType
+from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from src.app.model.invoice import _InvoiceBrief, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
 
@@ -43,7 +44,8 @@ class SalesService:
             invoice_num='INV-001',
             invoice_dt=date(2024, 1, 1),
             due_dt=date(2024, 1, 5),
-            customer_id='cust-sample',
+            entity_type=EntityType.CUSTOMER,
+            entity_id='cust-sample',
             subject='General Consulting - Jan 2024',
             currency=CurType.USD,
             invoice_items=[
@@ -174,12 +176,15 @@ class SalesService:
             
     @classmethod
     def _validate_invoice(cls, invoice: Invoice):
+        # validate direction
+        if not invoice.entity_type == EntityType.CUSTOMER:
+            raise OpNotPermittedError('Sales invoice should only be created for customer')
         # validate customer exist
         try:
-            EntityService.get_customer(invoice.customer_id)
+            EntityService.get_customer(invoice.entity_id)
         except NotExistError as e:
             raise FKNotExistError(
-                f"Customer id {invoice.customer_id} does not exist",
+                f"Customer id {invoice.entity_id} does not exist",
                 details=e.details
             )
         
@@ -393,9 +398,10 @@ class SalesService:
         return invoiceDao.list(
             limit=limit,
             offset=offset,
+            entity_type=EntityType.CUSTOMER,
             invoice_ids=invoice_ids,
             invoice_nums=invoice_nums,
-            customer_ids=customer_ids,
+            entity_ids=customer_ids,
             min_dt=min_dt,
             max_dt=max_dt,
             subject_keyword=subject_keyword,

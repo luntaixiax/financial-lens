@@ -57,6 +57,11 @@ class _CustomerBrief(EnhancedBaseModel):
     customer_name: str
     is_business: bool
     
+class _SupplierBrief(EnhancedBaseModel):
+    supplier_id: str
+    supplier_name: str
+    is_business: bool
+    
 class Customer(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     

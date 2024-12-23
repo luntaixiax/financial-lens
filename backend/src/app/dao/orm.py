@@ -6,7 +6,7 @@ from sqlalchemy.exc import NoResultFound, IntegrityError
 from datetime import date, datetime
 
 from src.app.model.exceptions import FKNoDeleteUpdateError, FKNotExistError, AlreadyExistError
-from src.app.model.enums import AcctType, BankAcctType, CurType, EntryType, ItemType, JournalSrc, UnitType
+from src.app.model.enums import AcctType, BankAcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 
 def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  FKNoDeleteUpdateError | FKNotExistError | AlreadyExistError | IntegrityError:
     # TODO: enhance this when use other backend engine
@@ -64,17 +64,21 @@ class ContactORM(SQLModel, table=True):
     address: dict | None = Field(sa_column=Column(JSON(), nullable = True))
 
 
-class CustomerORM(SQLModel, table=True):
-    __tablename__ = "customer"
+class EntityORM(SQLModel, table=True):
+    __tablename__ = "entity"
     
-    cust_id: str = Field(
+    entity_id: str = Field(
         sa_column=Column(
             String(length = 13), 
-            primary_key = True, 
-            nullable = False
+            primary_key = False, 
+            nullable = False,
+            unique=True
         )
     )
-    customer_name: str = Field(sa_column=Column(String(length = 50), nullable = False, unique = True))
+    entity_type: EntityType = Field(
+        sa_column=Column(ChoiceType(EntityType, impl = Integer()), nullable = False, primary_key = True)
+    )
+    entity_name: str = Field(sa_column=Column(String(length = 50), nullable = False, primary_key = True))
     is_business: EntryType = Field(
         sa_column=Column(
             Boolean(create_constraint=True), 
@@ -111,55 +115,6 @@ class CustomerORM(SQLModel, table=True):
             nullable = False
         )
     )
-    
-class SupplierORM(SQLModel, table=True):
-    __tablename__ = "supplier"
-    
-    supplier_id: str = Field(
-        sa_column=Column(
-            String(length = 13), 
-            primary_key = True, 
-            nullable = False
-        )
-    )
-    supplier_name: str = Field(sa_column=Column(String(length = 50), nullable = False, unique = True))
-    is_business: EntryType = Field(
-        sa_column=Column(
-            Boolean(create_constraint=True), 
-            default = True, 
-            nullable = False
-        )
-    )
-    bill_contact_id: str = Field(
-        sa_column=Column(
-            String(length = 13),
-            ForeignKey(
-                'contact.contact_id', 
-                onupdate = 'CASCADE', 
-                ondelete = 'RESTRICT'
-            ),
-            nullable = False
-        )
-    )
-    ship_same_as_bill: EntryType = Field(
-        sa_column=Column(
-            Boolean(create_constraint=True), 
-            default = True, 
-            nullable = False
-        )
-    )
-    ship_contact_id: str | None = Field(
-        sa_column=Column(
-            String(length = 13),
-            ForeignKey(
-                'contact.contact_id', 
-                onupdate = 'CASCADE', 
-                ondelete = 'RESTRICT'
-            ),
-            nullable = False
-        )
-    )
-    
     
 
 class ChartOfAccountORM(SQLModel, table=True):
@@ -356,17 +311,20 @@ class InvoiceORM(SQLModel, table=True):
     )
     invoice_dt: date = Field(sa_column=Column(Date(), nullable = False))
     due_dt: date | None = Field(sa_column=Column(Date(), nullable = True))
-    customer_id: str = Field(
+    entity_id: str = Field(
         sa_column=Column(
             String(length = 13),
             ForeignKey(
-                'customer.cust_id', 
+                'entity.entity_id',
                 onupdate = 'CASCADE', 
                 ondelete = 'RESTRICT'
             ),
             primary_key = False, 
             nullable = False
         )
+    )
+    entity_type: EntityType = Field(
+        sa_column=Column(ChoiceType(EntityType, impl = Integer()), nullable = False, primary_key = False)
     )
     subject: str = Field(
         sa_column=Column(String(length = 50), primary_key = False, nullable = False)

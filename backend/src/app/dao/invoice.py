@@ -3,7 +3,7 @@ import logging
 from typing import Tuple
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from src.app.model.enums import CurType, EntryType
+from src.app.model.enums import CurType, EntityType, EntryType
 from src.app.model.invoice import _InvoiceBrief, InvoiceItem, Item, Invoice
 from src.app.dao.orm import InvoiceItemORM, InvoiceORM, ItemORM, EntryORM, infer_integrity_error
 from src.app.dao.connection import get_engine
@@ -135,7 +135,8 @@ class invoiceDao:
             invoice_num=invoice.invoice_num,
             invoice_dt=invoice.invoice_dt,
             due_dt=invoice.due_dt,
-            customer_id=invoice.customer_id,
+            entity_id=invoice.entity_id,
+            entity_type=invoice.entity_type,
             subject=invoice.subject,
             currency=invoice.currency,
             shipping=invoice.shipping,
@@ -150,7 +151,8 @@ class invoiceDao:
             invoice_num=invoice_orm.invoice_num,
             invoice_dt=invoice_orm.invoice_dt,
             due_dt=invoice_orm.due_dt,
-            customer_id=invoice_orm.customer_id,
+            entity_id=invoice_orm.entity_id,
+            entity_type=invoice_orm.entity_type,
             subject=invoice_orm.subject,
             currency=invoice_orm.currency,
             invoice_items=[
@@ -245,9 +247,10 @@ class invoiceDao:
         cls,
         limit: int = 50,
         offset: int = 0,
+        entity_type: EntityType = EntityType.CUSTOMER,
         invoice_ids: list[str] | None = None,
         invoice_nums: list[str] | None = None,
-        customer_ids: list[str] | None = None,
+        entity_ids: list[str] | None = None,
         min_dt: date = date(1970, 1, 1), 
         max_dt: date = date(2099, 12, 31), 
         subject_keyword: str = '',
@@ -259,14 +262,15 @@ class invoiceDao:
         with Session(get_engine()) as s:
             inv_filters = [
                 InvoiceORM.invoice_dt.between(min_dt, max_dt), 
-                InvoiceORM.subject.contains(subject_keyword)
+                InvoiceORM.subject.contains(subject_keyword),
+                InvoiceORM.entity_type == entity_type
             ]
             if invoice_ids is not None:
                 inv_filters.append(InvoiceORM.invoice_id.in_(invoice_ids))
             if invoice_nums is not None:
                 inv_filters.append(InvoiceORM.invoice_num.in_(invoice_nums))
-            if customer_ids is not None:
-                inv_filters.append(InvoiceORM.customer_id.in_(customer_ids))
+            if entity_ids is not None:
+                inv_filters.append(InvoiceORM.entity_id.in_(entity_ids))
                 
                 
             invoice_item_joined = (
@@ -321,7 +325,7 @@ class invoiceDao:
                     InvoiceORM.invoice_id,
                     InvoiceORM.invoice_num,
                     InvoiceORM.invoice_dt,
-                    InvoiceORM.customer_id,
+                    InvoiceORM.entity_id,
                     InvoiceORM.subject,
                     InvoiceORM.currency,
                     invoice_item_joined.c.num_invoice_items,
@@ -353,7 +357,7 @@ class invoiceDao:
                 invoice_id=invoice.invoice_id,
                 invoice_num=invoice.invoice_num,
                 invoice_dt=invoice.invoice_dt,
-                customer_id=invoice.customer_id,
+                entity_id=invoice.entity_id,
                 subject=invoice.subject,
                 currency=invoice.currency,
                 num_invoice_items=invoice.num_invoice_items,

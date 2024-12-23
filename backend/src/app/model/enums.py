@@ -65,3 +65,8 @@ class JournalSrc(IntEnum):
 class PaymentDirection(IntEnum):
     PAY = 1
     RECEIVE = 2
+    
+@unique
+class EntityType(IntEnum):
+    CUSTOMER = 1
+    SUPPLIER = 2

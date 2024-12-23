@@ -3,7 +3,7 @@ from typing import Generator
 from unittest import mock
 import pytest
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError
-from src.app.model.enums import CurType, ItemType, UnitType
+from src.app.model.enums import CurType, EntityType, ItemType, UnitType
 from src.app.model.invoice import Invoice, InvoiceItem, Item
 
 @pytest.fixture
@@ -47,7 +47,8 @@ def sample_invoice(engine_with_sample_choa, sample_items, customer1) -> Generato
             invoice_num='INV-001',
             invoice_dt=date(2024, 1, 1),
             due_dt=date(2024, 1, 5),
-            customer_id=customer1.cust_id,
+            entity_id=customer1.cust_id,
+            entity_type=EntityType.CUSTOMER,
             subject='General Consulting - Jan 2024',
             currency=CurType.USD,
             invoice_items=[

@@ -3,7 +3,7 @@ import logging
 import pytest
 from unittest import mock
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, NotMatchWithSystemError
-from src.app.model.enums import CurType, ItemType, JournalSrc, UnitType
+from src.app.model.enums import CurType, EntityType, ItemType, JournalSrc, UnitType
 from src.app.model.invoice import Invoice, InvoiceItem, Item
 from src.app.model.const import SystemAcctNumber
 
@@ -151,7 +151,8 @@ def test_validate_invoice(mock_engine, engine_with_sample_choa):
         invoice_num='INV-001',
         invoice_dt=date(2024, 1, 1),
         due_dt=date(2024, 1, 5),
-        customer_id='cust-random',
+        entity_id='cust-random',
+        entity_type=EntityType.CUSTOMER,
         subject='General Consulting - Jan 2024',
         currency=CurType.USD,
         invoice_items=[
@@ -176,7 +177,7 @@ def test_validate_invoice(mock_engine, engine_with_sample_choa):
     
     # create the customer
     EntityService.create_sample()
-    invoice.customer_id = 'cust-sample'
+    invoice.entity_id = 'cust-sample'
     
     with pytest.raises(FKNotExistError):
         # item not exist
