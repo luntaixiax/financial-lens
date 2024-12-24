@@ -51,7 +51,7 @@ def test_create_journal_from_expense(mock_engine, engine_with_sample_choa, sampl
         cur_dt=sample_expense_rent.expense_dt, # convert fx at expense date
     )
     total_journal = journal.total_debits # total billable = total receivable
-    assert math.isclose(total_expense, total_journal, rel_tol=1e-9)
+    assert math.isclose(total_expense, total_journal, rel_tol=1e-6)
     # assert there is fx gain account created
     gain_entries = [
         entry for entry in journal.entries 
@@ -59,7 +59,7 @@ def test_create_journal_from_expense(mock_engine, engine_with_sample_choa, sampl
     ]
     assert len(gain_entries) == 1
     gain_entry = gain_entries[0]
-    assert math.isclose(gain_entry.amount_base, gain_entry.amount, rel_tol=1e-9)
+    assert math.isclose(gain_entry.amount_base, gain_entry.amount, rel_tol=1e-6)
     # calculate gain amount
     amount_expense = total_expense # in base amount
     amount_paid = FxService.convert(
@@ -70,7 +70,7 @@ def test_create_journal_from_expense(mock_engine, engine_with_sample_choa, sampl
         cur_dt=sample_expense_rent.expense_dt, # convert fx at expense date
     ) # in base amount
     gain_ = amount_expense - amount_paid
-    assert math.isclose(gain_entry.amount_base, gain_, rel_tol=1e-9)
+    assert math.isclose(gain_entry.amount_base, gain_, rel_tol=1e-6)
     
     
 

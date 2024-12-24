@@ -20,8 +20,8 @@ class PurchaseService:
     @classmethod
     def create_sample(cls):
         invoice = Invoice(
-            invoice_id='inv-sample-purchase',
-            invoice_num='INV-SALES-001',
+            invoice_id='inv-purch',
+            invoice_num='INV-PURCHASE-001',
             invoice_dt=date(2024, 1, 1),
             due_dt=date(2024, 1, 5),
             entity_type=EntityType.SUPPLIER,
@@ -42,7 +42,7 @@ class PurchaseService:
         
     @classmethod
     def clear_sample(cls):
-        cls.delete_invoice('inv-sample-purchase')
+        cls.delete_invoice('inv-purch')
     
     @classmethod
     def create_journal_from_invoice(cls, invoice: Invoice) -> Journal:
@@ -118,7 +118,7 @@ class PurchaseService:
             cur_dt=invoice.invoice_dt, # convert fx at invoice date
         )
         ap = Entry(
-            entry_type=EntryType.DEBIT, # A/R is debit entry
+            entry_type=EntryType.CREDIT, # A/P is credit entry
             # A/R is output tax -- predefined
             acct=AcctService.get_account(SystemAcctNumber.ACCT_PAYAB),
             amount=ap_base_cur, # amount in base currency

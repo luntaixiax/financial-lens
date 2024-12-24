@@ -20,7 +20,7 @@ class SalesService:
     @classmethod
     def create_sample(cls):
         invoice = Invoice(
-            invoice_id='inv-sample',
+            invoice_id='inv-sales',
             invoice_num='INV-001',
             invoice_dt=date(2024, 1, 1),
             due_dt=date(2024, 1, 5),
@@ -48,7 +48,7 @@ class SalesService:
         
     @classmethod
     def clear_sample(cls):
-        cls.delete_invoice('inv-sample')
+        cls.delete_invoice('inv-sales')
 
     @classmethod
     def create_journal_from_invoice(cls, invoice: Invoice) -> Journal:

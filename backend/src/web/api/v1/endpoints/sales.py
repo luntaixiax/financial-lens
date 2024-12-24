@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from src.app.utils.tools import get_company
-from src.app.model.entity import Address, Contact, Customer
+from src.app.model.entity import Address, Contact, Customer, Supplier
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.model.journal import Journal
 from src.app.model.invoice import InvoiceItem, Item, Invoice, _InvoiceBrief
@@ -81,12 +81,14 @@ TEMPLATES = Jinja2Templates(directory=str(BASE_PATH / "templates"))
 @router.get("/sales/invoice/preview", response_class=HTMLResponse)
 def preview_sales_invoice(request: Request, invoice_id: str):
     invoice, journal = SalesService.get_invoice_journal(invoice_id)
-    bill_to = EntityService.get_customer(invoice.customer_id)
+    # bill to will always be customer
+    bill_to = EntityService.get_customer(invoice.entity_id)
     
     # bill_from company
+    # bill from will always be supplier
     bill_from_company = get_company()
-    bill_from = Customer(
-        customer_name = bill_from_company['name'],
+    bill_from = Supplier(
+        supplier_name = bill_from_company['name'],
         is_business=True,
         bill_contact=Contact.model_validate(bill_from_company['contact']),
         ship_same_as_bill=True

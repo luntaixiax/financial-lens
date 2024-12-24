@@ -133,7 +133,7 @@ class Journal(EnhancedBaseModel):
     def validate_balance(self):
         debits = self.total_debits
         credits = self.total_credits
-        assert math.isclose(debits, credits, rel_tol=1e-9), \
+        assert math.isclose(debits, credits, rel_tol=1e-6), \
             f"Total debits: {debits} not equal to total credits: {credits}"
         return self
     

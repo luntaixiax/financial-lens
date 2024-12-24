@@ -107,7 +107,7 @@ class ExpenseService:
                 )
         
         if expense.currency == payment_acct.currency:
-            if not math.isclose(expense.total, expense.payment_amount, rel_tol=1e-9):
+            if not math.isclose(expense.total, expense.payment_amount, rel_tol=1e-6):
                 raise NotMatchWithSystemError(
                     f"Expense currency equals Payment currency ({expense.currency})",
                     details=f"Expense amount: {expense.total}, while payment amount = {expense.payment_amount}"

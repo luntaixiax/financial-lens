@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from src.app.utils.tools import get_company
-from src.app.model.entity import Address, Contact, Customer
+from src.app.model.entity import Address, Contact, Customer, Supplier
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.model.journal import Journal
 from src.app.model.invoice import InvoiceItem, Item, Invoice, _InvoiceBrief
@@ -38,7 +38,7 @@ def list_purchase_invoice(
     offset: int = 0,
     invoice_ids: list[str] | None = None,
     invoice_nums: list[str] | None = None,
-    customer_ids: list[str] | None = None,
+    supplier_ids: list[str] | None = None,
     min_dt: date = date(1970, 1, 1), 
     max_dt: date = date(2099, 12, 31), 
     subject_keyword: str = '',
@@ -52,7 +52,7 @@ def list_purchase_invoice(
         offset=offset,
         invoice_ids=invoice_ids,
         invoice_nums=invoice_nums,
-        customer_ids=customer_ids,
+        supplier_ids=supplier_ids,
         min_dt=min_dt,
         max_dt=max_dt,
         subject_keyword=subject_keyword,
@@ -81,10 +81,12 @@ TEMPLATES = Jinja2Templates(directory=str(BASE_PATH / "templates"))
 @router.get("/purchase/invoice/preview", response_class=HTMLResponse)
 def preview_purchase_invoice(request: Request, invoice_id: str):
     invoice, journal = PurchaseService.get_invoice_journal(invoice_id)
-    bill_from = EntityService.get_customer(invoice.customer_id)
+    # bill from will always be supplier
+    bill_from = EntityService.get_supplier(invoice.entity_id)
     
     # bill_from company
     bill_to_company = get_company()
+    # bill to will always be customer
     bill_to = Customer(
         customer_name = bill_to_company['name'],
         is_business=True,
