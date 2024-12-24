@@ -279,6 +279,9 @@ class ItemORM(SQLModel, table=True):
     item_type: ItemType = Field(
         sa_column=Column(ChoiceType(ItemType, impl = Integer()), nullable = False)
     )
+    entity_type: EntityType = Field(
+        sa_column=Column(ChoiceType(EntityType, impl = Integer()), nullable = False, primary_key = False)
+    )
     unit: UnitType = Field(
         sa_column=Column(ChoiceType(UnitType, impl = Integer()), nullable = False)
     )

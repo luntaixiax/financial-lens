@@ -11,6 +11,7 @@ def sample_items() -> list[Item]:
     item_consult = Item(
         name='Item - Consulting',
         item_type=ItemType.SERVICE,
+        entity_type=EntityType.CUSTOMER,
         unit=UnitType.HOUR,
         unit_price=100,
         currency=CurType.USD,
@@ -19,6 +20,7 @@ def sample_items() -> list[Item]:
     item_meeting = Item(
         name='Item - Meeting',
         item_type=ItemType.SERVICE,
+        entity_type=EntityType.CUSTOMER,
         unit=UnitType.HOUR,
         unit_price=75,
         currency=CurType.USD,

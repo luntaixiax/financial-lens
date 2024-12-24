@@ -20,7 +20,7 @@ def test_create_journal_from_invoice(mock_engine, engine_with_sample_choa, sampl
     journal = SalesService.create_journal_from_invoice(sample_invoice)
     
     # should not be manual journal
-    assert journal.jrn_src == JournalSrc.INVOICE
+    assert journal.jrn_src == JournalSrc.SALES
     # should be non-redudant, i.e, similar entries have been combined
     assert not journal.is_redundant
     # total amount from invoice should be same to total amount from journal (base currency)
@@ -47,6 +47,7 @@ def test_validate_item(mock_engine, engine_with_sample_choa):
         item_id='item-random',
         name='Item - Consulting',
         item_type=ItemType.SERVICE,
+        entity_type=EntityType.CUSTOMER,
         unit=UnitType.HOUR,
         unit_price=100,
         currency=CurType.USD,
@@ -60,6 +61,7 @@ def test_validate_item(mock_engine, engine_with_sample_choa):
         item_id='item-random',
         name='Item - Consulting',
         item_type=ItemType.SERVICE,
+        entity_type=EntityType.CUSTOMER,
         unit=UnitType.HOUR,
         unit_price=100,
         currency=CurType.USD,
@@ -74,49 +76,51 @@ def test_item(mock_engine, engine_with_sample_choa):
     mock_engine.return_value = engine_with_sample_choa
     
     from src.app.service.sales import SalesService
+    from src.app.service.item import ItemService
     
     item_consult = Item(
         item_id='item-consul',
         name='Item - Consulting',
         item_type=ItemType.SERVICE,
+        entity_type=EntityType.CUSTOMER,
         unit=UnitType.HOUR,
         unit_price=100,
         currency=CurType.USD,
         default_acct_id='acct-consul'
     )
     # test add item
-    SalesService.add_item(item_consult)
+    ItemService.add_item(item_consult)
     with pytest.raises(AlreadyExistError):
         # should get error if trying to add one more time
-        SalesService.add_item(item_consult)
+        ItemService.add_item(item_consult)
     
     # test get item
-    _item = SalesService.get_item(item_consult.item_id)
+    _item = ItemService.get_item(item_consult.item_id)
     assert _item == item_consult
     with pytest.raises(NotExistError):
-        SalesService.get_item('item-random')
+        ItemService.get_item('item-random')
         
     # test update account
     item_consult.currency = CurType.JPY
-    SalesService.update_item(item_consult)
-    _item = SalesService.get_item(item_consult.item_id)
+    ItemService.update_item(item_consult)
+    _item = ItemService.get_item(item_consult.item_id)
     assert _item == item_consult
     # test update not allowed change field
     item_consult.unit = UnitType.DAY
     with pytest.raises(NotMatchWithSystemError):
-        SalesService.update_item(item_consult)
+        ItemService.update_item(item_consult)
     item_consult.item_type = ItemType.GOOD
     with pytest.raises(NotMatchWithSystemError):
-        SalesService.update_item(item_consult)
+        ItemService.update_item(item_consult)
     item_consult.unit = UnitType.HOUR
     item_consult.item_type = ItemType.SERVICE
         
     # test delete item
     with pytest.raises(NotExistError):
-        SalesService.delete_item('item-random')
-    SalesService.delete_item(item_consult.item_id)
+        ItemService.delete_item('item-random')
+    ItemService.delete_item(item_consult.item_id)
     with pytest.raises(NotExistError):
-        SalesService.get_item(item_consult.item_id)
+        ItemService.get_item(item_consult.item_id)
     
 @mock.patch("src.app.dao.connection.get_engine")
 def test_validate_invoice(mock_engine, engine_with_sample_choa):
@@ -131,6 +135,7 @@ def test_validate_invoice(mock_engine, engine_with_sample_choa):
         item_id='item-consul',
         name='Item - Consulting',
         item_type=ItemType.SERVICE,
+        entity_type=EntityType.CUSTOMER,
         unit=UnitType.HOUR,
         unit_price=100,
         currency=CurType.USD,
@@ -140,6 +145,7 @@ def test_validate_invoice(mock_engine, engine_with_sample_choa):
         item_id='item-meet',
         name='Item - Meeting',
         item_type=ItemType.SERVICE,
+        entity_type=EntityType.CUSTOMER,
         unit=UnitType.HOUR,
         unit_price=75,
         currency=CurType.USD,

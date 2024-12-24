@@ -68,6 +68,7 @@ class itemDao:
             # update
             p.name = item_orm.name
             p.item_type = item_orm.item_type
+            p.entity_type = item_orm.entity_type
             p.unit = item_orm.unit
             p.unit_price = item_orm.unit_price
             p.currency = item_orm.currency
@@ -94,9 +95,9 @@ class itemDao:
         return cls.toItem(p)
     
     @classmethod
-    def list(cls) -> list[Item]:
+    def list(cls, entity_type: EntityType) -> list[Item]:
         with Session(get_engine()) as s:
-            sql = select(ItemORM)
+            sql = select(ItemORM).where(ItemORM.entity_type == entity_type)
             item_orms = s.exec(sql).all()
         
         return [cls.toItem(item_orm) for item_orm in item_orms]

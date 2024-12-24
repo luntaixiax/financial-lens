@@ -15,7 +15,9 @@ def init():
     from src.app.service.acct import AcctService
     from src.app.service.journal import JournalService
     from src.app.service.entity import EntityService
+    from src.app.service.item import ItemService
     from src.app.service.sales import SalesService
+    from src.app.service.purchase import PurchaseService
     from src.app.service.expense import ExpenseService
     
     SQLModel.metadata.create_all(get_engine())
@@ -27,8 +29,12 @@ def init():
     JournalService.create_sample()
     # create sample customer
     EntityService.create_sample()
-    # create sample item and invoice
+    # crete item items
+    ItemService.create_sample()
+    # create sample sales invoice
     SalesService.create_sample()
+    # create sample purchase invoice
+    PurchaseService.create_sample()
     # create sample expense
     ExpenseService.create_sample()
     
@@ -39,11 +45,15 @@ def init():
     from src.app.service.acct import AcctService
     from src.app.service.journal import JournalService
     from src.app.service.entity import EntityService
+    from src.app.service.item import ItemService
     from src.app.service.sales import SalesService
+    from src.app.service.purchase import PurchaseService
     from src.app.service.expense import ExpenseService
     
+    ExpenseService.clear_sample()
     SalesService.clear_sample()
+    PurchaseService.clear_sample()
+    ItemService.clear_sample()
     JournalService.clear_sample()
     EntityService.clear_sample()
     AcctService.clear_sample()
-    ExpenseService.clear_sample()

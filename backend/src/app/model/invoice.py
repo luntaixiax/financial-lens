@@ -17,6 +17,7 @@ class Item(EnhancedBaseModel):
     )
     name: str
     item_type: ItemType = Field(ItemType.SERVICE)
+    entity_type: EntityType
     unit: UnitType = Field(UnitType.HOUR)
     unit_price: float
     currency: CurType
@@ -143,9 +144,17 @@ class Invoice(EnhancedBaseModel):
             f"Invoice currency is set to be {self.currency}, while invoice items are of currency {item_currency}"
         return self
     
-    # @computed_field()
-    # def currency(self) -> CurType:
-    #     return list(set(inv_item.item.currency for inv_item in self.invoice_items))[0]
+    @model_validator(mode='after')
+    def validate_item_type(self):
+        # make sure entity type within all items are in same entity type
+        all_etype = set(inv_item.item.entity_type for inv_item in self.invoice_items)
+        assert len(all_etype) == 1, \
+            f"Only allow 1 entity type across all invoice items, found: {all_etype}"
+        # should match with main entity type
+        item_entity = list(all_etype)[0]
+        assert item_entity == self.entity_type, \
+            f"Invoice entity type is set to be {self.entity_type}, while invoice items are of entity type {item_entity}"
+        return self
     
     @computed_field()
     def subtotal(self) -> float:

@@ -56,7 +56,7 @@ class UnitType(IntEnum):
 @unique
 class JournalSrc(IntEnum):
     MANUAL = 1
-    INVOICE = 2
+    SALES = 2
     PURCHASE = 3
     PAYMENT = 4
     EXPENSE = 5

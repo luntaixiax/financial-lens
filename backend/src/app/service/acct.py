@@ -225,6 +225,12 @@ class AcctService:
             acct_type=AcctType.INC,
             chart=total_inc_chart
         )
+        cogs = Account(
+            acct_id='acct-cogs',
+            acct_name='Cost of Service Sold',
+            acct_type=AcctType.EXP,
+            chart=total_exp_chart
+        )
         meal = Account(
             acct_id='acct-meal',
             acct_name='Meal Expense',
@@ -281,6 +287,7 @@ class AcctService:
         
         # add to db
         AcctService.add_account(consult_inc)
+        AcctService.add_account(cogs)
         AcctService.add_account(meal)
         AcctService.add_account(tip)
         AcctService.add_account(rental)

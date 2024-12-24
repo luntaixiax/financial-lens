@@ -15,41 +15,35 @@ from src.app.model.invoice import _InvoiceBrief, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
 
 
-class SalesService:
+class PurchaseService:
     
     @classmethod
     def create_sample(cls):
         invoice = Invoice(
-            invoice_id='inv-sample',
-            invoice_num='INV-001',
+            invoice_id='inv-sample-purchase',
+            invoice_num='INV-SALES-001',
             invoice_dt=date(2024, 1, 1),
             due_dt=date(2024, 1, 5),
-            entity_type=EntityType.CUSTOMER,
-            entity_id='cust-sample',
-            subject='General Consulting - Jan 2024',
+            entity_type=EntityType.SUPPLIER,
+            entity_id='supp-sample',
+            subject='General Purchase - Jan 2024',
             currency=CurType.USD,
             invoice_items=[
                 InvoiceItem(
-                    item=ItemService.get_item('item-consul'),
-                    quantity=5,
-                    description="Programming"
-                ),
-                InvoiceItem(
-                    item=ItemService.get_item('item-meet'),
-                    quantity=10,
-                    description="Meeting Around",
-                    discount_rate=0.05,
+                    item=ItemService.get_item('item-sales'),
+                    quantity=2,
+                    description="Purchase outsourcing"
                 )
             ],
-            shipping=10,
+            shipping=0,
             note="Thanks for business"
         )
         cls.add_invoice(invoice)
         
     @classmethod
     def clear_sample(cls):
-        cls.delete_invoice('inv-sample')
-
+        cls.delete_invoice('inv-sample-purchase')
+    
     @classmethod
     def create_journal_from_invoice(cls, invoice: Invoice) -> Journal:
         cls._validate_invoice(invoice)
@@ -61,15 +55,15 @@ class SalesService:
             item_acct_id = invoice_item.acct_id # the account id for this entry
             item_acct: Account = AcctService.get_account(item_acct_id)
             
-            # validate the item account must be of income type
-            if not item_acct.acct_type == AcctType.INC:
+            # validate the item account must be of expense type
+            if not item_acct.acct_type == AcctType.EXP:
                 raise NotMatchWithSystemError(
-                    message=f"Acct type of invoice item must be of Income type, get {item_acct.acct_type}"
+                    message=f"Acct type of invoice item must be of Expense type, get {item_acct.acct_type}"
                 )
             
             # assemble the entry item
             entry = Entry(
-                entry_type=EntryType.CREDIT, # income is credit entry
+                entry_type=EntryType.DEBIT, # expense is debit entry
                 acct=item_acct,
                 cur_incexp=invoice.currency, # income currency is invoice currency
                 amount=invoice_item.amount_pre_tax, # amount in raw currency
@@ -90,21 +84,21 @@ class SalesService:
             cur_dt=invoice.invoice_dt, # convert fx at invoice date
         )
         tax = Entry(
-            entry_type=EntryType.CREDIT, # tax is credit entry
+            entry_type=EntryType.DEBIT, # tax is debit entry
             # tax account is output tax -- predefined
-            acct=AcctService.get_account(SystemAcctNumber.OUTPUT_TAX),
+            acct=AcctService.get_account(SystemAcctNumber.INPUT_TAX),
             amount=tax_amount_base_cur, # amount in raw currency
             # amount in base currency
             amount_base=tax_amount_base_cur,
-            description=f'output tax in base currency'
+            description=f'input tax in base currency'
         )
         entries.append(tax)
         
         # add shipping entry (use raw currency)
         shipping = Entry(
-            entry_type=EntryType.CREDIT, # shipping is credit entry
+            entry_type=EntryType.DEBIT, # shipping is debit entry
             # shipping account -- predefined
-            acct=AcctService.get_account(SystemAcctNumber.SHIP_CHARGE),
+            acct=AcctService.get_account(SystemAcctNumber.SHIP_CHARGE), # TODO
             cur_incexp=invoice.currency, # shipping currency is invoice currency
             amount=invoice.shipping, # amount in raw currency
             # amount in base currency
@@ -117,27 +111,27 @@ class SalesService:
         )
         entries.append(shipping)
         
-        # add account receivable (use base currency)
-        ar_base_cur = FxService.convert(
+        # add account payable (use base currency)
+        ap_base_cur = FxService.convert(
             amount=invoice.total, # total after tax and shipping
             src_currency=invoice.currency, # invoice currency
             cur_dt=invoice.invoice_dt, # convert fx at invoice date
         )
-        ar = Entry(
+        ap = Entry(
             entry_type=EntryType.DEBIT, # A/R is debit entry
             # A/R is output tax -- predefined
-            acct=AcctService.get_account(SystemAcctNumber.ACCT_RECEIV),
-            amount=ar_base_cur, # amount in base currency
-            amount_base=ar_base_cur, # amount in base currency
-            description=f'account receivable in base currency'
+            acct=AcctService.get_account(SystemAcctNumber.ACCT_PAYAB),
+            amount=ap_base_cur, # amount in base currency
+            amount_base=ap_base_cur, # amount in base currency
+            description=f'account payable in base currency'
         )
-        entries.append(ar)
+        entries.append(ap)
         
         # create journal
         journal = Journal(
             jrn_date=invoice.invoice_dt,
             entries=entries,
-            jrn_src=JournalSrc.SALES,
+            jrn_src=JournalSrc.PURCHASE,
             note=invoice.note
         )
         journal.reduce_entries()
@@ -147,23 +141,23 @@ class SalesService:
     def _validate_item(cls, item: Item):
         # validate the default_acct_id is income/expense account
         default_item_acct: Account = AcctService.get_account(item.default_acct_id)
-        # invoice to customer, the acct type must be of income type
-        if not default_item_acct.acct_type in (AcctType.INC, ):
+        # invoice to supplier, the acct type must be of expense type
+        if not default_item_acct.acct_type in (AcctType.EXP, ):
             raise NotMatchWithSystemError(
-                message=f"Default acct type of sales invoice item must be of Income type, get {default_item_acct.acct_type}"
+                message=f"Default acct type of purchase invoice item must be of Expense type, get {default_item_acct.acct_type}"
             )
             
     @classmethod
     def _validate_invoice(cls, invoice: Invoice):
         # validate direction
-        if not invoice.entity_type == EntityType.CUSTOMER:
-            raise OpNotPermittedError('Sales invoice should only be created for customer')
-        # validate customer exist
+        if not invoice.entity_type == EntityType.SUPPLIER:
+            raise OpNotPermittedError('Purchase invoice should only be created for supplier')
+        # validate supplier exist
         try:
-            EntityService.get_customer(invoice.entity_id)
+            EntityService.get_supplier(invoice.entity_id)
         except NotExistError as e:
             raise FKNotExistError(
-                f"Customer id {invoice.entity_id} does not exist",
+                f"Supplier id {invoice.entity_id} does not exist",
                 details=e.details
             )
         
@@ -200,6 +194,67 @@ class SalesService:
                     f"Account {invoice_item.acct_id} of Invoice Item {invoice_item} does not exist",
                     details=e.details
                 )
+        
+    
+    @classmethod
+    def add_item(cls, item: Item):
+        cls._validate_item(item)
+        try:
+            itemDao.add(item)
+        except AlreadyExistError as e:
+            raise AlreadyExistError(
+                f'item {item} already exist',
+                details=e.details
+            )
+            
+    @classmethod
+    def update_item(cls, item: Item):
+        cls._validate_item(item)
+        # cannot update unit type and item type
+        _item = cls.get_item(item.item_id)
+        if _item.unit != item.unit or _item.item_type != item.item_type:
+            raise NotMatchWithSystemError(
+                f"Item unit and type cannot change",
+                details=f'Database version: {_item}, your version: {item}'
+            )
+        
+        try:
+            itemDao.update(item)
+        except NotExistError as e:
+            raise NotExistError(
+                f'item id {item.item_id} not exist',
+                details=e.details
+            )
+            
+    @classmethod
+    def delete_item(cls, item_id: str):
+        try:
+            itemDao.remove(item_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'item id {item_id} not exist',
+                details=e.details
+            )
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f'item {item_id} used in some invoice',
+                details=e.details
+            )
+            
+    @classmethod
+    def get_item(cls, item_id: str) -> Item:
+        try:
+            item = itemDao.get(item_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'item id {item_id} not exist',
+                details=e.details
+            )
+        return item
+    
+    @classmethod
+    def list_item(cls) -> list[Item]:
+        return itemDao.list()
     
     @classmethod
     def add_invoice(cls, invoice: Invoice):
@@ -304,7 +359,7 @@ class SalesService:
         offset: int = 0,
         invoice_ids: list[str] | None = None,
         invoice_nums: list[str] | None = None,
-        customer_ids: list[str] | None = None,
+        supplier_ids: list[str] | None = None,
         min_dt: date = date(1970, 1, 1), 
         max_dt: date = date(2099, 12, 31), 
         subject_keyword: str = '',
@@ -316,10 +371,10 @@ class SalesService:
         return invoiceDao.list(
             limit=limit,
             offset=offset,
-            entity_type=EntityType.CUSTOMER,
+            entity_type=EntityType.SUPPLIER,
             invoice_ids=invoice_ids,
             invoice_nums=invoice_nums,
-            entity_ids=customer_ids,
+            entity_ids=supplier_ids,
             min_dt=min_dt,
             max_dt=max_dt,
             subject_keyword=subject_keyword,

@@ -9,31 +9,31 @@ from src.app.model.entity import Address, Contact, Customer
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.model.journal import Journal
 from src.app.model.invoice import InvoiceItem, Item, Invoice, _InvoiceBrief
-from src.app.service.sales import SalesService
+from src.app.service.purchase import PurchaseService
 from src.app.service.entity import EntityService
 
-router = APIRouter(prefix="/sales", tags=["sales"])
+router = APIRouter(prefix="/purchase", tags=["purchase"])
 
-@router.post("/sales/invoice/validate")
-def validate_sales(invoice: Invoice):
-    SalesService._validate_invoice(invoice)
-
-@router.get(
-    "/sales/trial_journal",
-    description='use to generate journal during new sales invoice creation'
-)
-def create_journal_from_new_sales_invoice(invoice: Invoice) -> Journal:
-    return SalesService.create_journal_from_invoice(invoice)
+@router.post("/purchase/invoice/validate")
+def validate_purchase(invoice: Invoice):
+    PurchaseService._validate_invoice(invoice)
 
 @router.get(
-    "/sales/get_invoice_journal/{invoice_id}",
-    description='get existing sales invoice and journal from database'
+    "/purchase/trial_journal",
+    description='use to generate journal during new purchase invoice creation'
 )
-def get_sales_invoice_journal(invoice_id: str) -> Tuple[Invoice, Journal]:
-    return SalesService.get_invoice_journal(invoice_id=invoice_id)
+def create_journal_from_new_purchase_invoice(invoice: Invoice) -> Journal:
+    return PurchaseService.create_journal_from_invoice(invoice)
 
-@router.post("/sales/invoice/list")
-def list_sales_invoice(
+@router.get(
+    "/purchase/get_invoice_journal/{invoice_id}",
+    description='get existing purchase invoice and journal from database'
+)
+def get_purchase_invoice_journal(invoice_id: str) -> Tuple[Invoice, Journal]:
+    return PurchaseService.get_invoice_journal(invoice_id=invoice_id)
+
+@router.post("/purchase/invoice/list")
+def list_purchase_invoice(
     limit: int = 50,
     offset: int = 0,
     invoice_ids: list[str] | None = None,
@@ -47,7 +47,7 @@ def list_sales_invoice(
     max_amount: float = 999999999,
     num_invoice_items: int | None = None
 ) -> list[_InvoiceBrief]:
-    return SalesService.list_invoice(
+    return PurchaseService.list_invoice(
         limit=limit,
         offset=offset,
         invoice_ids=invoice_ids,
@@ -62,38 +62,38 @@ def list_sales_invoice(
         num_invoice_items=num_invoice_items
     )
 
-@router.post("/sales/invoice/add")
-def add_sales_invoice(invoice: Invoice):
-    SalesService.add_invoice(invoice=invoice)
+@router.post("/purchase/invoice/add")
+def add_purchase_invoice(invoice: Invoice):
+    PurchaseService.add_invoice(invoice=invoice)
     
-@router.put("/sales/invoice/update")
-def update_sales_invoice(invoice: Invoice):
-    SalesService.update_invoice(invoice=invoice)
+@router.put("/purchase/invoice/update")
+def update_purchase_invoice(invoice: Invoice):
+    PurchaseService.update_invoice(invoice=invoice)
     
-@router.delete("/invoice/sales/delete/{invoice_id}")
-def delete_sales_invoice(invoice_id: str):
-    SalesService.delete_invoice(invoice_id=invoice_id)
+@router.delete("/invoice/purchase/delete/{invoice_id}")
+def delete_purchase_invoice(invoice_id: str):
+    PurchaseService.delete_invoice(invoice_id=invoice_id)
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_PATH / "templates"))
 
 
-@router.get("/sales/invoice/preview", response_class=HTMLResponse)
-def preview_sales_invoice(request: Request, invoice_id: str):
-    invoice, journal = SalesService.get_invoice_journal(invoice_id)
-    bill_to = EntityService.get_customer(invoice.customer_id)
+@router.get("/purchase/invoice/preview", response_class=HTMLResponse)
+def preview_purchase_invoice(request: Request, invoice_id: str):
+    invoice, journal = PurchaseService.get_invoice_journal(invoice_id)
+    bill_from = EntityService.get_customer(invoice.customer_id)
     
     # bill_from company
-    bill_from_company = get_company()
-    bill_from = Customer(
-        customer_name = bill_from_company['name'],
+    bill_to_company = get_company()
+    bill_to = Customer(
+        customer_name = bill_to_company['name'],
         is_business=True,
-        bill_contact=Contact.model_validate(bill_from_company['contact']),
+        bill_contact=Contact.model_validate(bill_to_company['contact']),
         ship_same_as_bill=True
     )
     
     data = {
-        'logo': bill_from_company['logo'],
+        'logo': bill_to_company['logo'],
         'bill_from': bill_from.model_dump(mode='python'),
         'bill_to': bill_to.model_dump(mode='python'),
         'invoice': invoice.model_dump(mode='python')
