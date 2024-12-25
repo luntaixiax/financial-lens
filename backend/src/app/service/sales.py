@@ -14,7 +14,7 @@ from src.app.service.journal import JournalService
 from src.app.service.fx import FxService
 from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
-from src.app.model.invoice import _InvoiceBrief, Invoice, InvoiceItem, Item
+from src.app.model.invoice import _InvoiceBrief, GeneralInvoiceItem, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
 from src.app.model.payment import _PaymentBrief, PaymentItem, Payment
 
@@ -44,6 +44,17 @@ class SalesService:
                     quantity=10,
                     description="Meeting Around",
                     discount_rate=0.05,
+                )
+            ],
+            ginvoice_items=[
+                GeneralInvoiceItem(
+                    incur_dt=date(2023, 12, 10),
+                    acct_id='acct-meal',
+                    currency=CurType.EUR,
+                    amount_pre_tax_raw=100,
+                    amount_pre_tax=120,
+                    tax_rate=0.05,
+                    description='Meal for business trip'
                 )
             ],
             shipping=10,
@@ -81,17 +92,10 @@ class SalesService:
         cls._validate_invoice(invoice)
         
         entries = []
-        # create sales invoice entries
+        # create sales invoice item entries
         for invoice_item in invoice.invoice_items:
             # get the invoice item account for journal entry line item
-            item_acct_id = invoice_item.acct_id # the account id for this entry
-            item_acct: Account = AcctService.get_account(item_acct_id)
-            
-            # validate the item account must be of income type
-            if not item_acct.acct_type == AcctType.INC:
-                raise NotMatchWithSystemError(
-                    message=f"Acct type of invoice item must be of Income type, get {item_acct.acct_type}"
-                )
+            item_acct: Account = AcctService.get_account(invoice_item.acct_id)
             
             # assemble the entry item
             entry = Entry(
@@ -108,6 +112,45 @@ class SalesService:
                 description=invoice_item.description
             )
             entries.append(entry)
+            
+        # create general invoice item entries
+        for ginvoice_item in invoice.ginvoice_items:
+            gitem_acct: Account = AcctService.get_account(ginvoice_item.acct_id)
+            # amount incured in base currency @ incur date
+            amount_base_incur = FxService.convert(
+                amount=ginvoice_item.amount_pre_tax_raw,# amount in incur currency
+                src_currency=ginvoice_item.currency, # incur currency
+                cur_dt=ginvoice_item.incur_dt, # convert fx at incur date
+            )
+            # amount in base currency @ invoice date (this is the total amount should be credit that make it balance)
+            amount_base_invoice = FxService.convert(
+                amount=ginvoice_item.amount_pre_tax,# amount in invoice currency
+                src_currency=invoice.currency, # invoice currency
+                cur_dt=invoice.invoice_dt, # convert fx at invoice date # TODO
+            )
+            # assemble the entry item (reverse the original journal entry)
+            gitem = Entry(
+                entry_type=EntryType.CREDIT, # income is credit entry (does not matter if it is income or expense)
+                acct=gitem_acct,
+                cur_incexp=ginvoice_item.currency, # income currency is incur currency (reverse record)
+                amount=ginvoice_item.amount_pre_tax_raw, # amount in incur currency
+                # amount in base currency
+                amount_base=amount_base_incur, # amount incured in base currency @ incur date
+                description=ginvoice_item.description
+            )
+            entries.append(gitem)
+            
+            # add fx gain/loss
+            gain = amount_base_invoice - amount_base_incur # invoiced more than incurred is gain
+            fx_gain = Entry(
+                entry_type=EntryType.CREDIT, # fx gain is credit
+                acct=AcctService.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
+                cur_incexp=get_base_cur(),
+                amount=gain, # gain is already expressed in base currency
+                amount_base=gain, # gain is already expressed in base currency
+                description='fx gain' if gain >=0 else 'fx loss'
+            )
+            entries.append(fx_gain)
         
         # add tax (use base currency)
         tax_amount_base_cur = FxService.convert(
@@ -303,12 +346,36 @@ class SalesService:
                     )
             # validate account id exist
             try:
-                AcctService.get_account(invoice_item.acct_id)
+                item_acct = AcctService.get_account(invoice_item.acct_id)
             except NotExistError as e:
                 raise FKNotExistError(
                     f"Account {invoice_item.acct_id} of Invoice Item {invoice_item} does not exist",
                     details=e.details
                 )
+            else:
+                # validate if it is of income type
+                if not item_acct.acct_type in (AcctType.INC, ):
+                    raise NotMatchWithSystemError(
+                        message=f"Item Acct type of sales invoice item must be of Income type, get {item_acct.acct_type}"
+                    )
+        
+        # validate general invoice_items
+        for ginvoice_item in invoice.ginvoice_items:
+            # validate account id exist
+            try:
+                gitem_acct = AcctService.get_account(ginvoice_item.acct_id)
+            except NotExistError as e:
+                raise FKNotExistError(
+                    f"Account {ginvoice_item.acct_id} of General Invoice Item {ginvoice_item} does not exist",
+                    details=e.details
+                )
+            else:
+                # validate if it is of income/expense type
+                if not gitem_acct.acct_type in (AcctType.INC, AcctType.EXP):
+                    raise NotMatchWithSystemError(
+                        message=f"General Item Acct type of sales invoice item must be of Income/Expense type, get {item_acct.acct_type}"
+                    )
+            
                 
     @classmethod
     def _validate_payment(cls, payment: Payment):

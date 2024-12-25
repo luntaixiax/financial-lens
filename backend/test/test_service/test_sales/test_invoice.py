@@ -4,7 +4,7 @@ import pytest
 from unittest import mock
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, NotMatchWithSystemError
 from src.app.model.enums import CurType, EntityType, ItemType, JournalSrc, UnitType
-from src.app.model.invoice import Invoice, InvoiceItem, Item
+from src.app.model.invoice import GeneralInvoiceItem, Invoice, InvoiceItem, Item
 from src.app.model.const import SystemAcctNumber
 
 @mock.patch("src.app.dao.connection.get_engine")
@@ -31,6 +31,13 @@ def test_create_journal_from_invoice(mock_engine, engine_with_sample_choa, sampl
     )
     total_journal = journal.total_debits # total billable = total receivable
     assert total_invoice == total_journal
+    
+    # there should be and only 1 fx gain account
+    gain_entries = [
+        entry for entry in journal.entries 
+        if entry.acct.acct_id == SystemAcctNumber.FX_GAIN
+    ]
+    assert len(gain_entries) == 1
     
     EntityService.clear_sample()
     
@@ -174,6 +181,17 @@ def test_validate_invoice(mock_engine, engine_with_sample_choa):
                 discount_rate=0.05,
             )
         ],
+        ginvoice_items=[
+            GeneralInvoiceItem(
+                incur_dt=date(2023, 12, 10),
+                acct_id='acct-meal',
+                currency=CurType.EUR,
+                amount_pre_tax_raw=100,
+                amount_pre_tax=120,
+                tax_rate=0.05,
+                description='Meal for business trip'
+            )
+        ],
         shipping=10,
         note="Thanks for business"
     )
@@ -202,11 +220,23 @@ def test_validate_invoice(mock_engine, engine_with_sample_choa):
         SalesService._validate_invoice(invoice)
     invoice.invoice_items[0].item.unit_price = 100 # change back
     
+    # test with wrong account type
+    invoice.invoice_items[0].acct_id = 'acct-rental'
+    with pytest.raises(NotMatchWithSystemError):
+        SalesService._validate_invoice(invoice)
+    invoice.invoice_items[0].acct_id = 'acct-consul'
+    # should not raise error
+    invoice.ginvoice_items[0].acct_id = 'acct-consul'
+    SalesService._validate_invoice(invoice)
+    invoice.ginvoice_items[0].acct_id = 'acct-meal'
+    
     # test with non-exist account
     invoice.invoice_items[0].acct_id = 'acct-random'
     with pytest.raises(FKNotExistError):
         SalesService._validate_invoice(invoice)
-    
+    invoice.ginvoice_items[0].acct_id = 'acct-random'
+    with pytest.raises(FKNotExistError):
+        SalesService._validate_invoice(invoice)
     
     # clean up
     EntityService.clear_sample()

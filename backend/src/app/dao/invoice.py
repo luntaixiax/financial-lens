@@ -4,8 +4,8 @@ from typing import Tuple
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.enums import CurType, EntityType, EntryType
-from src.app.model.invoice import _InvoiceBrief, InvoiceItem, Item, Invoice
-from src.app.dao.orm import EntityORM, InvoiceItemORM, InvoiceORM, ItemORM, EntryORM, infer_integrity_error
+from src.app.model.invoice import _InvoiceBrief, InvoiceItem, GeneralInvoiceItem, Item, Invoice
+from src.app.dao.orm import EntityORM, InvoiceItemORM, GeneralInvoiceItemORM, InvoiceORM, ItemORM, EntryORM, infer_integrity_error
 from src.app.dao.connection import get_engine
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, FKNoDeleteUpdateError
 
@@ -118,6 +118,20 @@ class invoiceDao:
         )
         
     @classmethod
+    def fromGeneralInvoiceItem(cls, invoice_id: str, general_invoice_item: GeneralInvoiceItem) -> GeneralInvoiceItemORM:
+        return GeneralInvoiceItemORM(
+            ginv_item_id=general_invoice_item.ginv_item_id,
+            invoice_id=invoice_id,
+            incur_dt=general_invoice_item.incur_dt,
+            acct_id=general_invoice_item.acct_id,
+            currency=general_invoice_item.currency,
+            amount_pre_tax_raw=general_invoice_item.amount_pre_tax_raw,
+            amount_pre_tax=general_invoice_item.amount_pre_tax,
+            tax_rate=general_invoice_item.tax_rate,
+            description=general_invoice_item.description,
+        )
+        
+    @classmethod
     def toInvoiceItem(cls, invoice_item_orm: InvoiceItemORM) -> InvoiceItem:
         return InvoiceItem(
             invoice_item_id=invoice_item_orm.invoice_item_id,
@@ -127,6 +141,19 @@ class invoiceDao:
             tax_rate=invoice_item_orm.tax_rate,
             discount_rate=invoice_item_orm.discount_rate,
             description=invoice_item_orm.description,
+        )
+        
+    @classmethod
+    def toGeneralInvoiceItem(cls, general_invoice_item_orm: GeneralInvoiceItemORM) -> GeneralInvoiceItem:
+        return GeneralInvoiceItem(
+            ginv_item_id=general_invoice_item_orm.ginv_item_id,
+            incur_dt=general_invoice_item_orm.incur_dt,
+            acct_id=general_invoice_item_orm.acct_id,
+            currency=general_invoice_item_orm.currency,
+            amount_pre_tax_raw=general_invoice_item_orm.amount_pre_tax_raw,
+            amount_pre_tax=general_invoice_item_orm.amount_pre_tax,
+            tax_rate=general_invoice_item_orm.tax_rate,
+            description=general_invoice_item_orm.description,
         )
         
     @classmethod
@@ -146,7 +173,12 @@ class invoiceDao:
         )
         
     @classmethod
-    def toInvoice(cls, invoice_orm: InvoiceORM, invoice_item_orms: list[InvoiceItemORM]) -> Invoice:
+    def toInvoice(
+        cls, 
+        invoice_orm: InvoiceORM, 
+        invoice_item_orms: list[InvoiceItemORM],
+        ginvoice_item_orms: list[GeneralInvoiceItemORM]
+    ) -> Invoice:
         return Invoice(
             invoice_id=invoice_orm.invoice_id,
             invoice_num=invoice_orm.invoice_num,
@@ -159,6 +191,10 @@ class invoiceDao:
             invoice_items=[
                 cls.toInvoiceItem(invoice_item_orm) 
                 for invoice_item_orm in invoice_item_orms  
+            ],
+            ginvoice_items=[
+                cls.toGeneralInvoiceItem(ginvoice_item_orm) 
+                for ginvoice_item_orm in ginvoice_item_orms  
             ],
             shipping=invoice_orm.shipping,
             note=invoice_orm.note,
@@ -186,6 +222,15 @@ class invoiceDao:
                 )
                 s.add(invoice_item_orm)
                 logging.info(f"Added {invoice_item_orm} to invoice Item table")
+                
+            # add general invoice items
+            for ginvoice_item in invoice.ginvoice_items:
+                general_invoice_item_orm = cls.fromGeneralInvoiceItem(
+                    invoice_id=invoice.invoice_id,
+                    general_invoice_item=ginvoice_item
+                )
+                s.add(general_invoice_item_orm)
+                logging.info(f"Added {general_invoice_item_orm} to general invoice Item table")
             
             # commit all items
             try:
@@ -203,6 +248,12 @@ class invoiceDao:
                 InvoiceItemORM.invoice_id == invoice_id
             )
             s.exec(sql)
+            # remove general invoice items next
+            sql = delete(GeneralInvoiceItemORM).where(
+                GeneralInvoiceItemORM.invoice_id == invoice_id
+            )
+            s.exec(sql)
+            
             # remove invoice
             sql = delete(InvoiceORM).where(
                 InvoiceORM.invoice_id == invoice_id
@@ -276,7 +327,26 @@ class invoiceDao:
                     details=str(e)
                 )
             
-
+            # remove existing general invoice items
+            sql = delete(GeneralInvoiceItem).where(
+                GeneralInvoiceItem.invoice_id == invoice.invoice_id
+            )
+            s.exec(sql)
+            # add new general invoice items
+            # add individual invoice items
+            for ginvoice_item in invoice.ginvoice_items:
+                general_invoice_item_orm = cls.fromGeneralInvoiceItem(
+                    invoice_id=invoice.invoice_id,
+                    general_invoice_item=ginvoice_item
+                )
+                s.add(general_invoice_item_orm)
+            try:
+                s.commit()
+            except IntegrityError as e:
+                s.rollback() # will rollback both item removal and new item add
+                raise FKNotExistError(
+                    details=str(e)
+                )
             
     @classmethod
     def get(cls, invoice_id: str) -> Tuple[Invoice, str]:
@@ -288,6 +358,15 @@ class invoiceDao:
             )
             try:
                 invoice_item_orms = s.exec(sql).all()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
+            
+            # get general invoice items
+            sql = select(GeneralInvoiceItemORM).where(
+                GeneralInvoiceItemORM.invoice_id == invoice_id
+            )
+            try:
+                ginvoice_item_orms = s.exec(sql).all()
             except NoResultFound as e:
                 raise NotExistError(details=str(e))
 
@@ -302,7 +381,8 @@ class invoiceDao:
             
             invoice = cls.toInvoice(
                 invoice_orm=invoice_orm,
-                invoice_item_orms=invoice_item_orms
+                invoice_item_orms=invoice_item_orms,
+                ginvoice_item_orms=ginvoice_item_orms
             )
             jrn_id = invoice_orm.journal_id
         return invoice, jrn_id
@@ -338,7 +418,7 @@ class invoiceDao:
                 inv_filters.append(InvoiceORM.invoice_num.in_(invoice_nums))
                 
                 
-            invoice_item_joined = (
+            invoice_item_agg = (
                 select(
                     InvoiceItemORM.invoice_id,
                     #f.max(ItemORM.currency).label('currency'), # bug that only support min/max
@@ -361,6 +441,21 @@ class invoiceDao:
                 )
                 .subquery()
             )
+            ginvoice_item_agg = (
+                select(
+                    GeneralInvoiceItemORM.invoice_id,
+                    f.count(GeneralInvoiceItemORM.ginv_item_id).label('num_ginvoice_items'),
+                    f.sum(
+                        GeneralInvoiceItemORM.amount_pre_tax 
+                        * (1 + GeneralInvoiceItemORM.tax_rate)
+                    ).label('total_raw_amount')
+                )
+                .group_by(
+                    GeneralInvoiceItemORM.invoice_id,
+                    #ItemORM.currency
+                )
+                .subquery()
+            )
             journal_summary = (
                 select(
                     EntryORM.journal_id,
@@ -379,7 +474,7 @@ class invoiceDao:
                 inv_filters.append(InvoiceORM.currency == currency)
             # add num items filter
             if num_invoice_items is not None:
-                inv_filters.append(invoice_item_joined.c.num_invoice_items == num_invoice_items)
+                inv_filters.append(invoice_item_agg.c.num_invoice_items == num_invoice_items)
             # add amount filter (raw amount):
             inv_filters.append(
                 journal_summary.c.amount_base
@@ -402,8 +497,15 @@ class invoiceDao:
                     EntityORM.is_business,
                     InvoiceORM.subject,
                     InvoiceORM.currency,
-                    invoice_item_joined.c.num_invoice_items,
-                    (InvoiceORM.shipping + invoice_item_joined.c.total_raw_amount).label('total_raw_amount'),
+                    (
+                        invoice_item_agg.c.num_invoice_items 
+                        + ginvoice_item_agg.c.num_ginvoice_items
+                    ).label('num_invoice_items'),
+                    (
+                        InvoiceORM.shipping 
+                        + invoice_item_agg.c.total_raw_amount 
+                        + ginvoice_item_agg.c.total_raw_amount
+                    ).label('total_raw_amount'),
                     journal_summary.c.amount_base.label('total_base_amount')
                 )
                 .join(
@@ -412,9 +514,15 @@ class invoiceDao:
                     isouter=True # outer join
                 )
                 .join(
-                    invoice_item_joined,
-                    onclause=InvoiceORM.invoice_id  == invoice_item_joined.c.invoice_id, 
+                    invoice_item_agg,
+                    onclause=InvoiceORM.invoice_id  == invoice_item_agg.c.invoice_id, 
                     isouter=False
+                )
+                .join(
+                    ginvoice_item_agg,
+                    onclause=InvoiceORM.invoice_id  == ginvoice_item_agg.c.invoice_id, 
+                    isouter=False
+                    
                 )
                 .join(
                     journal_summary,

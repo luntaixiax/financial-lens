@@ -67,6 +67,8 @@ def test_invoice(mock_engine, engine, sample_invoice, sample_journal_meal):
     _invoice, _jrn_id = invoiceDao.get(sample_invoice.invoice_id)
     assert _jrn_id == sample_journal_meal.journal_id
     assert _invoice == sample_invoice
+    assert len(_invoice.ginvoice_items) == 1
+    assert len(_invoice.invoice_items) == 2
     
     # test list and filter
     _invoices = invoiceDao.list()

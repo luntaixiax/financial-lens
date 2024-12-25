@@ -4,7 +4,7 @@ import pytest
 from unittest import mock
 from src.app.model.payment import Payment, PaymentItem
 from src.app.model.const import SystemChartOfAcctNumber
-from src.app.model.invoice import Invoice, InvoiceItem, Item
+from src.app.model.invoice import GeneralInvoiceItem, Invoice, InvoiceItem, Item
 from src.app.model.enums import AcctType, CurType, EntityType, ItemType, UnitType
 from src.app.model.accounts import Account
 
@@ -60,6 +60,17 @@ def sample_invoice(engine_with_sample_choa) -> Generator[Invoice, None, None]:
                     quantity=10,
                     description="Meeting Around",
                     discount_rate=0.05,
+                )
+            ],
+            ginvoice_items=[
+                GeneralInvoiceItem(
+                    incur_dt=date(2023, 12, 10),
+                    acct_id='acct-meal',
+                    currency=CurType.EUR,
+                    amount_pre_tax_raw=100,
+                    amount_pre_tax=120,
+                    tax_rate=0.05,
+                    description='Meal for business trip'
                 )
             ],
             shipping=10,
