@@ -8,7 +8,7 @@ from src.app.model.enums import CurType, EntryType
 from src.app.model.expense import _ExpenseBrief, ExpenseItem, Expense, Merchant
 from src.app.dao.orm import EntryORM, ExpenseItemORM, ExpenseORM, infer_integrity_error
 from src.app.dao.connection import get_engine
-from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNoDeleteUpdateError
+from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, FKNoDeleteUpdateError
 
 
 class expenseDao:
@@ -141,6 +141,68 @@ class expenseDao:
             )
             jrn_id = expense_orm.journal_id
         return expense, jrn_id
+    
+    @classmethod
+    def update(cls, journal_id: str, expense: Expense):
+        # journal_id is the new journal created first before calling this API
+        # update expense first
+        with Session(get_engine()) as s:
+            sql = select(ExpenseORM).where(
+                ExpenseORM.expense_id == expense.expense_id,
+            )
+            try:
+                p = s.exec(sql).one()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
+            
+            # update
+            expense_orm = cls.fromExpense(
+                journal_id=journal_id,
+                expense=expense
+            )
+            # must update expense orm because journal id changed
+            p.expense_dt = expense_orm.expense_dt
+            p.currency = expense_orm.currency
+            p.payment_acct_id = expense_orm.payment_acct_id
+            p.payment_amount = expense_orm.payment_amount
+            p.merchant = expense_orm.merchant
+            p.note = expense_orm.note
+            p.receipts = expense_orm.receipts
+            p.journal_id = journal_id # update to new journal id
+            
+            try:
+                s.add(p)
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise FKNotExistError(
+                    details=str(e)
+                )
+            else:
+                s.refresh(p) # update p to instantly have new values
+                
+            # remove existing expense items
+            sql = delete(ExpenseItemORM).where(
+                ExpenseItemORM.expense_id == expense.expense_id
+            )
+            s.exec(sql)
+            
+            # add new expense items
+            # add individual expense items
+            for expense_item in expense.expense_items:
+                expense_item_orm = cls.fromExpenseItem(
+                    expense_id=expense.expense_id,
+                    expense_item=expense_item
+                )
+                s.add(expense_item_orm)
+            try:
+                s.commit()
+            except IntegrityError as e:
+                s.rollback() # will rollback both item removal and new item add
+                raise FKNotExistError(
+                    details=str(e)
+                )
+        
     
     @classmethod
     def list(

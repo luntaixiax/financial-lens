@@ -271,8 +271,45 @@ class ExpenseService:
     def update_expense(cls, expense: Expense):
         cls._validate_expense(expense)
         # only delete if validation passed
-        cls.delete_expense(expense.expense_id)
-        cls.add_expense(expense)
+        # cls.delete_expense(expense.expense_id)
+        # cls.add_expense(expense)
+        
+        # get existing journal id
+        try:
+            _expense, jrn_id  = expenseDao.get(expense.expense_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Expense id {_expense.expense_id} does not exist',
+                details=e.details
+            )
+        
+        # add new journal first
+        journal = cls.create_journal_from_expense(expense)
+        try:
+            JournalService.add_journal(journal)
+        except FKNotExistError as e:
+            raise FKNotExistError(
+                f'Some component of journal does not exist: {journal}',
+                details=e.details
+            )
+        
+        # update expense
+        try:
+            expenseDao.update(
+                journal_id=journal.journal_id, # use new journal id
+                expense=expense
+            ) # TODO
+        except FKNotExistError as e:
+            # need to remove the new journal
+            JournalService.delete_journal(journal.journal_id)
+            raise FKNotExistError(
+                f"Invoice element does not exist",
+                details=e.details
+            )
+            
+        # remove old journal
+        JournalService.delete_journal(jrn_id)
+        
         
     @classmethod
     def get_expense_journal(cls, expense_id: str) -> Tuple[Expense, Journal]:

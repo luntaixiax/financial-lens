@@ -175,10 +175,26 @@ def test_expense(mock_engine, engine_with_sample_choa, sample_expense_meal, samp
     assert len(expenses) == 1
     expenses = ExpenseService.list_expense(has_receipt=True)
     assert len(expenses) == 1
-        
-    # test delete invoice
+    
+    # test update expense
+    _invoice, _journal = ExpenseService.get_expense_journal(sample_expense_meal.expense_id)
+    _jrn_id = _journal.journal_id # original journal id before updating
+    ## update1 -- valid expense level update
+    sample_expense_meal.expense_dt = date(2024, 1, 2)
+    sample_expense_meal.expense_items[1].amount_pre_tax -= 10
+    sample_expense_meal.payment_amount -= 10
+    ExpenseService.update_expense(sample_expense_meal)
+    _expense, _journal = ExpenseService.get_expense_journal(sample_expense_meal.expense_id)
+    assert _expense == sample_expense_meal
+    _journal_ = JournalService.get_journal(_journal.journal_id)
+    assert _journal_ == _journal
     with pytest.raises(NotExistError):
-        ExpenseService.delete_expense('random-invoice')
+        # original journal should be deleted
+        JournalService.get_journal(_jrn_id)
+        
+    # test delete expense
+    with pytest.raises(NotExistError):
+        ExpenseService.delete_expense('random-expense')
     ExpenseService.delete_expense(sample_expense_meal.expense_id)
     with pytest.raises(NotExistError):
         ExpenseService.get_expense_journal(sample_expense_meal.expense_id)
