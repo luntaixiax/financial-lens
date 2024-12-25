@@ -84,6 +84,7 @@ class Journal(EnhancedBaseModel):
     def reduce_entries(self):
         # combine same entry and add up amounts
         # description will be combined as well
+        # TODO: remove entry with 0 amount
         reduced: dict[Tuple[Account, EntryType, CurType | None], Entry] = {}
         for entry in self.entries:
             pk = (entry.acct.acct_id, entry.entry_type, entry.cur_incexp)

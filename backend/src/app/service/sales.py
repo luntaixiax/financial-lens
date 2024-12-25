@@ -1,8 +1,11 @@
 from datetime import date
+import math
 from typing import Tuple
+from src.app.utils.tools import get_base_cur
 from src.app.service.item import ItemService
 from src.app.service.entity import EntityService
 from src.app.dao.invoice import itemDao, invoiceDao
+from src.app.dao.payment import paymentDao
 from src.app.model.exceptions import OpNotPermittedError, AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, \
     NotExistError, NotMatchWithSystemError
 from src.app.model.const import SystemAcctNumber
@@ -13,6 +16,7 @@ from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from src.app.model.invoice import _InvoiceBrief, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
+from src.app.model.payment import PaymentItem, Payment
 
 
 class SalesService:
@@ -144,6 +148,89 @@ class SalesService:
         return journal
     
     @classmethod
+    def create_journal_from_payment(cls, payment: Payment) -> Journal:
+        cls._validate_payment(payment)
+        
+        entries = []
+        
+        # AR/AP offset amount, expressed in base currency
+        ar_offset_raw_base = 0
+        for payment_item in payment.payment_items:
+            _invoice, _jrn_id  = invoiceDao.get(payment_item.invoice_id)
+            amount_base = FxService.convert(
+                amount=payment_item.payment_amount_raw, # amount deducted in invoice currency
+                src_currency=_invoice.currency, # invoice currency
+                # for A/R, A/P offset by payment, it should reflect amount at invoice date
+                cur_dt=_invoice.invoice_dt, # convert fx at invoice date # TODO: convert at invoice date or payment date?
+            )
+            ar_offset_raw_base += amount_base
+        
+        ar = Entry(
+            entry_type=EntryType.CREDIT, # offset A/R is credit entry
+            acct=AcctService.get_account(SystemAcctNumber.ACCT_RECEIV),
+            amount=ar_offset_raw_base, # amount in base currency
+            amount_base=ar_offset_raw_base, # amount in base currency
+            description=f'account receivable offset, converting to base currency using fx rate at invoice date'
+        )
+        entries.append(ar)
+        
+        # payment fee entry
+        fee_amount_base = FxService.convert(
+            amount=payment.payment_fee,
+            src_currency=payment.currency, # payment currency
+            cur_dt=payment.payment_dt, # convert at payment date
+        )
+        fee = Entry(
+            entry_type=EntryType.DEBIT, # fee is expense, debit entry
+            acct=AcctService.get_account(SystemAcctNumber.BANK_FEE), # debit to bank fee
+            cur_incexp=payment.currency, # payment currency
+            amount=payment.payment_fee, # in payment currency
+            amount_base=fee_amount_base, # converted to base currency
+            description='bank fee charged for payment'
+        )
+        entries.append(fee)
+        
+        # bank transfer entry (payment account)
+        net_pmt = payment.net_payment
+        pmt_amount_base = FxService.convert(
+            amount=net_pmt, # total payment before fee
+            src_currency=payment.currency, # payment currency
+            cur_dt=payment.payment_dt, # convert at payment date
+        )
+        pmt = Entry(
+            entry_type=EntryType.DEBIT, # payment receive is debit entry
+            acct=AcctService.get_account(payment.payment_acct_id), # debit to payment account
+            cur_incexp=payment.currency, # payment currency
+            amount=net_pmt, # in payment currency
+            amount_base=pmt_amount_base, # converted to base currency
+            description='total payment received (net of fee)'
+        )
+        entries.append(pmt)
+        
+        # add fx gain/loss
+        gain = (pmt_amount_base + fee_amount_base) - ar_offset_raw_base # received more than A/R
+        fx_gain = Entry(
+            entry_type=EntryType.CREDIT, # fx gain is credit
+            acct=AcctService.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
+            cur_incexp=get_base_cur(),
+            amount=gain, # gain is already expressed in base currency
+            amount_base=gain, # gain is already expressed in base currency
+            description='fx gain' if gain >=0 else 'fx loss'
+        )
+        entries.append(fx_gain)
+        
+        # create journal
+        journal = Journal(
+            jrn_date=payment.payment_dt,
+            entries=entries,
+            jrn_src=JournalSrc.PAYMENT,
+            note=payment.note
+        )
+        journal.reduce_entries()
+        return journal
+        
+    
+    @classmethod
     def _validate_item(cls, item: Item):
         # validate the default_acct_id is income/expense account
         default_item_acct: Account = AcctService.get_account(item.default_acct_id)
@@ -200,6 +287,46 @@ class SalesService:
                     f"Account {invoice_item.acct_id} of Invoice Item {invoice_item} does not exist",
                     details=e.details
                 )
+                
+    @classmethod
+    def _validate_payment(cls, payment: Payment):
+        # validate direction
+        if not payment.entity_type == EntityType.CUSTOMER:
+            raise OpNotPermittedError('Sales payment should only be created for customer')
+        
+        # validate payment account id exist
+        try:
+            payment_acct = AcctService.get_account(payment.payment_acct_id)
+        except NotExistError as e:
+            raise FKNotExistError(
+                f"Account {payment.payment_acct_id} of Payment {payment} does not exist",
+                details=e.details
+            )
+        
+        # validate payment items
+        for payment_item in payment.payment_items:
+            # validate invoice exist or not
+            try:
+                _invoice, _jrn_id  = invoiceDao.get(payment_item.invoice_id)
+            except NotExistError as e:
+                raise FKNotExistError(
+                    f"Invoice Id {payment_item.invoice_id} of payment item {payment_item} does not exist",
+                    details=e.details
+                )
+            
+            # validate invoice direction
+            if not _invoice.entity_type == EntityType.CUSTOMER:
+                raise OpNotPermittedError('Invoice used in sales payment should only be related customer')
+
+            # validate payment and payment amount raw
+            if payment_acct.currency == _invoice.currency:
+                # if invoice currency equals payment currency, the amount should equal
+                if not math.isclose(payment_item.payment_amount, payment_item.payment_amount_raw, rel_tol=1e-6):
+                    raise OpNotPermittedError(
+                        f'Same payment and invoice currency ({payment_acct.currency}), payment_amount should equal to payment_amount_raw',
+                        details=f'payment item amount not expected: {payment_item}'
+                    )
+            
     
     @classmethod
     def add_invoice(cls, invoice: Invoice):

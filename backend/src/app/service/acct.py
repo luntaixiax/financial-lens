@@ -185,6 +185,12 @@ class AcctService:
             acct_type=AcctType.INC,
             chart=total_income.chart
         )
+        bank_fee = Account(
+            acct_id=SystemAcctNumber.BANK_FEE,
+            acct_name="Bank Fee",
+            acct_type=AcctType.EXP,
+            chart=total_expense.chart
+        ) # for payment entry
         
         cls.add_account(input_tax)
         cls.add_account(output_tax)
@@ -197,6 +203,7 @@ class AcctService:
         cls.add_account(sc)
         cls.add_account(disc)
         cls.add_account(fx_gain)
+        cls.add_account(bank_fee)
         
     @classmethod
     def create_sample(cls):
