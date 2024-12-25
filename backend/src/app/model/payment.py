@@ -60,3 +60,17 @@ class Payment(EnhancedBaseModel):
     )
     note: str | None = Field(None)
     
+    @computed_field()
+    def gross_payment(self) -> float:
+        # total payment in payment currency (before payment fee)
+        return sum(payment_item.payment_amount for payment_item in self.payment_items)
+    
+    @computed_field()
+    def net_payment(self) -> float:
+        # total payment in payment currency (after payment fee)
+        if self.entity_type == EntityType.CUSTOMER:
+            # net payment received will be lower (we pay fee)
+            return self.gross_payment - self.payment_fee
+        else:
+            # net payment paid will be higher (we pay fee)
+            return self.gross_payment + self.payment_fee

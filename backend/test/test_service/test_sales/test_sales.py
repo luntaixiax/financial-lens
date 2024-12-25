@@ -250,6 +250,20 @@ def test_invoice(mock_engine, engine_with_sample_choa, sample_invoice):
     invoices = SalesService.list_invoice(num_invoice_items=3)
     assert len(invoices) == 0
     
+    # test update invoice
+    _invoice, _journal = SalesService.get_invoice_journal(sample_invoice.invoice_id)
+    _jrn_id = _journal.journal_id # original journal id before updating
+    ## update1 -- valid invoice level update
+    sample_invoice.invoice_dt = date(2024, 1, 2)
+    sample_invoice.invoice_items[0].quantity = 8
+    SalesService.update_invoice(sample_invoice)
+    _invoice, _journal = SalesService.get_invoice_journal(sample_invoice.invoice_id)
+    assert _invoice == sample_invoice
+    _journal_ = JournalService.get_journal(_journal.journal_id)
+    assert _journal_ == _journal
+    with pytest.raises(NotExistError):
+        # original journal should be deleted
+        JournalService.get_journal(_jrn_id)
     
     # test delete invoice
     with pytest.raises(NotExistError):

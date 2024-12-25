@@ -348,8 +348,44 @@ class PurchaseService:
     def update_invoice(cls, invoice: Invoice):
         cls._validate_invoice(invoice)
         # only delete if validation passed
-        cls.delete_invoice(invoice.invoice_id)
-        cls.add_invoice(invoice)
+        # cls.delete_invoice(invoice.invoice_id)
+        # cls.add_invoice(invoice)
+        
+        # get existing journal id
+        try:
+            _invoice, jrn_id  = invoiceDao.get(invoice.invoice_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Invoice id {_invoice.invoice_id} does not exist',
+                details=e.details
+            )
+        
+        # add new journal first
+        journal = cls.create_journal_from_invoice(invoice)
+        try:
+            JournalService.add_journal(journal)
+        except FKNotExistError as e:
+            raise FKNotExistError(
+                f'Some component of journal does not exist: {journal}',
+                details=e.details
+            )
+        
+        # update invoice
+        try:
+            invoiceDao.update(
+                journal_id=journal.journal_id, # use new journal id
+                invoice=invoice
+            )
+        except FKNotExistError as e:
+            # need to remove the new journal
+            JournalService.delete_journal(journal.journal_id)
+            raise FKNotExistError(
+                f"Invoice element does not exist",
+                details=e.details
+            )
+        
+        # remove old journal
+        JournalService.delete_journal(jrn_id)
         
         
     @classmethod

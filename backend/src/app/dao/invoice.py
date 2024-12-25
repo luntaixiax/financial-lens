@@ -7,7 +7,7 @@ from src.app.model.enums import CurType, EntityType, EntryType
 from src.app.model.invoice import _InvoiceBrief, InvoiceItem, Item, Invoice
 from src.app.dao.orm import InvoiceItemORM, InvoiceORM, ItemORM, EntryORM, infer_integrity_error
 from src.app.dao.connection import get_engine
-from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNoDeleteUpdateError
+from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, FKNoDeleteUpdateError
 
 
 class itemDao:
@@ -212,6 +212,70 @@ class invoiceDao:
             # commit at same time
             s.commit()
             logging.info(f"deleted invoice and items for {invoice_id}")
+            
+    @classmethod
+    def update(cls, journal_id: str, invoice: Invoice):
+        # journal_id is the new journal created first before calling this API
+        # update invoice first
+        with Session(get_engine()) as s:
+            sql = select(InvoiceORM).where(
+                InvoiceORM.invoice_id == invoice.invoice_id,
+            )
+            try:
+                p = s.exec(sql).one()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
+
+            # update
+            invoice_orm = cls.fromInvoice(
+                journal_id=journal_id,
+                invoice=invoice
+            )
+            # must update invoice orm because journal id changed
+            p.invoice_num = invoice_orm.invoice_num
+            p.invoice_dt = invoice_orm.invoice_dt
+            p.due_dt = invoice_orm.due_dt
+            p.entity_id = invoice_orm.entity_id
+            p.entity_type = invoice_orm.entity_type
+            p.subject = invoice_orm.subject
+            p.currency = invoice_orm.currency
+            p.shipping = invoice_orm.shipping
+            p.journal_id = journal_id # update to new journal id
+            p.note = invoice_orm.note
+            
+            try:
+                s.add(p)
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise FKNotExistError(
+                    details=str(e)
+                )
+            else:
+                s.refresh(p) # update p to instantly have new values
+                
+            # remove existing invoice items
+            sql = delete(InvoiceItemORM).where(
+                InvoiceItemORM.invoice_id == invoice.invoice_id
+            )
+            s.exec(sql)
+            
+            # add new invoice items
+            # add individual invoice items
+            for invoice_item in invoice.invoice_items:
+                invoice_item_orm = cls.fromInvoiceItem(
+                    invoice_id=invoice.invoice_id,
+                    invoice_item=invoice_item
+                )
+                s.add(invoice_item_orm)
+            try:
+                s.commit()
+            except IntegrityError as e:
+                s.rollback() # will rollback both item removal and new item add
+                raise FKNotExistError(
+                    details=str(e)
+                )
+            
 
             
     @classmethod
