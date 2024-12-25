@@ -328,8 +328,8 @@ class invoiceDao:
                 )
             
             # remove existing general invoice items
-            sql = delete(GeneralInvoiceItem).where(
-                GeneralInvoiceItem.invoice_id == invoice.invoice_id
+            sql = delete(GeneralInvoiceItemORM).where(
+                GeneralInvoiceItemORM.invoice_id == invoice.invoice_id
             )
             s.exec(sql)
             # add new general invoice items
