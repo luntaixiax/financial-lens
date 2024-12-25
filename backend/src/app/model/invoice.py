@@ -1,5 +1,6 @@
 from datetime import date
 from functools import partial
+import math
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.enums import CurType, EntityType, ItemType, UnitType
@@ -73,24 +74,29 @@ class InvoiceItem(EnhancedBaseModel):
         # in item currency
         return self.amount_pre_tax * (1 + self.tax_rate)
     
-class BillableExpenseItem(EnhancedBaseModel):
+class GeneralInvoiceItem(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
-    bexp_item_id: str = Field(
+    ginv_item_id: str = Field(
         default_factory=partial(
             id_generator,
-            prefix='bexpi-',
+            prefix='ginvitem-',
             length=8,
         ),
         frozen=True,
-        description='Billable Expense Invoice Item ID'
+        description='General Invoice Item ID'
     )
-    expense_dt: date
+    incur_dt: date = Field(
+        description='Incur date, can be different from invoice date'
+    )
     acct_id: str = Field(
-        description='Expense account to reverse (Credit to)'
+        description='Inc/Exp Account to be credit(sales)/debit(purchase) to'
+    )
+    currency: CurType = Field(
+        description='Incured currency, can be different from invoice currency'
     )
     amount_pre_tax_raw: float = Field(
-        description='Amount pretax, expressed in the expense currency'
+        description='Amount pretax, expressed in the incurred currency'
     )
     amount_pre_tax: float = Field(
         description='Amount pretax, expressed in the invoice currency'
@@ -99,6 +105,17 @@ class BillableExpenseItem(EnhancedBaseModel):
         default_factory=get_default_tax_rate
     )
     description: str | None = Field(None)
+    
+    @computed_field()
+    def tax_amount(self) -> float:
+        # in item currency
+        return self.amount_pre_tax * self.tax_rate
+    
+    @computed_field()
+    def amount_after_tax(self) -> float:
+        # in item currency
+        return self.amount_pre_tax * (1 + self.tax_rate)
+    
     
 class _InvoiceBrief(EnhancedBaseModel):
     invoice_id: str = Field(description='Invoice ID')
@@ -134,6 +151,10 @@ class Invoice(EnhancedBaseModel):
     subject: str
     currency: CurType
     invoice_items: list[InvoiceItem] = Field(min_length=1)
+    ginvoice_items: list[GeneralInvoiceItem] = Field(
+        [],
+        description='General invoice item, e.g., billable expense'
+    )
     shipping: float = Field(0) # shipping or handling (after tax)
     note: str | None = Field(None)
     
@@ -150,6 +171,15 @@ class Invoice(EnhancedBaseModel):
         return self
     
     @model_validator(mode='after')
+    def validate_ginv_item(self):
+        # if invoice currency=general incur currency, amount should be equal
+        for ginv_item in self.ginvoice_items:
+            if self.currency == ginv_item.currency:
+                assert math.isclose(ginv_item.amount_pre_tax_raw, ginv_item.amount_pre_tax), \
+                    f"Invoice currency = General Item currency ({self.currency}, but amount_pre_tax_raw ({ginv_item.amount_pre_tax_raw}) != amount_pre_tax ({ginv_item.amount_pre_tax})); General Item {ginv_item}"
+        return self
+    
+    @model_validator(mode='after')
     def validate_item_type(self):
         # make sure entity type within all items are in same entity type
         all_etype = set(inv_item.item.entity_type for inv_item in self.invoice_items)
@@ -160,16 +190,28 @@ class Invoice(EnhancedBaseModel):
         assert item_entity == self.entity_type, \
             f"Invoice entity type is set to be {self.entity_type}, while invoice items are of entity type {item_entity}"
         return self
+        
+    @computed_field()
+    def subtotal_invitems(self) -> float:
+        # in item currency (same as invoice currency), all item before shipping
+        return sum(item.amount_pre_tax for item in self.invoice_items)
+    
+    @computed_field()
+    def subtotal_ginvitems(self) -> float:
+        # in invoice currency
+        return sum(item.amount_pre_tax for item in self.ginvoice_items)
     
     @computed_field()
     def subtotal(self) -> float:
         # in item currency, all item before shipping
-        return sum(item.amount_pre_tax for item in self.invoice_items)
+        return self.subtotal_invitems + self.subtotal_ginvitems
     
     @computed_field()
     def tax_amount(self) -> float:
         # in item currency
-        return sum(item.tax_amount for item in self.invoice_items)
+        tax = sum(item.tax_amount for item in self.invoice_items) \
+            + sum(item.tax_amount for item in self.ginvoice_items)
+        return tax
     
     @computed_field()
     def total(self) -> float:

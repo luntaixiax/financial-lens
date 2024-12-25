@@ -397,7 +397,47 @@ class InvoiceItemORM(SQLModel, table=True):
     tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     discount_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
+
+class GeneralInvoiceItemORM(SQLModel, table=True):
+    __tablename__ = "general_invoice_item"
     
+    ginv_item_id: str = Field(
+        sa_column=Column(String(length = 17), primary_key = True, nullable = False)
+    )
+    invoice_id: str = Field(
+        sa_column=Column(
+            String(length = 13), 
+            ForeignKey(
+                'invoice.invoice_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'CASCADE' # TODO
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    incur_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    acct_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'accounts.acct_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    currency: CurType | None = Field(
+        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
+    )
+    amount_pre_tax_raw: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    amount_pre_tax: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    description: str | None = Field(sa_column=Column(Text(), nullable = True))
+    
+
 class ExpenseORM(SQLModel, table=True):
     __tablename__ = "expense"
     
