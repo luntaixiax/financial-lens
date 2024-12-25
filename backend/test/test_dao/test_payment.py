@@ -54,44 +54,49 @@ def test_payment(mock_engine, engine, sample_payment):
     mock_engine.return_value = engine
     
     from src.app.dao.payment import paymentDao
+    from src.app.dao.journal import journalDao
     
     # assert payment not found, and have correct error type
     with pytest.raises(NotExistError):
         paymentDao.get(payment_id=sample_payment.payment_id)
         
+    # add sample journal (does not matter which journal to link to, as long as there is one)
+    sample_journal_meal = journalDao.get('jrn-sample')
+    #journalDao.add(sample_journal_meal) # add journal
+        
     # test add payment
-    paymentDao.add(sample_payment)
+    paymentDao.add(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
     # test no duplicate add
     with pytest.raises(AlreadyExistError):
-        paymentDao.add(sample_payment)
+        paymentDao.add(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
     _payment = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
     
     # test update (only update payment body)
     sample_payment.payment_acct_id = 'acct-random'
     with pytest.raises(FKNotExistError):
-        paymentDao.update(sample_payment)
+        paymentDao.update(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
     # should be no change
     sample_payment.payment_acct_id = 'acct-bank'
     _payment = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
     # test update (success case)
     sample_payment.payment_dt = date(2024, 1, 3)
-    paymentDao.update(sample_payment)
+    paymentDao.update(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
     _payment = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
     
     # test update with changed payment items
     sample_payment.payment_items[0].invoice_id = 'inv-random'
     with pytest.raises(FKNotExistError):
-        paymentDao.update(sample_payment)
+        paymentDao.update(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
     # should be no change
     sample_payment.payment_items[0].invoice_id = 'inv-sample'
     _payment = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
     # test update payment item success case
     sample_payment.payment_items[0].payment_amount_raw = 900
-    paymentDao.update(sample_payment)
+    paymentDao.update(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
     _payment = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
     
@@ -99,3 +104,4 @@ def test_payment(mock_engine, engine, sample_payment):
     paymentDao.remove(payment_id=sample_payment.payment_id)
     with pytest.raises(NotExistError):
         paymentDao.get(payment_id=sample_payment.payment_id)
+    

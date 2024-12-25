@@ -157,6 +157,7 @@ def sample_journal_meal(engine_with_sample_choa, settings) -> Generator[Journal,
         from src.app.service.acct import AcctService
         
         journal = Journal(
+            journal_id='jrn-sample',
             jrn_date=date(2024, 1, 1),
             entries=[
                 Entry(

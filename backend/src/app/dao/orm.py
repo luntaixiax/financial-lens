@@ -497,6 +497,18 @@ class PaymentORM(SQLModel, table=True):
             nullable = False
         )
     )
+    journal_id: str = Field(
+        sa_column=Column(
+            String(length = 20),
+            ForeignKey(
+                'journals.journal_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT' # TODO: review this
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    ) # TODO: in dao, need to add journal (auto mode) first, then add invoice
     payment_fee: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     ref_num: str | None = Field(sa_column=Column(Text(), nullable = True))
     note: str | None = Field(sa_column=Column(Text(), nullable = True))

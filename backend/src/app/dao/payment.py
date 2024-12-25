@@ -30,13 +30,14 @@ class paymentDao:
         )
     
     @classmethod
-    def fromPayment(cls, payment: Payment) -> PaymentORM:
+    def fromPayment(cls, journal_id: str, payment: Payment) -> PaymentORM:
         return PaymentORM(
             payment_id=payment.payment_id,
             payment_num=payment.payment_num,
             payment_dt=payment.payment_dt,
             entity_type=payment.entity_type,
             payment_acct_id=payment.payment_acct_id,
+            journal_id=journal_id, # use pre-inserted journal id
             payment_fee=payment.payment_fee,
             ref_num=payment.ref_num,
             note=payment.note
@@ -60,10 +61,10 @@ class paymentDao:
         )
     
     @classmethod
-    def add(cls, payment: Payment):
+    def add(cls, journal_id: str, payment: Payment):
         with Session(get_engine()) as s:
             # add payment first
-            payment_orm = cls.fromPayment(payment)
+            payment_orm = cls.fromPayment(journal_id=journal_id, payment=payment)
             s.add(payment_orm)
             try:
                 s.commit()
@@ -142,7 +143,7 @@ class paymentDao:
             logging.info(f"deleted payment and payment items for {payment_id}")
             
     @classmethod
-    def update(cls, payment: Payment):
+    def update(cls, journal_id: str, payment: Payment):
         # update payment
         with Session(get_engine()) as s:
             sql = select(PaymentORM).where(
@@ -154,7 +155,10 @@ class paymentDao:
                 raise NotExistError(details=str(e))
             
             # update
-            payment_orm = cls.fromPayment(payment)
+            payment_orm = cls.fromPayment(
+                journal_id=journal_id, 
+                payment=payment
+            )
             if not p == payment_orm:
                 p.payment_num = payment_orm.payment_num
                 p.payment_dt = payment_orm.payment_dt
@@ -163,6 +167,7 @@ class paymentDao:
                 p.payment_fee = payment_orm.payment_fee
                 p.ref_num = payment_orm.ref_num
                 p.note = payment_orm.note
+                p.journal_id = journal_id # update to new journal id
                 
                 try:
                     s.add(p)
