@@ -85,12 +85,15 @@ class BillableExpenseItem(EnhancedBaseModel):
         frozen=True,
         description='Billable Expense Invoice Item ID'
     )
-    expense_id: str
-    expense_acct_id: str = Field(
+    expense_dt: date
+    acct_id: str = Field(
         description='Expense account to reverse (Credit to)'
     )
+    amount_pre_tax_raw: float = Field(
+        description='Amount pretax, expressed in the expense currency'
+    )
     amount_pre_tax: float = Field(
-        description='Amount pretax, expressed in currency invoiced'
+        description='Amount pretax, expressed in the invoice currency'
     )
     tax_rate: float = Field(
         default_factory=get_default_tax_rate
