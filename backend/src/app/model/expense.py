@@ -48,9 +48,15 @@ class _ExpenseBrief(EnhancedBaseModel):
     expense_dt: date
     merchant: str | None
     currency: CurType
+    payment_acct_name: str
+    expense_acct_name_strs: str
     total_raw_amount: float = Field(description='Total amount in expense currency (after tax)')
     total_base_amount: float = Field(description='Total amount in base currency (after tax)')
     has_receipt: bool
+    
+    @computed_field
+    def expense_acct_names(self) -> list[str]:
+        return self.expense_acct_name_strs.split(',')
 
 class Expense(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)

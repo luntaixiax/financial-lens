@@ -26,7 +26,21 @@ class PaymentItem(EnhancedBaseModel):
     payment_amount_raw: float = Field(
         description='Payment amount (before bank fee), in invoice account currency. The difference will be recorded as FX gain/loss'
     )
+
+class _PaymentBrief(EnhancedBaseModel):
+    payment_id: str
+    payment_num: str
+    payment_dt: date
+    entity_type: EntityType
+    currency: CurType
+    payment_acct_name: str
+    num_invoices: int
+    invoice_num_strs: str
+    gross_payment_base: float
     
+    @computed_field
+    def invoice_nums(self) -> list[str]:
+        return self.invoice_num_strs.split(',')
 
 class Payment(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)

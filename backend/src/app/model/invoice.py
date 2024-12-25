@@ -101,7 +101,9 @@ class _InvoiceBrief(EnhancedBaseModel):
     invoice_id: str = Field(description='Invoice ID')
     invoice_num: str = Field(description='Invoice number')
     invoice_dt: date = Field(description='Invoice Date')
-    entity_id: str = Field(description='Customer/Supplier id to sent the invoice')
+    entity_name: str = Field(description='Customer/Supplier to sent the invoice')
+    entity_type: EntityType
+    is_business: bool = Field(description='Is business or individual')
     subject: str = Field(description='Subject line of the invoice')
     currency: CurType = Field(description='Currency used for the invoice')
     num_invoice_items: int = Field(description='Total # of invoice items')

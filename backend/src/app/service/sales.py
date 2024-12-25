@@ -16,13 +16,14 @@ from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from src.app.model.invoice import _InvoiceBrief, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
-from src.app.model.payment import PaymentItem, Payment
+from src.app.model.payment import _PaymentBrief, PaymentItem, Payment
 
 
 class SalesService:
     
     @classmethod
     def create_sample(cls):
+        # add invoice
         invoice = Invoice(
             invoice_id='inv-sales',
             invoice_num='INV-001',
@@ -49,10 +50,31 @@ class SalesService:
             note="Thanks for business"
         )
         cls.add_invoice(invoice)
+        # add payment
+        payment = Payment(
+            payment_id='pmt-sales',
+            payment_num='PMT-001',
+            payment_dt=date(2024, 1, 4),
+            entity_type=EntityType.CUSTOMER,
+            payment_items=[
+                PaymentItem(
+                    payment_item_id='pmtitem-1',
+                    invoice_id='inv-sales',
+                    payment_amount=135,
+                    payment_amount_raw=100
+                )
+            ],
+            payment_acct_id='acct-bank',
+            payment_fee=2,
+            ref_num='#12345',
+            note='payment from client'
+        )
+        cls.add_payment(payment)
         
     @classmethod
     def clear_sample(cls):
         cls.delete_invoice('inv-sales')
+        cls.delete_payment('pmt-sales')
 
     @classmethod
     def create_journal_from_invoice(cls, invoice: Invoice) -> Journal:
@@ -595,6 +617,8 @@ class SalesService:
         invoice_ids: list[str] | None = None,
         invoice_nums: list[str] | None = None,
         customer_ids: list[str] | None = None,
+        customer_names: list[str] | None = None,
+        is_business: bool | None = None,
         min_dt: date = date(1970, 1, 1), 
         max_dt: date = date(2099, 12, 31), 
         subject_keyword: str = '',
@@ -610,6 +634,8 @@ class SalesService:
             invoice_ids=invoice_ids,
             invoice_nums=invoice_nums,
             entity_ids=customer_ids,
+            entity_names=customer_names,
+            is_business=is_business,
             min_dt=min_dt,
             max_dt=max_dt,
             subject_keyword=subject_keyword,
@@ -617,5 +643,40 @@ class SalesService:
             min_amount=min_amount,
             max_amount=max_amount,
             num_invoice_items=num_invoice_items
-        ) 
+        )
         
+    @classmethod
+    def list_payment(
+        cls,
+        limit: int = 50,
+        offset: int = 0,
+        payment_ids: list[str] | None = None,
+        payment_nums: list[str] | None = None,
+        payment_acct_id: str | None = None,
+        payment_acct_name: str | None = None,
+        invoice_ids: list[str] | None = None,
+        invoice_nums: list[str] | None = None,
+        currency: CurType | None = None,
+        min_dt: date = date(1970, 1, 1), 
+        max_dt: date = date(2099, 12, 31),
+        min_amount: float = -999999999,
+        max_amount: float = 999999999,
+        num_invoices: int | None = None
+    ) -> list[_PaymentBrief]:
+        return paymentDao.list(
+            limit=limit,
+            offset=offset,
+            entity_type=EntityType.CUSTOMER,
+            payment_ids=payment_ids,
+            payment_nums=payment_nums,
+            payment_acct_id=payment_acct_id,
+            payment_acct_name=payment_acct_name,
+            invoice_ids=invoice_ids,
+            invoice_nums=invoice_nums,
+            currency=currency,
+            min_dt=min_dt,
+            max_dt=max_dt,
+            min_amount=min_amount,
+            max_amount=max_amount,
+            num_invoices=num_invoices
+        )

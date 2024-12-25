@@ -6,7 +6,7 @@ from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.enums import CurType, EntryType
 from src.app.model.expense import _ExpenseBrief, ExpenseItem, Expense, Merchant
-from src.app.dao.orm import EntryORM, ExpenseItemORM, ExpenseORM, infer_integrity_error
+from src.app.dao.orm import AcctORM, EntryORM, ExpenseItemORM, ExpenseORM, infer_integrity_error
 from src.app.dao.connection import get_engine
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, FKNoDeleteUpdateError
 
@@ -214,18 +214,48 @@ class expenseDao:
         max_dt: date = date(2099, 12, 31), 
         currency: CurType | None = None,
         payment_acct_id: str | None = None,
+        payment_acct_name: str | None = None,
+        expense_acct_ids: list[str] | None = None,
+        expense_acct_names: list[str] | None = None,
         min_amount: float = -999999999,
         max_amount: float = 999999999,
         has_receipt: bool | None = None
     ) -> list[_ExpenseBrief]:
         with Session(get_engine()) as s:
             
+            acct_case_when = []
+            if expense_acct_ids is not None:
+                acct_case_when.append(
+                    f.max(
+                        case(
+                            (AcctORM.acct_id.in_(expense_acct_ids), 1),
+                            else_=0
+                        )
+                    ).label('contains_acct_id'),
+                )
+            if expense_acct_names is not None:
+                acct_case_when.append(
+                    f.max(
+                        case(
+                            (AcctORM.acct_name.in_(expense_acct_names), 1),
+                            else_=0
+                        )
+                    ).label('contains_acct_name')
+                )
+            
             expense_summary = (
                 select(
                     ExpenseItemORM.expense_id,
+                    f.group_concat(AcctORM.acct_name).label('expense_acct_name_strs'),
                     f.sum(
                         ExpenseItemORM.amount_pre_tax * (1 + ExpenseItemORM.tax_rate)
-                    ).label('total_raw_amount')
+                    ).label('total_raw_amount'),
+                    *acct_case_when
+                )
+                .join(
+                    AcctORM,
+                    onclause=ExpenseItemORM.expense_acct_id == AcctORM.acct_id, 
+                    isouter=True # outer join
                 )
                 .group_by(
                     ExpenseItemORM.expense_id
@@ -258,6 +288,8 @@ class expenseDao:
                 exp_filters.append(ExpenseORM.expense_id.in_(expense_ids))
             if payment_acct_id is not None:
                 exp_filters.append(ExpenseORM.payment_acct_id == payment_acct_id)
+            if payment_acct_name is not None:
+                exp_filters.append(AcctORM.acct_name == payment_acct_name)
             if has_receipt is not None:
                 exp_filters.append(
                     case(
@@ -265,18 +297,30 @@ class expenseDao:
                         else_=True
                     ) == has_receipt
                 )
+            if expense_acct_ids is not None:
+                exp_filters.append(expense_summary.c.contains_acct_id == 1)
+            if expense_acct_names is not None:
+                exp_filters.append(expense_summary.c.contains_acct_name == 1)
+                
             expense_joined = (
                 select(
                     ExpenseORM.expense_id,
                     ExpenseORM.expense_dt,
                     ExpenseORM.merchant, # TODO, extract merchant
                     ExpenseORM.currency,
+                    AcctORM.acct_name.label('payment_acct_name'),
+                    expense_summary.c.expense_acct_name_strs,
                     expense_summary.c.total_raw_amount,
                     journal_summary.c.amount_base.label('total_base_amount'),
                     case(
                         (ExpenseORM.receipts.is_(None), False),
                         else_=True
                     ).label('has_receipt')
+                )
+                .join(
+                    AcctORM,
+                    onclause=ExpenseORM.payment_acct_id == AcctORM.acct_id, 
+                    isouter=True # outer join
                 )
                 .join(
                     expense_summary,
@@ -291,7 +335,7 @@ class expenseDao:
                 .where(
                     *exp_filters
                 )
-                .order_by(ExpenseORM.expense_dt.desc())
+                .order_by(ExpenseORM.expense_dt.desc(), ExpenseORM.expense_id)
                 .offset(offset)
                 .limit(limit)
             )
@@ -304,6 +348,8 @@ class expenseDao:
                 expense_dt=expense.expense_dt,
                 merchant=Merchant.model_validate(expense.merchant).merchant,
                 currency=expense.currency,
+                payment_acct_name=expense.payment_acct_name,
+                expense_acct_name_strs=expense.expense_acct_name_strs,
                 total_raw_amount=expense.total_raw_amount,
                 total_base_amount=expense.total_base_amount,
                 has_receipt=expense.has_receipt

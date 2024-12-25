@@ -3,7 +3,7 @@ import pytest
 from unittest import mock
 
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError
-from src.app.model.enums import EntityType
+from src.app.model.enums import CurType, EntityType
 from src.app.model.payment import PaymentItem, Payment
 
 
@@ -71,6 +71,22 @@ def test_payment(mock_engine, engine, sample_payment):
         paymentDao.add(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
     _payment, _ = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
+    
+    # test list
+    payments = paymentDao.list()
+    assert len(payments) == 1
+    payments = paymentDao.list(entity_type=EntityType.SUPPLIER)
+    assert len(payments) == 0
+    payments = paymentDao.list(payment_nums=['PMT-001'])
+    assert len(payments) == 1
+    payments = paymentDao.list(currency=CurType.EUR)
+    assert len(payments) == 0
+    payments = paymentDao.list(num_invoices=1)
+    assert len(payments) == 1
+    payments = paymentDao.list(invoice_nums=['INV-001'])
+    assert len(payments) == 1
+    payments = paymentDao.list(payment_acct_id='acct-random')
+    assert len(payments) == 0
     
     # test update (only update payment body)
     sample_payment.payment_acct_id = 'acct-random'

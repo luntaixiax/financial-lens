@@ -3,9 +3,10 @@ import logging
 from typing import Tuple
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
+from src.app.model.enums import CurType, EntityType, EntryType
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError
-from src.app.dao.orm import PaymentItemORM, PaymentORM, infer_integrity_error
-from src.app.model.payment import Payment, PaymentItem
+from src.app.dao.orm import AcctORM, EntryORM, InvoiceORM, PaymentItemORM, PaymentORM, infer_integrity_error
+from src.app.model.payment import Payment, PaymentItem, _PaymentBrief
 from src.app.dao.connection import get_engine
 
 
@@ -203,3 +204,151 @@ class paymentDao:
                 raise FKNotExistError(
                     details=str(e)
                 )
+                
+    @classmethod
+    def list(
+        cls,
+        limit: int = 50,
+        offset: int = 0,
+        entity_type: EntityType = EntityType.CUSTOMER,
+        payment_ids: list[str] | None = None,
+        payment_nums: list[str] | None = None,
+        payment_acct_id: str | None = None,
+        payment_acct_name: str | None = None,
+        invoice_ids: list[str] | None = None,
+        invoice_nums: list[str] | None = None,
+        currency: CurType | None = None,
+        min_dt: date = date(1970, 1, 1), 
+        max_dt: date = date(2099, 12, 31),
+        min_amount: float = -999999999,
+        max_amount: float = 999999999,
+        num_invoices: int | None = None
+    ) -> list[_PaymentBrief]:
+        with Session(get_engine()) as s:
+            
+            inv_case_when = []
+            if invoice_ids is not None:
+                inv_case_when.append(
+                    f.max(
+                        case(
+                            (InvoiceORM.invoice_id.in_(invoice_ids), 1),
+                            else_=0
+                        )
+                    ).label('contains_invoice_id'),
+                )
+            if invoice_nums is not None:
+                inv_case_when.append(
+                    f.max(
+                        case(
+                            (InvoiceORM.invoice_num.in_(invoice_nums), 1),
+                            else_=0
+                        )
+                    ).label('contains_invoice_num')
+                )
+            payment_item_agg = (
+                select(
+                    PaymentItemORM.payment_id,
+                    f.count(PaymentItemORM.invoice_id.distinct()).label('num_invoices'),
+                    f.group_concat(InvoiceORM.invoice_num).label('invoice_num_strs'),
+                    *inv_case_when
+                )
+                .join(
+                    InvoiceORM,
+                    onclause=PaymentItemORM.invoice_id == InvoiceORM.invoice_id, 
+                    isouter=True # outer join
+                )
+                .group_by(
+                    PaymentItemORM.payment_id,
+                )
+                .subquery()
+            )
+            journal_summary = (
+                select(
+                    EntryORM.journal_id,
+                    f.sum(EntryORM.amount_base).label('gross_payment_base')
+                )
+                .where(
+                    EntryORM.entry_type == EntryType.DEBIT
+                )
+                .group_by(
+                    EntryORM.journal_id
+                )
+                .subquery()
+            )
+            
+            pmt_filters = [
+                PaymentORM.payment_dt.between(min_dt, max_dt), 
+                PaymentORM.entity_type == entity_type,
+                journal_summary.c.gross_payment_base.between(min_amount, max_amount),
+            ]
+            # add payment currency filter
+            if currency is not None:
+                pmt_filters.append(AcctORM.currency == currency)
+            if payment_acct_id is not None:
+                pmt_filters.append(AcctORM.acct_id == payment_acct_id)
+            if payment_acct_name is not None:
+                pmt_filters.append(AcctORM.acct_name == payment_acct_name)
+            # add num items filter
+            if num_invoices is not None:
+                pmt_filters.append(payment_item_agg.c.num_invoices == num_invoices)
+            # add payment id filters
+            if payment_ids is not None:
+                pmt_filters.append(PaymentORM.payment_id.in_(payment_ids))
+            if payment_nums is not None:
+                pmt_filters.append(PaymentORM.payment_num.in_(payment_nums))
+            if invoice_ids is not None:
+                pmt_filters.append(payment_item_agg.c.contains_invoice_id == 1)
+            if invoice_nums is not None:
+                pmt_filters.append(payment_item_agg.c.contains_invoice_num == 1)
+                
+            joined = (
+                select(
+                    PaymentORM.payment_id,
+                    PaymentORM.payment_num,
+                    PaymentORM.payment_dt,
+                    PaymentORM.entity_type,
+                    AcctORM.currency,
+                    AcctORM.acct_name.label('payment_acct_name'),
+                    payment_item_agg.c.num_invoices,
+                    payment_item_agg.c.invoice_num_strs,
+                    journal_summary.c.gross_payment_base
+                )
+                .join(
+                    AcctORM,
+                    onclause=PaymentORM.payment_acct_id == AcctORM.acct_id, 
+                    isouter=True # outer join
+                )
+                .join(
+                    payment_item_agg,
+                    onclause=PaymentORM.payment_id == payment_item_agg.c.payment_id, 
+                    isouter=False # inner join
+                )
+                .join(
+                    journal_summary,
+                    onclause=PaymentORM.journal_id == journal_summary.c.journal_id, 
+                    isouter=False # inner join
+                )
+                .where(
+                    *pmt_filters
+                )
+                .order_by(PaymentORM.payment_dt.desc(), PaymentORM.payment_id)
+                .offset(offset)
+                .limit(limit)
+            )
+            
+            payments = s.exec(joined).all()
+            
+        return [
+            _PaymentBrief(
+                payment_id=payment.payment_id,
+                payment_num=payment.payment_num,
+                payment_dt=payment.payment_dt,
+                entity_type=payment.entity_type,
+                currency=payment.currency,
+                payment_acct_name=payment.payment_acct_name,
+                num_invoices=payment.num_invoices,
+                invoice_num_strs=payment.invoice_num_strs,
+                gross_payment_base=payment.gross_payment_base,
+            )
+            for payment in payments
+        ]

@@ -2,7 +2,7 @@ from datetime import date
 from unittest import mock
 import pytest
 from src.app.model.accounts import Account, Chart
-from src.app.model.enums import AcctType
+from src.app.model.enums import AcctType, JournalSrc
 from src.app.model.exceptions import NotExistError, AlreadyExistError, FKNotExistError
 
 @mock.patch("src.app.dao.connection.get_engine")
@@ -17,10 +17,21 @@ def test_journal(mock_engine, engine_with_sample_choa, sample_journal_meal):
     with pytest.raises(AlreadyExistError):
         journalDao.add(sample_journal_meal)
     
-    
     # test get journal
     _journal = journalDao.get(sample_journal_meal.journal_id)
     assert _journal == sample_journal_meal
+    
+    # test list
+    jb = journalDao.list()
+    assert len(jb) == 1
+    jb = journalDao.list(jrn_src = JournalSrc.MANUAL)
+    assert len(jb) == 1
+    jb = journalDao.list(num_entries=4)
+    assert len(jb) == 1
+    jb = journalDao.list(acct_ids=['acct-meal'])
+    assert len(jb) == 1
+    jb = journalDao.list(acct_names=['acct-random'])
+    assert len(jb) == 0
     
     # test remove journal
     journalDao.remove(sample_journal_meal.journal_id)
@@ -55,12 +66,6 @@ def test_journal(mock_engine, engine_with_sample_choa, sample_journal_meal):
     ))[0]
     assert _entry.description == 'Unhappy Tip'
     
-    # test list
-    jb = journalDao.list(
-        jrn_src = None,
-        num_entries=4
-    )
-    assert len(jb) == 1
     
     # remove journal
     journalDao.remove(sample_journal_meal.journal_id)

@@ -4,7 +4,7 @@ from datetime import date
 from functools import partial
 import math
 from typing import Tuple
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.accounts import Account
 from src.app.model.enums import CurType, EntryType, JournalSrc
 from src.app.utils.tools import get_base_cur, id_generator
@@ -48,9 +48,14 @@ class _JournalBrief(EnhancedBaseModel):
     journal_id: str
     jrn_date: date
     jrn_src: JournalSrc
+    acct_name_strs: str
     num_entries: int
     total_base_amount: float
     note: str
+    
+    @computed_field
+    def acct_names(self) -> list[str]:
+        return self.acct_name_strs.split(',')
     
 class Journal(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)

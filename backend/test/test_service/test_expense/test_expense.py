@@ -175,6 +175,10 @@ def test_expense(mock_engine, engine_with_sample_choa, sample_expense_meal, samp
     assert len(expenses) == 1
     expenses = ExpenseService.list_expense(has_receipt=True)
     assert len(expenses) == 1
+    expenses = ExpenseService.list_expense(expense_acct_ids=['acct-meal'])
+    assert len(expenses) == 1
+    expenses = ExpenseService.list_expense(expense_acct_ids=['acct-rental'])
+    assert len(expenses) == 1
     
     # test update expense
     _invoice, _journal = ExpenseService.get_expense_journal(sample_expense_meal.expense_id)
