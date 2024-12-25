@@ -40,10 +40,13 @@ class Payment(EnhancedBaseModel):
         frozen=True,
     )
     payment_num: str
+    payment_dt: date
     entity_type: EntityType = Field(
         description='Indicate whether a customer (receive) or supplier (pay) payment'
     )
-    payment_dt: date
+    payment_items: list[PaymentItem] = Field(
+        min_length=1
+    )
     payment_acct_id: str = Field(
         description='Use which account to make/receive payment (Debit/Credit to)'
     )

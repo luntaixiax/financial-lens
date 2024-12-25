@@ -446,7 +446,7 @@ class ExpenseItemORM(SQLModel, table=True):
     )
     expense_id: str = Field(
         sa_column=Column(
-            String(length = 13), 
+            String(length = 15), 
             ForeignKey(
                 'expense.expense_id', 
                 onupdate = 'CASCADE', 
@@ -472,3 +472,64 @@ class ExpenseItemORM(SQLModel, table=True):
     tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
+class PaymentORM(SQLModel, table=True):
+    __tablename__ = "payment"
+    
+    payment_id: str = Field(
+        sa_column=Column(String(length = 15), primary_key = True, nullable = False)
+    )
+    payment_num: str = Field(
+        sa_column=Column(String(length = 25), primary_key = False, nullable = False)
+    )
+    payment_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    entity_type: EntityType = Field(
+        sa_column=Column(ChoiceType(EntityType, impl = Integer()), nullable = False, primary_key = False)
+    )
+    payment_acct_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'accounts.acct_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    payment_fee: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    ref_num: str | None = Field(sa_column=Column(Text(), nullable = True))
+    note: str | None = Field(sa_column=Column(Text(), nullable = True))
+    
+class PaymentItemORM(SQLModel, table=True):
+    __tablename__ = "payment_item"
+    
+    payment_item_id: str = Field(
+        sa_column=Column(String(length = 18), primary_key = True, nullable = False)
+    )
+    payment_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'payment.payment_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'CASCADE' # TODO
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    invoice_id: str = Field(
+        sa_column=Column(
+            String(length = 13), 
+            ForeignKey(
+                'invoice.invoice_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'CASCADE' # TODO
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    payment_amount: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    payment_amount_raw: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
