@@ -151,6 +151,7 @@ class SalesService:
     def create_journal_from_payment(cls, payment: Payment) -> Journal:
         cls._validate_payment(payment)
         
+        payment_acct = AcctService.get_account(payment.payment_acct_id)
         entries = []
         
         # AR/AP offset amount, expressed in base currency
@@ -177,13 +178,13 @@ class SalesService:
         # payment fee entry
         fee_amount_base = FxService.convert(
             amount=payment.payment_fee,
-            src_currency=payment.currency, # payment currency
+            src_currency=payment_acct.currency, # payment currency
             cur_dt=payment.payment_dt, # convert at payment date
         )
         fee = Entry(
             entry_type=EntryType.DEBIT, # fee is expense, debit entry
             acct=AcctService.get_account(SystemAcctNumber.BANK_FEE), # debit to bank fee
-            cur_incexp=payment.currency, # payment currency
+            cur_incexp=payment_acct.currency, # payment currency
             amount=payment.payment_fee, # in payment currency
             amount_base=fee_amount_base, # converted to base currency
             description='bank fee charged for payment'
@@ -194,13 +195,12 @@ class SalesService:
         net_pmt = payment.net_payment
         pmt_amount_base = FxService.convert(
             amount=net_pmt, # total payment before fee
-            src_currency=payment.currency, # payment currency
+            src_currency=payment_acct.currency, # payment currency
             cur_dt=payment.payment_dt, # convert at payment date
         )
         pmt = Entry(
             entry_type=EntryType.DEBIT, # payment receive is debit entry
-            acct=AcctService.get_account(payment.payment_acct_id), # debit to payment account
-            cur_incexp=payment.currency, # payment currency
+            acct=payment_acct, # debit to payment account
             amount=net_pmt, # in payment currency
             amount_base=pmt_amount_base, # converted to base currency
             description='total payment received (net of fee)'
@@ -323,8 +323,8 @@ class SalesService:
                 # if invoice currency equals payment currency, the amount should equal
                 if not math.isclose(payment_item.payment_amount, payment_item.payment_amount_raw, rel_tol=1e-6):
                     raise OpNotPermittedError(
-                        f'Same payment and invoice currency ({payment_acct.currency}), payment_amount should equal to payment_amount_raw',
-                        details=f'payment item amount not expected: {payment_item}'
+                        f'Same payment and invoice currency ({payment_acct.currency}), payment_amount should equal to payment_amount_raw; '
+                        f'payment item amount not expected: {payment_item}'
                     )
             
     
@@ -364,6 +364,40 @@ class SalesService:
             )
             
     @classmethod
+    def add_payment(cls, payment: Payment):
+        # see if payment already exist
+        try:
+            _payment, _jrn_id  = paymentDao.get(payment.payment_id)
+        except NotExistError as e:
+            # if not exist, can safely create it
+            # validate it first
+            cls._validate_payment(payment)
+            # add journal first
+            journal = cls.create_journal_from_payment(payment)
+            try:
+                JournalService.add_journal(journal)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Some component of journal does not exist: {journal}',
+                    details=e.details
+                )
+            
+            # add payment
+            try:
+                paymentDao.add(journal_id = journal.journal_id, payment = payment)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Some component of payment does not exist: {payment}',
+                    details=e.details
+                )
+            
+        else:
+            raise AlreadyExistError(
+                f"Payment id {payment.payment_id} already exist",
+                details=f"Payment: {_payment}, journal_id: {_jrn_id}"
+            )
+            
+    @classmethod
     def get_invoice_journal(cls, invoice_id: str) -> Tuple[Invoice, Journal]:
         try:
             invoice, jrn_id = invoiceDao.get(invoice_id)
@@ -391,6 +425,33 @@ class SalesService:
         return invoice, journal
     
     @classmethod
+    def get_payment_journal(cls, payment_id: str) -> Tuple[Payment, Journal]:
+        try:
+            payment, jrn_id = paymentDao.get(payment_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Payment id {payment_id} does not exist',
+                details=e.details
+            )
+        
+        # get journal
+        try:
+            journal = JournalService.get_journal(jrn_id)
+        except NotExistError as e:
+            # TODO: raise error or add missing journal?
+            # if not exist, add journal
+            journal = cls.create_journal_from_payment(payment)
+            try:
+                JournalService.add_journal(journal)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Trying to add journal but failed, some component of journal does not exist: {journal}',
+                    details=e.details
+                )
+        
+        return payment, journal
+    
+    @classmethod
     def delete_invoice(cls, invoice_id: str):
         # remove journal first
         # get journal
@@ -404,6 +465,30 @@ class SalesService:
             
         # remove invoice first
         invoiceDao.remove(invoice_id)
+        
+        # then remove journal
+        try:
+            JournalService.delete_journal(jrn_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Delete journal failed, some component depends on the journal id {jrn_id}",
+                details=e.details
+            )
+            
+    @classmethod
+    def delete_payment(cls, payment_id: str):
+        # remove journal first
+        # get journal
+        try:
+            payment, jrn_id  = paymentDao.get(payment_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Payment id {payment_id} does not exist',
+                details=e.details
+            )
+            
+        # remove payment first
+        paymentDao.remove(payment_id)
         
         # then remove journal
         try:
@@ -453,6 +538,49 @@ class SalesService:
             JournalService.delete_journal(journal.journal_id)
             raise FKNotExistError(
                 f"Invoice element does not exist",
+                details=e.details
+            )
+        
+        # remove old journal
+        JournalService.delete_journal(jrn_id)
+        
+    @classmethod
+    def update_payment(cls, payment: Payment):
+        cls._validate_payment(payment)
+        # only delete if validation passed
+        # cls.delete_payment(payment.payment_id)
+        # cls.add_payment(payment)
+        
+        # get existing journal id
+        try:
+            _payment, jrn_id  = paymentDao.get(payment.payment_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Payment id {_payment.payment_id} does not exist',
+                details=e.details
+            )
+        
+        # add new journal first
+        journal = cls.create_journal_from_payment(payment)
+        try:
+            JournalService.add_journal(journal)
+        except FKNotExistError as e:
+            raise FKNotExistError(
+                f'Some component of journal does not exist: {journal}',
+                details=e.details
+            )
+        
+        # update payment
+        try:
+            paymentDao.update(
+                journal_id=journal.journal_id, # use new journal id
+                payment=payment
+            )
+        except FKNotExistError as e:
+            # need to remove the new journal
+            JournalService.delete_journal(journal.journal_id)
+            raise FKNotExistError(
+                f"Payment element does not exist",
                 details=e.details
             )
         

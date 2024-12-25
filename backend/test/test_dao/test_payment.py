@@ -69,7 +69,7 @@ def test_payment(mock_engine, engine, sample_payment):
     # test no duplicate add
     with pytest.raises(AlreadyExistError):
         paymentDao.add(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
-    _payment = paymentDao.get(payment_id=sample_payment.payment_id)
+    _payment, _ = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
     
     # test update (only update payment body)
@@ -78,12 +78,12 @@ def test_payment(mock_engine, engine, sample_payment):
         paymentDao.update(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
     # should be no change
     sample_payment.payment_acct_id = 'acct-bank'
-    _payment = paymentDao.get(payment_id=sample_payment.payment_id)
+    _payment, _ = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
     # test update (success case)
     sample_payment.payment_dt = date(2024, 1, 3)
     paymentDao.update(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
-    _payment = paymentDao.get(payment_id=sample_payment.payment_id)
+    _payment, _ = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
     
     # test update with changed payment items
@@ -92,12 +92,12 @@ def test_payment(mock_engine, engine, sample_payment):
         paymentDao.update(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
     # should be no change
     sample_payment.payment_items[0].invoice_id = 'inv-sample'
-    _payment = paymentDao.get(payment_id=sample_payment.payment_id)
+    _payment, _ = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
     # test update payment item success case
     sample_payment.payment_items[0].payment_amount_raw = 900
     paymentDao.update(journal_id=sample_journal_meal.journal_id, payment=sample_payment)
-    _payment = paymentDao.get(payment_id=sample_payment.payment_id)
+    _payment, _ = paymentDao.get(payment_id=sample_payment.payment_id)
     assert _payment == sample_payment
     
     # test remove payment

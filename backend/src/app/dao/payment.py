@@ -1,5 +1,6 @@
 from datetime import date
 import logging
+from typing import Tuple
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError
@@ -93,7 +94,7 @@ class paymentDao:
                 logging.info(f"Added {payment_item_orm} to Payment Item table")
         
     @classmethod
-    def get(cls, payment_id: str) -> Payment:
+    def get(cls, payment_id: str) -> Tuple[Payment, str]:
         with Session(get_engine()) as s:
             # get payment items
             sql = select(PaymentItemORM).where(
@@ -116,8 +117,9 @@ class paymentDao:
                 payment_orm=payment_orm,
                 payment_item_orms=payment_item_orms
             )
+            jrn_id = payment_orm.journal_id
             
-        return payment
+        return payment, jrn_id
             
     @classmethod
     def remove(cls, payment_id: str):

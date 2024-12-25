@@ -270,6 +270,13 @@ class AcctService:
             currency=CurType.JPY,
             chart=bank_chart
         )
+        bank_foreign2 = Account(
+            acct_id='acct-fbank2',
+            acct_name="Bank Acct (USD)",
+            acct_type=AcctType.AST,
+            currency=CurType.USD,
+            chart=bank_chart
+        )
         fixed_asset = Account(
             acct_id='acct-fass',
             acct_name="Fixed Asset",
@@ -300,6 +307,7 @@ class AcctService:
         AcctService.add_account(rental)
         AcctService.add_account(bank)
         AcctService.add_account(bank_foreign)
+        AcctService.add_account(bank_foreign2)
         AcctService.add_account(fixed_asset)
         AcctService.add_account(credit)
         AcctService.add_account(shareholder_loan)
