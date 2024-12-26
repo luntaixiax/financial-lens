@@ -13,26 +13,26 @@ from src.app.service.expense import ExpenseService
 
 router = APIRouter(prefix="/expense", tags=["expense"])
 
-@router.post("/expense/validate")
+@router.post("/validate")
 def validate_expense(expense: Expense):
     ExpenseService._validate_expense(expense)
     
 @router.get(
-    "/expense/trial_journal",
+    "/trial_journal",
     description='use to generate journal during new expense creation'
 )
 def create_journal_from_new_expense(expense: Expense) -> Journal:
     return ExpenseService.create_journal_from_expense(expense)
 
 @router.get(
-    "/expense/get_expense_journal/{expense_id}",
+    "/get_expense_journal/{expense_id}",
     description='get existing expense and journal from database'
 )
 def get_expense_journal(expense_id: str) -> Tuple[Expense, Journal]:
     return ExpenseService.get_expense_journal(expense_id=expense_id)
 
 @router.get(
-    "/expense/{expense_id}/create_invoice_items",
+    "/create_invoice_items/{expense_id}",
     description='creating general invoice items from given expense'
 )
 def create_general_invoice_items_from_expense(expense_id: str, invoice_currency: CurType) -> list[GeneralInvoiceItem]:
@@ -41,7 +41,7 @@ def create_general_invoice_items_from_expense(expense_id: str, invoice_currency:
         invoice_currency=invoice_currency
     )
 
-@router.post("/expense/list")
+@router.post("/list")
 def list_expense(
     limit: int = 50,
     offset: int = 0,
@@ -73,14 +73,14 @@ def list_expense(
         has_receipt=has_receipt
     ) 
     
-@router.post("/expense/add")
+@router.post("/add")
 def add_expense(expense: Expense):
     ExpenseService.add_expense(expense=expense)
     
-@router.put("/expense/update")
+@router.put("/update")
 def update_expense(expense: Expense):
     ExpenseService.update_expense(expense=expense)
     
-@router.delete("/expense/delete/{expense_id}")
+@router.delete("/delete/{expense_id}")
 def delete_expense(expense_id: str):
     ExpenseService.delete_expense(expense_id=expense_id)

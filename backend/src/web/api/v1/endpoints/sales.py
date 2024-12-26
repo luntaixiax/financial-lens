@@ -15,25 +15,25 @@ from src.app.service.entity import EntityService
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
-@router.post("/sales/invoice/validate")
+@router.post("/invoice/validate")
 def validate_sales(invoice: Invoice):
     SalesService._validate_invoice(invoice)
 
 @router.get(
-    "/sales/invoice/trial_journal",
+    "/invoice/trial_journal",
     description='use to generate journal during new sales invoice creation'
 )
 def create_journal_from_new_sales_invoice(invoice: Invoice) -> Journal:
     return SalesService.create_journal_from_invoice(invoice)
 
 @router.get(
-    "/sales/invoice/get/{invoice_id}",
+    "/invoice/get/{invoice_id}",
     description='get existing sales invoice and journal from database'
 )
 def get_sales_invoice_journal(invoice_id: str) -> Tuple[Invoice, Journal]:
     return SalesService.get_invoice_journal(invoice_id=invoice_id)
 
-@router.post("/sales/invoice/list")
+@router.post("/invoice/list")
 def list_sales_invoice(
     limit: int = 50,
     offset: int = 0,
@@ -67,15 +67,15 @@ def list_sales_invoice(
         num_invoice_items=num_invoice_items
     )
 
-@router.post("/sales/invoice/add")
+@router.post("/invoice/add")
 def add_sales_invoice(invoice: Invoice):
     SalesService.add_invoice(invoice=invoice)
     
-@router.put("/sales/invoice/update")
+@router.put("/invoice/update")
 def update_sales_invoice(invoice: Invoice):
     SalesService.update_invoice(invoice=invoice)
     
-@router.delete("/sales/invoice/delete/{invoice_id}")
+@router.delete("/invoice/delete/{invoice_id}")
 def delete_sales_invoice(invoice_id: str):
     SalesService.delete_invoice(invoice_id=invoice_id)
 
@@ -83,7 +83,7 @@ BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_PATH / "templates"))
 
 
-@router.get("/sales/invoice/preview", response_class=HTMLResponse)
+@router.get("/invoice/preview", response_class=HTMLResponse)
 def preview_sales_invoice(request: Request, invoice_id: str):
     invoice, journal = SalesService.get_invoice_journal(invoice_id)
     # bill to will always be customer
@@ -112,25 +112,25 @@ def preview_sales_invoice(request: Request, invoice_id: str):
     )
 
     
-@router.post("/sales/payment/validate")
+@router.post("/payment/validate")
 def validate_payment(payment: Payment):
     SalesService._validate_payment(payment)
     
 @router.get(
-    "/sales/payment/trial_journal",
+    "/payment/trial_journal",
     description='use to generate journal during new sales payment creation'
 )
 def create_journal_from_new_sales_payment(payment: Payment) -> Journal:
     return SalesService.create_journal_from_payment(payment)
 
 @router.get(
-    "/sales/payment/get/{payment_id}",
+    "/payment/get/{payment_id}",
     description='get existing sales payment and journal from database'
 )
 def get_sales_invoice_journal(payment_id: str) -> Tuple[Payment, Journal]:
     return SalesService.get_payment_journal(payment_id=payment_id)
 
-@router.post("/sales/payment/list")
+@router.post("/payment/list")
 def list_sales_payment(
     limit: int = 50,
     offset: int = 0,
@@ -165,14 +165,14 @@ def list_sales_payment(
     )
     
 
-@router.post("/sales/payment/add")
+@router.post("/payment/add")
 def add_sales_payment(payment: Invoice):
     SalesService.add_payment(payment=payment)
     
-@router.put("/sales/payment/update")
+@router.put("/payment/update")
 def update_sales_payment(payment: Invoice):
     SalesService.update_payment(payment=payment)
     
-@router.delete("/sales/payment/delete/{payment_id}")
+@router.delete("/payment/delete/{payment_id}")
 def delete_sales_payment(payment_id: str):
     SalesService.delete_payment(payment_id=payment_id)

@@ -206,7 +206,7 @@ class paymentDao:
                 )
                 
     @classmethod
-    def list(
+    def list_payment(
         cls,
         limit: int = 50,
         offset: int = 0,

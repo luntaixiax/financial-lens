@@ -694,7 +694,7 @@ class SalesService:
         max_amount: float = 999999999,
         num_invoice_items: int | None = None
     ) -> list[_InvoiceBrief]:
-        return invoiceDao.list(
+        return invoiceDao.list_invoice(
             limit=limit,
             offset=offset,
             entity_type=EntityType.CUSTOMER,
@@ -730,7 +730,7 @@ class SalesService:
         max_amount: float = 999999999,
         num_invoices: int | None = None
     ) -> list[_PaymentBrief]:
-        return paymentDao.list(
+        return paymentDao.list_payment(
             limit=limit,
             offset=offset,
             entity_type=EntityType.CUSTOMER,

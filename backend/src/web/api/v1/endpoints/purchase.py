@@ -15,25 +15,25 @@ from src.app.service.entity import EntityService
 
 router = APIRouter(prefix="/purchase", tags=["purchase"])
 
-@router.post("/purchase/invoice/validate")
+@router.post("/invoice/validate")
 def validate_purchase(invoice: Invoice):
     PurchaseService._validate_invoice(invoice)
 
 @router.get(
-    "/purchase/invoice/trial_journal",
+    "/invoice/trial_journal",
     description='use to generate journal during new purchase invoice creation'
 )
 def create_journal_from_new_purchase_invoice(invoice: Invoice) -> Journal:
     return PurchaseService.create_journal_from_invoice(invoice)
 
 @router.get(
-    "/purchase/invoice/get/{invoice_id}",
+    "/invoice/get/{invoice_id}",
     description='get existing purchase invoice and journal from database'
 )
 def get_purchase_invoice_journal(invoice_id: str) -> Tuple[Invoice, Journal]:
     return PurchaseService.get_invoice_journal(invoice_id=invoice_id)
 
-@router.post("/purchase/invoice/list")
+@router.post("/invoice/list")
 def list_purchase_invoice(
     limit: int = 50,
     offset: int = 0,
@@ -67,15 +67,15 @@ def list_purchase_invoice(
         num_invoice_items=num_invoice_items
     )
 
-@router.post("/purchase/invoice/add")
+@router.post("/invoice/add")
 def add_purchase_invoice(invoice: Invoice):
     PurchaseService.add_invoice(invoice=invoice)
     
-@router.put("/purchase/invoice/update")
+@router.put("/invoice/update")
 def update_purchase_invoice(invoice: Invoice):
     PurchaseService.update_invoice(invoice=invoice)
     
-@router.delete("/purchase/invoice/delete/{invoice_id}")
+@router.delete("/invoice/delete/{invoice_id}")
 def delete_purchase_invoice(invoice_id: str):
     PurchaseService.delete_invoice(invoice_id=invoice_id)
 
@@ -83,7 +83,7 @@ BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_PATH / "templates"))
 
 
-@router.get("/purchase/invoice/preview", response_class=HTMLResponse)
+@router.get("/invoice/preview", response_class=HTMLResponse)
 def preview_purchase_invoice(request: Request, invoice_id: str):
     invoice, journal = PurchaseService.get_invoice_journal(invoice_id)
     # bill from will always be supplier
@@ -112,25 +112,25 @@ def preview_purchase_invoice(request: Request, invoice_id: str):
     )
 
     
-@router.post("/purchase/payment/validate")
+@router.post("/payment/validate")
 def validate_payment(payment: Payment):
     PurchaseService._validate_payment(payment)
     
 @router.get(
-    "/purchase/payment/trial_journal",
+    "/payment/trial_journal",
     description='use to generate journal during new purchase payment creation'
 )
 def create_journal_from_new_purchase_payment(payment: Payment) -> Journal:
     return PurchaseService.create_journal_from_payment(payment)
 
 @router.get(
-    "/purchase/payment/get/{payment_id}",
+    "/payment/get/{payment_id}",
     description='get existing purchase payment and journal from database'
 )
 def get_purchase_invoice_journal(payment_id: str) -> Tuple[Payment, Journal]:
     return PurchaseService.get_payment_journal(payment_id=payment_id)
 
-@router.post("/purchase/payment/list")
+@router.post("/payment/list")
 def list_purchase_payment(
     limit: int = 50,
     offset: int = 0,
@@ -165,14 +165,14 @@ def list_purchase_payment(
     )
     
 
-@router.post("/purchase/payment/add")
+@router.post("/payment/add")
 def add_purchase_payment(payment: Invoice):
     PurchaseService.add_payment(payment=payment)
     
-@router.put("/purchase/payment/update")
+@router.put("/payment/update")
 def update_purchase_payment(payment: Invoice):
     PurchaseService.update_payment(payment=payment)
     
-@router.delete("/purchase/payment/delete/{payment_id}")
+@router.delete("/payment/delete/{payment_id}")
 def delete_purchase_payment(payment_id: str):
     PurchaseService.delete_payment(payment_id=payment_id)

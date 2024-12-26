@@ -73,19 +73,19 @@ def test_payment(mock_engine, engine, sample_payment):
     assert _payment == sample_payment
     
     # test list
-    payments = paymentDao.list()
+    payments = paymentDao.list_payment()
     assert len(payments) == 1
-    payments = paymentDao.list(entity_type=EntityType.SUPPLIER)
+    payments = paymentDao.list_payment(entity_type=EntityType.SUPPLIER)
     assert len(payments) == 0
-    payments = paymentDao.list(payment_nums=['PMT-001'])
+    payments = paymentDao.list_payment(payment_nums=['PMT-001'])
     assert len(payments) == 1
-    payments = paymentDao.list(currency=CurType.EUR)
+    payments = paymentDao.list_payment(currency=CurType.EUR)
     assert len(payments) == 0
-    payments = paymentDao.list(num_invoices=1)
+    payments = paymentDao.list_payment(num_invoices=1)
     assert len(payments) == 1
-    payments = paymentDao.list(invoice_nums=['INV-001'])
+    payments = paymentDao.list_payment(invoice_nums=['INV-001'])
     assert len(payments) == 1
-    payments = paymentDao.list(payment_acct_id='acct-random')
+    payments = paymentDao.list_payment(payment_acct_id='acct-random')
     assert len(payments) == 0
     
     # test update (only update payment body)

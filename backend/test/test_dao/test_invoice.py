@@ -71,17 +71,17 @@ def test_invoice(mock_engine, engine, sample_invoice, sample_journal_meal):
     assert len(_invoice.invoice_items) == 2
     
     # test list and filter
-    _invoices = invoiceDao.list()
+    _invoices = invoiceDao.list_invoice()
     assert len(_invoices) == 1
-    _invoices = invoiceDao.list(currency=CurType.USD)
+    _invoices = invoiceDao.list_invoice(currency=CurType.USD)
     assert len(_invoices) == 1
-    _invoices = invoiceDao.list(currency=CurType.EUR)
+    _invoices = invoiceDao.list_invoice(currency=CurType.EUR)
     assert len(_invoices) == 0
-    _invoices = invoiceDao.list(num_invoice_items=2)
+    _invoices = invoiceDao.list_invoice(num_invoice_items=2)
     assert len(_invoices) == 1
-    _invoices = invoiceDao.list(num_invoice_items=3)
+    _invoices = invoiceDao.list_invoice(num_invoice_items=3)
     assert len(_invoices) == 0
-    _invoices = invoiceDao.list(max_amount=1000)
+    _invoices = invoiceDao.list_invoice(max_amount=1000)
     assert len(_invoices) == 1
     
     

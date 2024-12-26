@@ -95,7 +95,7 @@ class itemDao:
         return cls.toItem(p)
     
     @classmethod
-    def list(cls, entity_type: EntityType) -> list[Item]:
+    def list_item(cls, entity_type: EntityType) -> list[Item]:
         with Session(get_engine()) as s:
             sql = select(ItemORM).where(ItemORM.entity_type == entity_type)
             item_orms = s.exec(sql).all()
@@ -388,7 +388,7 @@ class invoiceDao:
         return invoice, jrn_id
     
     @classmethod
-    def list(
+    def list_invoice(
         cls,
         limit: int = 50,
         offset: int = 0,

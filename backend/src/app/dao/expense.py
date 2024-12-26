@@ -205,7 +205,7 @@ class expenseDao:
         
     
     @classmethod
-    def list(
+    def list_expense(
         cls,
         limit: int = 50,
         offset: int = 0,

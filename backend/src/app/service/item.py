@@ -126,4 +126,4 @@ class ItemService:
     
     @classmethod
     def list_item(cls, entity_type: EntityType) -> list[Item]:
-        return itemDao.list(entity_type=entity_type)
+        return itemDao.list_item(entity_type=entity_type)

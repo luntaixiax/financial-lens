@@ -578,7 +578,7 @@ class AcctService:
                        restrictive: bool = True):
         if restrictive:
             # cannot delete system created accounts
-            if acct_id in SystemAcctNumber.list():
+            if acct_id in SystemAcctNumber.list_():
                 raise OpNotPermittedError(
                     f"Acct id {acct_id} is system account, not permitted to delete"
                 )

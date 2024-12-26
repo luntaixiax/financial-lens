@@ -22,16 +22,31 @@ def test_journal(mock_engine, engine_with_sample_choa, sample_journal_meal):
     assert _journal == sample_journal_meal
     
     # test list
-    jb = journalDao.list()
+    jb = journalDao.list_journal()
     assert len(jb) == 1
-    jb = journalDao.list(jrn_src = JournalSrc.MANUAL)
+    jb = journalDao.list_journal(jrn_src = JournalSrc.MANUAL)
     assert len(jb) == 1
-    jb = journalDao.list(num_entries=4)
+    jb = journalDao.list_journal(num_entries=4)
     assert len(jb) == 1
-    jb = journalDao.list(acct_ids=['acct-meal'])
+    jb = journalDao.list_journal(acct_ids=['acct-meal'])
     assert len(jb) == 1
-    jb = journalDao.list(acct_names=['acct-random'])
+    jb = journalDao.list_journal(acct_names=['acct-random'])
     assert len(jb) == 0
+    
+    # test flow
+    acct_flow_agg = journalDao.sum_acct_flow(
+        'acct-bank', 
+        start_dt=date(2024, 1, 1), 
+        end_dt=date(2024, 12, 31)
+    )
+    flow_agg = journalDao.agg_accts_flow(
+        start_dt=date(2024, 1, 1), 
+        end_dt=date(2024, 12, 31)
+    )
+    # test list entry
+    entries = journalDao.list_entry_by_acct(
+        acct_id = 'acct-bank'
+    )
     
     # test remove journal
     journalDao.remove(sample_journal_meal.journal_id)

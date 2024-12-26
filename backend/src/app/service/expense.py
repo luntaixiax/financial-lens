@@ -380,7 +380,7 @@ class ExpenseService:
         max_amount: float = 999999999,
         has_receipt: bool | None = None
     ) -> list[_ExpenseBrief]:
-        return expenseDao.list(
+        return expenseDao.list_expense(
             limit=limit,
             offset=offset,
             expense_ids=expense_ids,
