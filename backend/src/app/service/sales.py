@@ -104,7 +104,7 @@ class SalesService:
                 cur_incexp=invoice.currency, # income currency is invoice currency
                 amount=invoice_item.amount_pre_tax, # amount in raw currency
                 # amount in base currency
-                amount_base=FxService.convert(
+                amount_base=FxService.convert_to_base(
                     amount=invoice_item.amount_pre_tax,
                     src_currency=invoice.currency, # invoice currency
                     cur_dt=invoice.invoice_dt, # convert fx at invoice date
@@ -117,13 +117,13 @@ class SalesService:
         for ginvoice_item in invoice.ginvoice_items:
             gitem_acct: Account = AcctService.get_account(ginvoice_item.acct_id)
             # amount incured in base currency @ incur date
-            amount_base_incur = FxService.convert(
+            amount_base_incur = FxService.convert_to_base(
                 amount=ginvoice_item.amount_pre_tax_raw,# amount in incur currency
                 src_currency=ginvoice_item.currency, # incur currency
                 cur_dt=ginvoice_item.incur_dt, # convert fx at incur date
             )
             # amount in base currency @ invoice date (this is the total amount should be credit that make it balance)
-            amount_base_invoice = FxService.convert(
+            amount_base_invoice = FxService.convert_to_base(
                 amount=ginvoice_item.amount_pre_tax,# amount in invoice currency
                 src_currency=invoice.currency, # invoice currency
                 cur_dt=invoice.invoice_dt, # convert fx at invoice date # TODO
@@ -153,7 +153,7 @@ class SalesService:
             entries.append(fx_gain)
         
         # add tax (use base currency)
-        tax_amount_base_cur = FxService.convert(
+        tax_amount_base_cur = FxService.convert_to_base(
             amount=invoice.tax_amount, # total tax across all items
             src_currency=invoice.currency, # invoice currency
             cur_dt=invoice.invoice_dt, # convert fx at invoice date
@@ -177,7 +177,7 @@ class SalesService:
             cur_incexp=invoice.currency, # shipping currency is invoice currency
             amount=invoice.shipping, # amount in raw currency
             # amount in base currency
-            amount_base = FxService.convert(
+            amount_base = FxService.convert_to_base(
                 amount=invoice.shipping, # total shipping across all items
                 src_currency=invoice.currency, # invoice currency
                 cur_dt=invoice.invoice_dt, # convert fx at invoice date
@@ -187,7 +187,7 @@ class SalesService:
         entries.append(shipping)
         
         # add account receivable (use base currency)
-        ar_base_cur = FxService.convert(
+        ar_base_cur = FxService.convert_to_base(
             amount=invoice.total, # total after tax and shipping
             src_currency=invoice.currency, # invoice currency
             cur_dt=invoice.invoice_dt, # convert fx at invoice date
@@ -223,7 +223,7 @@ class SalesService:
         ar_offset_raw_base = 0
         for payment_item in payment.payment_items:
             _invoice, _jrn_id  = invoiceDao.get(payment_item.invoice_id)
-            amount_base = FxService.convert(
+            amount_base = FxService.convert_to_base(
                 amount=payment_item.payment_amount_raw, # amount deducted in invoice currency
                 src_currency=_invoice.currency, # invoice currency
                 # for A/R, A/P offset by payment, it should reflect amount at invoice date
@@ -241,7 +241,7 @@ class SalesService:
         entries.append(ar)
         
         # payment fee entry
-        fee_amount_base = FxService.convert(
+        fee_amount_base = FxService.convert_to_base(
             amount=payment.payment_fee,
             src_currency=payment_acct.currency, # payment currency
             cur_dt=payment.payment_dt, # convert at payment date
@@ -258,7 +258,7 @@ class SalesService:
         
         # bank transfer entry (payment account)
         net_pmt = payment.net_payment
-        pmt_amount_base = FxService.convert(
+        pmt_amount_base = FxService.convert_to_base(
             amount=net_pmt, # total payment before fee
             src_currency=payment_acct.currency, # payment currency
             cur_dt=payment.payment_dt, # convert at payment date

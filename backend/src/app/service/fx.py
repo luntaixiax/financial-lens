@@ -107,6 +107,16 @@ class FxService:
         return base_fx / target_fx
     
     @classmethod
-    def convert(cls, amount: float, src_currency: CurType, cur_dt: date) -> float:
+    def convert_to_base(cls, amount: float, src_currency: CurType, cur_dt: date) -> float:
         # convert from src_currency to base currency
         return cls.get(src_currency, cur_dt) * amount
+    
+    @classmethod
+    def convert_from_base(cls, amount: float, tgt_currency: CurType, cur_dt: date) -> float:
+        # convert from base currency to target currency
+        return amount / cls.get(tgt_currency, cur_dt)
+    
+    @classmethod
+    def convert(cls, amount: float, src_currency: CurType, tgt_currency: CurType, cur_dt: date) -> float:
+        # convert from src_currency to base currency
+        return amount * cls._get(tgt_currency, cur_dt=cur_dt) / cls._get(src_currency, cur_dt=cur_dt)

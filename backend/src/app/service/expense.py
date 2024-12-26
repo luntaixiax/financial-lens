@@ -5,6 +5,7 @@ from src.app.utils.tools import get_base_cur
 from src.app.dao.expense import expenseDao
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError
 from src.app.model.const import SystemAcctNumber
+from src.app.model.invoice import GeneralInvoiceItem
 from src.app.service.acct import AcctService
 from src.app.service.journal import JournalService
 from src.app.service.fx import FxService
@@ -112,7 +113,31 @@ class ExpenseService:
                     f"Expense currency equals Payment currency ({expense.currency})",
                     details=f"Expense amount: {expense.total}, while payment amount = {expense.payment_amount}"
                 )
+    
+    @classmethod
+    def create_general_invoice_items_from_expense(cls, expense_id: str, invoice_currency: CurType) -> list[GeneralInvoiceItem]:
+        expense, _ = cls.get_expense_journal(expense_id)
         
+        ginv_items = []
+        for expense_item in expense.expense_items:
+            ginv_item = GeneralInvoiceItem(
+                incur_dt=expense.expense_dt,
+                acct_id=expense_item.expense_acct_id,
+                currency=expense.currency,
+                amount_pre_tax_raw=expense_item.amount_pre_tax,
+                amount_pre_tax=FxService.convert(
+                    amount=expense_item.amount_pre_tax,
+                    src_currency=expense.currency, # convert from expense currency
+                    tgt_currency=invoice_currency, # convert to invoice currency
+                    cur_dt=expense.expense_dt, # convert fx at expense date
+                ),
+                tax_rate=expense_item.tax_rate,
+                description=expense_item.description
+            )
+            ginv_items.append(ginv_item)
+        return ginv_items
+            
+    
     @classmethod
     def create_journal_from_expense(cls, expense: Expense) -> Journal:
         cls._validate_expense(expense)
@@ -133,7 +158,7 @@ class ExpenseService:
                 )
             
             # assemble the entry item
-            amount_base=FxService.convert(
+            amount_base=FxService.convert_to_base(
                 amount=expense_item.amount_pre_tax,
                 src_currency=expense.currency, # expense currency
                 cur_dt=expense.expense_dt, # convert fx at expense date
@@ -151,7 +176,7 @@ class ExpenseService:
             expense_entry_base_amount += amount_base
             
         # add tax (use base currency)
-        tax_amount_base_cur = FxService.convert(
+        tax_amount_base_cur = FxService.convert_to_base(
             amount=expense.tax_amount, # total tax across all expenses
             src_currency=expense.currency, # expense currency
             cur_dt=expense.expense_dt, # convert fx at expense date
@@ -171,7 +196,7 @@ class ExpenseService:
         payment_acct: Account = AcctService.get_account(
             expense.payment_acct_id
         )
-        payment_amount_base=FxService.convert(
+        payment_amount_base=FxService.convert_to_base(
             amount=expense.payment_amount, # payment amount in payment currency
             src_currency=payment_acct.currency, # payment currency
             cur_dt=expense.expense_dt, # convert fx at expense date

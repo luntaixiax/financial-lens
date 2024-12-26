@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from src.app.model.invoice import GeneralInvoiceItem
 from src.app.model.enums import CurType
 from src.app.model.journal import Journal
 from src.app.model.expense import _ExpenseBrief, Expense
@@ -29,6 +30,16 @@ def create_journal_from_new_expense(expense: Expense) -> Journal:
 )
 def get_expense_journal(expense_id: str) -> Tuple[Expense, Journal]:
     return ExpenseService.get_expense_journal(expense_id=expense_id)
+
+@router.get(
+    "/expense/{expense_id}/create_invoice_items",
+    description='creating general invoice items from given expense'
+)
+def create_general_invoice_items_from_expense(expense_id: str, invoice_currency: CurType) -> list[GeneralInvoiceItem]:
+    return ExpenseService.create_general_invoice_items_from_expense(
+        expense_id=expense_id,
+        invoice_currency=invoice_currency
+    )
 
 @router.post("/expense/list")
 def list_expense(

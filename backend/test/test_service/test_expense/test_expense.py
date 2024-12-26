@@ -24,7 +24,7 @@ def test_create_journal_from_expense(mock_engine, engine_with_sample_choa, sampl
     # should be non-redudant, i.e, similar entries have been combined
     assert not journal.is_redundant
     # total amount from expense should be same to total amount from journal (base currency)
-    total_expense = FxService.convert(
+    total_expense = FxService.convert_to_base(
         amount=sample_expense_meal.total, # total expense
         src_currency=sample_expense_meal.currency, # expense currency
         cur_dt=sample_expense_meal.expense_dt, # convert fx at expense date
@@ -45,7 +45,7 @@ def test_create_journal_from_expense(mock_engine, engine_with_sample_choa, sampl
     # should be non-redudant, i.e, similar entries have been combined
     assert not journal.is_redundant
     # total amount from expense should be same to total amount from journal (base currency)
-    total_expense = FxService.convert(
+    total_expense = FxService.convert_to_base(
         amount=sample_expense_rent.total, # total expense
         src_currency=sample_expense_rent.currency, # expense currency
         cur_dt=sample_expense_rent.expense_dt, # convert fx at expense date
@@ -62,7 +62,7 @@ def test_create_journal_from_expense(mock_engine, engine_with_sample_choa, sampl
     assert math.isclose(gain_entry.amount_base, gain_entry.amount, rel_tol=1e-6)
     # calculate gain amount
     amount_expense = total_expense # in base amount
-    amount_paid = FxService.convert(
+    amount_paid = FxService.convert_to_base(
         amount=sample_expense_rent.payment_amount, # paid in payment currency
         src_currency=AcctService.get_account(
             sample_expense_rent.payment_acct_id

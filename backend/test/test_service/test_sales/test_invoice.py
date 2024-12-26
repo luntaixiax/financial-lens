@@ -24,7 +24,7 @@ def test_create_journal_from_invoice(mock_engine, engine_with_sample_choa, sampl
     # should be non-redudant, i.e, similar entries have been combined
     assert not journal.is_redundant
     # total amount from invoice should be same to total amount from journal (base currency)
-    total_invoice = FxService.convert(
+    total_invoice = FxService.convert_to_base(
         amount=sample_invoice.total, # total billable
         src_currency=sample_invoice.currency, # invoice currency
         cur_dt=sample_invoice.invoice_dt, # convert fx at invoice date
