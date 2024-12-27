@@ -314,9 +314,10 @@ class journalDao:
                 )
                 .group_by(AcctORM.acct_type)
             )
-            
-            flow = s.exec(sql).one()
-            
+            try:
+                flow = s.exec(sql).one()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
         
         return _AcctFlowAGG(
             **flow._asdict()

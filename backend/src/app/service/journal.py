@@ -203,20 +203,32 @@ class JournalService:
     @classmethod
     def get_incexp_flow(cls, acct_id: str, start_dt: date, end_dt: date) -> _AcctFlowAGG:
         # get total flow amount for income statement accounts
-        return journalDao.sum_acct_flow(
-            acct_id = acct_id,
-            start_dt = start_dt,
-            end_dt = end_dt
-        )
+        try:
+            flow = journalDao.sum_acct_flow(
+                acct_id = acct_id,
+                start_dt = start_dt,
+                end_dt = end_dt
+            )
+        except NotExistError as e:
+            raise NotExistError(
+                f'Account {acct_id} does not exist'
+            )
+        return flow
         
     @classmethod
     def get_blsh_balance(cls, acct_id: str, report_dt: date) -> _AcctFlowAGG:
         # get balance for balance sheet account at report date
-        return journalDao.sum_acct_flow(
-            acct_id = acct_id,
-            start_dt = date(1900, 1, 1),
-            end_dt = report_dt
-        )
+        try:
+            bal = journalDao.sum_acct_flow(
+                acct_id = acct_id,
+                start_dt = date(1900, 1, 1),
+                end_dt = report_dt
+            )
+        except NotExistError as e:
+            raise NotExistError(
+                f'Account {acct_id} does not exist'
+            )
+        return bal
         
     @classmethod
     def get_incexp_flows(cls, start_dt: date, end_dt: date) -> dict[str, _AcctFlowAGG]:
