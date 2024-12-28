@@ -6,7 +6,7 @@ from sqlalchemy.exc import NoResultFound, IntegrityError
 from datetime import date, datetime
 
 from src.app.model.exceptions import FKNoDeleteUpdateError, FKNotExistError, AlreadyExistError
-from src.app.model.enums import AcctType, BankAcctType, CurType, EntryType, ItemType, UnitType
+from src.app.model.enums import AcctType, BankAcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 
 def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  FKNoDeleteUpdateError | FKNotExistError | AlreadyExistError | IntegrityError:
     # TODO: enhance this when use other backend engine
@@ -64,17 +64,21 @@ class ContactORM(SQLModel, table=True):
     address: dict | None = Field(sa_column=Column(JSON(), nullable = True))
 
 
-class CustomerORM(SQLModel, table=True):
-    __tablename__ = "customer"
+class EntityORM(SQLModel, table=True):
+    __tablename__ = "entity"
     
-    cust_id: str = Field(
+    entity_id: str = Field(
         sa_column=Column(
             String(length = 13), 
-            primary_key = True, 
-            nullable = False
+            primary_key = False, 
+            nullable = False,
+            unique=True
         )
     )
-    customer_name: str = Field(sa_column=Column(String(length = 50), nullable = False, unique = True))
+    entity_type: EntityType = Field(
+        sa_column=Column(ChoiceType(EntityType, impl = Integer()), nullable = False, primary_key = True)
+    )
+    entity_name: str = Field(sa_column=Column(String(length = 50), nullable = False, primary_key = True))
     is_business: EntryType = Field(
         sa_column=Column(
             Boolean(create_constraint=True), 
@@ -111,55 +115,6 @@ class CustomerORM(SQLModel, table=True):
             nullable = False
         )
     )
-    
-class SupplierORM(SQLModel, table=True):
-    __tablename__ = "supplier"
-    
-    supplier_id: str = Field(
-        sa_column=Column(
-            String(length = 13), 
-            primary_key = True, 
-            nullable = False
-        )
-    )
-    supplier_name: str = Field(sa_column=Column(String(length = 50), nullable = False, unique = True))
-    is_business: EntryType = Field(
-        sa_column=Column(
-            Boolean(create_constraint=True), 
-            default = True, 
-            nullable = False
-        )
-    )
-    bill_contact_id: str = Field(
-        sa_column=Column(
-            String(length = 13),
-            ForeignKey(
-                'contact.contact_id', 
-                onupdate = 'CASCADE', 
-                ondelete = 'RESTRICT'
-            ),
-            nullable = False
-        )
-    )
-    ship_same_as_bill: EntryType = Field(
-        sa_column=Column(
-            Boolean(create_constraint=True), 
-            default = True, 
-            nullable = False
-        )
-    )
-    ship_contact_id: str | None = Field(
-        sa_column=Column(
-            String(length = 13),
-            ForeignKey(
-                'contact.contact_id', 
-                onupdate = 'CASCADE', 
-                ondelete = 'RESTRICT'
-            ),
-            nullable = False
-        )
-    )
-    
     
 
 class ChartOfAccountORM(SQLModel, table=True):
@@ -266,12 +221,8 @@ class JournalORM(SQLModel, table=True):
         sa_column=Column(String(length = 20), primary_key = True, nullable = False)
     )
     jrn_date: date = Field(sa_column=Column(Date(), nullable = False))
-    is_manual: bool = Field(
-        sa_column=Column(
-            Boolean(create_constraint=True), 
-            default = True, 
-            nullable = False
-        )
+    jrn_src: JournalSrc | None = Field(
+        sa_column=Column(ChoiceType(JournalSrc, impl = Integer()), nullable = False)
     )
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
@@ -328,6 +279,9 @@ class ItemORM(SQLModel, table=True):
     item_type: ItemType = Field(
         sa_column=Column(ChoiceType(ItemType, impl = Integer()), nullable = False)
     )
+    entity_type: EntityType = Field(
+        sa_column=Column(ChoiceType(EntityType, impl = Integer()), nullable = False, primary_key = False)
+    )
     unit: UnitType = Field(
         sa_column=Column(ChoiceType(UnitType, impl = Integer()), nullable = False)
     )
@@ -360,11 +314,11 @@ class InvoiceORM(SQLModel, table=True):
     )
     invoice_dt: date = Field(sa_column=Column(Date(), nullable = False))
     due_dt: date | None = Field(sa_column=Column(Date(), nullable = True))
-    customer_id: str = Field(
+    entity_id: str = Field(
         sa_column=Column(
             String(length = 13),
             ForeignKey(
-                'customer.cust_id', 
+                'entity.entity_id',
                 onupdate = 'CASCADE', 
                 ondelete = 'RESTRICT'
             ),
@@ -372,8 +326,14 @@ class InvoiceORM(SQLModel, table=True):
             nullable = False
         )
     )
+    entity_type: EntityType = Field(
+        sa_column=Column(ChoiceType(EntityType, impl = Integer()), nullable = False, primary_key = False)
+    )
     subject: str = Field(
         sa_column=Column(String(length = 50), primary_key = False, nullable = False)
+    )
+    currency: CurType | None = Field(
+        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
     )
     shipping: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     journal_id: str = Field(
@@ -403,7 +363,7 @@ class InvoiceItemORM(SQLModel, table=True):
             ForeignKey(
                 'invoice.invoice_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE'
+                ondelete = 'CASCADE' # TODO
             ),
             primary_key = False, 
             nullable = False
@@ -437,4 +397,191 @@ class InvoiceItemORM(SQLModel, table=True):
     tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     discount_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
+
+class GeneralInvoiceItemORM(SQLModel, table=True):
+    __tablename__ = "general_invoice_item"
     
+    ginv_item_id: str = Field(
+        sa_column=Column(String(length = 17), primary_key = True, nullable = False)
+    )
+    invoice_id: str = Field(
+        sa_column=Column(
+            String(length = 13), 
+            ForeignKey(
+                'invoice.invoice_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'CASCADE' # TODO
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    incur_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    acct_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'accounts.acct_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    currency: CurType | None = Field(
+        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
+    )
+    amount_pre_tax_raw: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    amount_pre_tax: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    description: str | None = Field(sa_column=Column(Text(), nullable = True))
+    
+
+class ExpenseORM(SQLModel, table=True):
+    __tablename__ = "expense"
+    
+    expense_id: str = Field(
+        sa_column=Column(String(length = 15), primary_key = True, nullable = False)
+    )
+    expense_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    currency: CurType | None = Field(
+        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
+    )
+    payment_acct_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'accounts.acct_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    payment_amount: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    merchant: dict = Field(sa_column=Column(JSON(), nullable = True))
+    note: str | None = Field(sa_column=Column(Text(), nullable = True))
+    receipts: list[str] | None = Field(sa_column=Column(JSON(), nullable = True))
+    journal_id: str = Field(
+        sa_column=Column(
+            String(length = 20),
+            ForeignKey(
+                'journals.journal_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT' # TODO: review this
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    ) # TODO: in dao, need to add journal (auto mode) first, then add expense
+    
+    
+class ExpenseItemORM(SQLModel, table=True):
+    __tablename__ = "expense_item"
+    
+    expense_item_id: str = Field(
+        sa_column=Column(String(length = 20), primary_key = True, nullable = False)
+    )
+    expense_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'expense.expense_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'CASCADE'  # TODO
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    expense_acct_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'accounts.acct_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    amount_pre_tax: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    description: str | None = Field(sa_column=Column(Text(), nullable = True))
+    
+class PaymentORM(SQLModel, table=True):
+    __tablename__ = "payment"
+    
+    payment_id: str = Field(
+        sa_column=Column(String(length = 15), primary_key = True, nullable = False)
+    )
+    payment_num: str = Field(
+        sa_column=Column(String(length = 25), primary_key = False, nullable = False)
+    )
+    payment_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    entity_type: EntityType = Field(
+        sa_column=Column(ChoiceType(EntityType, impl = Integer()), nullable = False, primary_key = False)
+    )
+    payment_acct_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'accounts.acct_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    journal_id: str = Field(
+        sa_column=Column(
+            String(length = 20),
+            ForeignKey(
+                'journals.journal_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT' # TODO: review this
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    ) # TODO: in dao, need to add journal (auto mode) first, then add invoice
+    payment_fee: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    ref_num: str | None = Field(sa_column=Column(Text(), nullable = True))
+    note: str | None = Field(sa_column=Column(Text(), nullable = True))
+    
+class PaymentItemORM(SQLModel, table=True):
+    __tablename__ = "payment_item"
+    
+    payment_item_id: str = Field(
+        sa_column=Column(String(length = 18), primary_key = True, nullable = False)
+    )
+    payment_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'payment.payment_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'CASCADE' # TODO
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    invoice_id: str = Field(
+        sa_column=Column(
+            String(length = 13), 
+            ForeignKey(
+                'invoice.invoice_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'CASCADE' # TODO
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    payment_amount: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    payment_amount_raw: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))

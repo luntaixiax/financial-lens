@@ -1,9 +1,9 @@
 
 from datetime import date
-from src.app.model.enums import CurType, EntryType
+from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
 from src.app.model.exceptions import FKNoDeleteUpdateError, NotExistError, AlreadyExistError, FKNotExistError
 from src.app.dao.journal import journalDao
-from src.app.model.journal import _JournalBrief, Entry, Journal
+from src.app.model.journal import _AcctFlowAGG, _EntryBrief, _JournalBrief, Entry, Journal
 
 
 class JournalService:
@@ -49,7 +49,7 @@ class JournalService:
                     description=None
                 ),
             ],
-            is_manual=True,
+            jrn_src=JournalSrc.MANUAL,
             note='sample meal journal'
         )
         journal2 = Journal(
@@ -94,7 +94,7 @@ class JournalService:
                     description='pay HST with credit card'
                 ),
             ],
-            is_manual=True,
+            jrn_src=JournalSrc.MANUAL,
             note='samples rental at foreign country'
         )
         journal3 = Journal(
@@ -117,7 +117,7 @@ class JournalService:
                     description='Record as A/R'
                 ),
             ],
-            is_manual=False, # this is non-manual entry journal
+            jrn_src=JournalSrc.EXPENSE, # this is non-manual entry journal
             note='sample invoice journal'
         )
         cls.add_journal(journal1)
@@ -169,23 +169,99 @@ class JournalService:
         limit: int = 50,
         offset: int = 0,
         jrn_ids: list[str] | None = None,
-        is_manual: bool | None = None, 
+        jrn_src: JournalSrc | None = None, 
         min_dt: date = date(1970, 1, 1), 
-        max_dt: date = date(2099, 12, 31), 
+        max_dt: date = date(2099, 12, 31),
+        acct_ids: list[str] | None = None,
+        acct_names: list[str] | None = None, 
         note_keyword: str = '', 
         min_amount: float = -999999999,
         max_amount: float = 999999999,
         num_entries: int | None = None
     ) -> list[_JournalBrief]:
-        return journalDao.list(
+        return journalDao.list_journal(
             limit = limit,
             offset = offset,
             jrn_ids = jrn_ids,
-            is_manual = is_manual,
+            jrn_src = jrn_src,
             min_dt = min_dt,
             max_dt = max_dt,
+            acct_ids=acct_ids,
+            acct_names=acct_names,
             note_keyword = note_keyword,
             min_amount = min_amount,
             max_amount = max_amount,
             num_entries = num_entries
         )
+        
+    @classmethod
+    def list_entry_by_acct(cls, acct_id: str) -> list[_EntryBrief]:
+        return journalDao.list_entry_by_acct(
+            acct_id = acct_id
+        )
+        
+    @classmethod
+    def get_incexp_flow(cls, acct_id: str, start_dt: date, end_dt: date) -> _AcctFlowAGG:
+        # get total flow amount for income statement accounts
+        try:
+            flow = journalDao.sum_acct_flow(
+                acct_id = acct_id,
+                start_dt = start_dt,
+                end_dt = end_dt
+            )
+        except NotExistError as e:
+            raise NotExistError(
+                f'Account {acct_id} does not exist'
+            )
+        return flow
+        
+    @classmethod
+    def get_blsh_balance(cls, acct_id: str, report_dt: date) -> _AcctFlowAGG:
+        # get balance for balance sheet account at report date
+        try:
+            bal = journalDao.sum_acct_flow(
+                acct_id = acct_id,
+                start_dt = date(1900, 1, 1),
+                end_dt = report_dt
+            )
+        except NotExistError as e:
+            raise NotExistError(
+                f'Account {acct_id} does not exist'
+            )
+        return bal
+        
+    @classmethod
+    def get_incexp_flows(cls, start_dt: date, end_dt: date) -> dict[str, _AcctFlowAGG]:
+        # get total flow amount for ALL income statement accounts
+        inc = journalDao.agg_accts_flow(
+            start_dt = start_dt,
+            end_dt = end_dt,
+            acct_type = AcctType.INC
+        )
+        exp = journalDao.agg_accts_flow(
+            start_dt = start_dt,
+            end_dt = end_dt,
+            acct_type = AcctType.EXP
+        )
+        return inc | exp
+        
+        
+    @classmethod
+    def get_blsh_balances(cls, report_dt: date) -> dict[str, _AcctFlowAGG]:
+        # get balance for ALL balance sheet account at report date
+        ast = journalDao.agg_accts_flow(
+            start_dt = date(1900, 1, 1),
+            end_dt = report_dt,
+            acct_type = AcctType.AST
+        )
+        liab = journalDao.agg_accts_flow(
+            start_dt = date(1900, 1, 1),
+            end_dt = report_dt,
+            acct_type = AcctType.LIB
+        )
+        equity = journalDao.agg_accts_flow(
+            start_dt = date(1900, 1, 1),
+            end_dt = report_dt,
+            acct_type = AcctType.EQU
+        )
+        return ast | liab | equity

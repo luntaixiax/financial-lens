@@ -15,9 +15,11 @@ class SystemAcctNumber(str, Enum):
     OTH_COMP_INC = "acct-oci"
     SHIP_CHARGE = "acct-spc"
     DISCOUNT = "acct-disc"
+    FX_GAIN = "acct-fxgain"
+    BANK_FEE = "acct-bnkfee"
     
     @classmethod
-    def list(cls) -> list[str]:
+    def list_(cls) -> list[str]:
         return list(map(lambda c: c.value, cls))
 
 
@@ -38,5 +40,5 @@ class SystemChartOfAcctNumber(str, Enum):
     TOTAL_EXP = 'choa-totexp'
     
     @classmethod
-    def list(cls) -> list[str]:
+    def list_(cls) -> list[str]:
         return list(map(lambda c: c.value, cls))

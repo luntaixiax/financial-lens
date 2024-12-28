@@ -1,8 +1,8 @@
 import logging
 
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
-from src.app.dao.entity import contactDao, customerDao
-from src.app.model.entity import _ContactBrief, _CustomerBrief, Address, Contact, Customer
+from src.app.dao.entity import contactDao, customerDao, supplierDao
+from src.app.model.entity import _ContactBrief, _CustomerBrief, _SupplierBrief, Address, Contact, Customer, Supplier
 
 class EntityService:
     
@@ -33,10 +33,20 @@ class EntityService:
             ship_same_as_bill=True
         )
         cls.add_customer(customer)
+        # create supplier (same name)
+        supplier = Supplier(
+            supplier_id='supp-sample',
+            supplier_name = 'LTX Company',
+            is_business=True,
+            bill_contact=contact,
+            ship_same_as_bill=True
+        )
+        cls.add_supplier(supplier)
         
     @classmethod
     def clear_sample(cls):
         cls.remove_customer('cust-sample')
+        cls.remove_supplier('supp-sample')
         cls.remove_contact('cont-sample')
     
     @classmethod
@@ -159,3 +169,82 @@ class EntityService:
     def list_customer(cls) -> list[_CustomerBrief]:
         customers = customerDao.list_customer()
         return customers
+    
+    
+    @classmethod
+    def add_supplier(cls, supplier: Supplier, ignore_exist: bool = False):
+        # add contact first
+        cls.upsert_contact(supplier.bill_contact)
+        
+        if not supplier.ship_same_as_bill:
+            # only add ship contact if not same as bill contact
+            cls.upsert_contact(supplier.ship_contact)
+        
+        # add supplier
+        try:
+            supplierDao.add(supplier)
+        except AlreadyExistError as e:
+            if not ignore_exist:
+                raise e
+        except FKNotExistError as e:
+            raise e
+            
+    @classmethod
+    def remove_supplier(cls, cust_id: str, ignore_nonexist: bool = False):
+        try:
+            supplierDao.remove(cust_id)
+        except NotExistError as e:
+            if not ignore_nonexist:
+                raise e
+        except FKNoDeleteUpdateError as e:
+            raise e
+            
+    @classmethod
+    def update_supplier(cls, supplier: Supplier, ignore_nonexist: bool = False):
+        # if contact changed, it will create new entry in contact (if not duplicate)
+        # otherwise update the contact if contact id found
+        # upsert bill contact first
+        cls.upsert_contact(supplier.bill_contact)
+        
+        if not supplier.ship_same_as_bill:
+            # upsert shipping contact
+            cls.upsert_contact(supplier.ship_contact)
+        
+        try:
+            supplierDao.update(supplier)
+        except NotExistError as e:
+            if not ignore_nonexist:
+                raise e
+            
+    @classmethod
+    def upsert_supplier(cls, supplier: Supplier):
+        try:
+            cls.add_supplier(supplier)
+        except AlreadyExistError:
+            cls.update_supplier(supplier)
+        except FKNotExistError as e:
+            raise e # contact does not exist
+            
+    @classmethod
+    def get_supplier(cls, cust_id: str) -> Supplier:
+        try:
+            bill_contact_id, ship_contact_id = supplierDao.get_bill_ship_contact_ids(
+                cust_id
+            )
+        except NotExistError as e:
+            # supplier not even exist
+            raise e
+        
+        # get contacts
+        bill_contact = cls.get_contact(bill_contact_id)
+        if ship_contact_id:
+            ship_contact = cls.get_contact(ship_contact_id)
+            
+        # get supplier
+        supplier = supplierDao.get(cust_id, bill_contact, ship_contact)
+        return supplier
+    
+    @classmethod
+    def list_supplier(cls) -> list[_SupplierBrief]:
+        suppliers = supplierDao.list_supplier()
+        return suppliers

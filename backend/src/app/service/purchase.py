@@ -1,11 +1,12 @@
 from datetime import date
 import math
 from typing import Tuple
+from src.app.dao.payment import paymentDao
 from src.app.utils.tools import get_base_cur
+from src.app.model.payment import _PaymentBrief, Payment, PaymentItem
 from src.app.service.item import ItemService
 from src.app.service.entity import EntityService
 from src.app.dao.invoice import itemDao, invoiceDao
-from src.app.dao.payment import paymentDao
 from src.app.model.exceptions import OpNotPermittedError, AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, \
     NotExistError, NotMatchWithSystemError
 from src.app.model.const import SystemAcctNumber
@@ -16,34 +17,26 @@ from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from src.app.model.invoice import _InvoiceBrief, GeneralInvoiceItem, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
-from src.app.model.payment import _PaymentBrief, PaymentItem, Payment
 
 
-class SalesService:
+class PurchaseService:
     
     @classmethod
     def create_sample(cls):
-        # add invoice
         invoice = Invoice(
-            invoice_id='inv-sales',
-            invoice_num='INV-001',
+            invoice_id='inv-purch',
+            invoice_num='INV-PURCHASE-001',
             invoice_dt=date(2024, 1, 1),
             due_dt=date(2024, 1, 5),
-            entity_type=EntityType.CUSTOMER,
-            entity_id='cust-sample',
-            subject='General Consulting - Jan 2024',
+            entity_type=EntityType.SUPPLIER,
+            entity_id='supp-sample',
+            subject='General Purchase - Jan 2024',
             currency=CurType.USD,
             invoice_items=[
                 InvoiceItem(
-                    item=ItemService.get_item('item-consul'),
-                    quantity=5,
-                    description="Programming"
-                ),
-                InvoiceItem(
-                    item=ItemService.get_item('item-meet'),
-                    quantity=10,
-                    description="Meeting Around",
-                    discount_rate=0.05,
+                    item=ItemService.get_item('item-sales'),
+                    quantity=2,
+                    description="Purchase outsourcing"
                 )
             ],
             ginvoice_items=[
@@ -54,52 +47,54 @@ class SalesService:
                     amount_pre_tax_raw=100,
                     amount_pre_tax=120,
                     tax_rate=0.05,
-                    description='Meal for business trip'
+                    description='Supplier Meal reimburse for business trip'
                 )
             ],
-            shipping=10,
+            shipping=0,
             note="Thanks for business"
         )
         cls.add_invoice(invoice)
+        
         # add payment
         payment = Payment(
-            payment_id='pmt-sales',
-            payment_num='PMT-001',
+            payment_id='pmt-purchase',
+            payment_num='PMT-002',
             payment_dt=date(2024, 1, 4),
-            entity_type=EntityType.CUSTOMER,
+            entity_type=EntityType.SUPPLIER,
             payment_items=[
                 PaymentItem(
-                    payment_item_id='pmtitem-1',
-                    invoice_id='inv-sales',
-                    payment_amount=135,
-                    payment_amount_raw=100
+                    payment_item_id='pmtitem-2',
+                    invoice_id='inv-purch',
+                    payment_amount=800,
+                    payment_amount_raw=800
                 )
             ],
-            payment_acct_id='acct-bank',
+            payment_acct_id='acct-fbank2',
             payment_fee=2,
-            ref_num='#12345',
-            note='payment from client'
+            ref_num='#5432',
+            note='payment to supplier'
         )
         cls.add_payment(payment)
         
     @classmethod
     def clear_sample(cls):
-        cls.delete_invoice('inv-sales')
-        cls.delete_payment('pmt-sales')
-
+        cls.delete_invoice('inv-purch')
+        cls.delete_payment('pmt-purchase')
+    
     @classmethod
     def create_journal_from_invoice(cls, invoice: Invoice) -> Journal:
         cls._validate_invoice(invoice)
         
         entries = []
-        # create sales invoice item entries
+        # create sales invoice entries
         for invoice_item in invoice.invoice_items:
             # get the invoice item account for journal entry line item
-            item_acct: Account = AcctService.get_account(invoice_item.acct_id)
+            item_acct_id = invoice_item.acct_id # the account id for this entry
+            item_acct: Account = AcctService.get_account(item_acct_id)
             
             # assemble the entry item
             entry = Entry(
-                entry_type=EntryType.CREDIT, # income is credit entry
+                entry_type=EntryType.DEBIT, # expense is debit entry
                 acct=item_acct,
                 cur_incexp=invoice.currency, # income currency is invoice currency
                 amount=invoice_item.amount_pre_tax, # amount in raw currency
@@ -130,7 +125,7 @@ class SalesService:
             )
             # assemble the entry item (reverse the original journal entry)
             gitem = Entry(
-                entry_type=EntryType.CREDIT, # income is credit entry (does not matter if it is income or expense)
+                entry_type=EntryType.DEBIT, # expense is debit entry (does not matter if it is income or expense)
                 acct=gitem_acct,
                 cur_incexp=ginvoice_item.currency, # income currency is incur currency (reverse record)
                 amount=ginvoice_item.amount_pre_tax_raw, # amount in incur currency
@@ -141,7 +136,7 @@ class SalesService:
             entries.append(gitem)
             
             # add fx gain/loss
-            gain = amount_base_invoice - amount_base_incur # invoiced more than incurred is gain
+            gain = amount_base_incur - amount_base_invoice # invoiced less than incurred is gain
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
                 acct=AcctService.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
@@ -159,21 +154,21 @@ class SalesService:
             cur_dt=invoice.invoice_dt, # convert fx at invoice date
         )
         tax = Entry(
-            entry_type=EntryType.CREDIT, # tax is credit entry
+            entry_type=EntryType.DEBIT, # tax is debit entry
             # tax account is output tax -- predefined
-            acct=AcctService.get_account(SystemAcctNumber.OUTPUT_TAX),
+            acct=AcctService.get_account(SystemAcctNumber.INPUT_TAX),
             amount=tax_amount_base_cur, # amount in raw currency
             # amount in base currency
             amount_base=tax_amount_base_cur,
-            description=f'output tax in base currency'
+            description=f'input tax in base currency'
         )
         entries.append(tax)
         
         # add shipping entry (use raw currency)
         shipping = Entry(
-            entry_type=EntryType.CREDIT, # shipping is credit entry
+            entry_type=EntryType.DEBIT, # shipping is debit entry
             # shipping account -- predefined
-            acct=AcctService.get_account(SystemAcctNumber.SHIP_CHARGE),
+            acct=AcctService.get_account(SystemAcctNumber.SHIP_CHARGE), # TODO
             cur_incexp=invoice.currency, # shipping currency is invoice currency
             amount=invoice.shipping, # amount in raw currency
             # amount in base currency
@@ -186,27 +181,27 @@ class SalesService:
         )
         entries.append(shipping)
         
-        # add account receivable (use base currency)
-        ar_base_cur = FxService.convert_to_base(
+        # add account payable (use base currency)
+        ap_base_cur = FxService.convert_to_base(
             amount=invoice.total, # total after tax and shipping
             src_currency=invoice.currency, # invoice currency
             cur_dt=invoice.invoice_dt, # convert fx at invoice date
         )
-        ar = Entry(
-            entry_type=EntryType.DEBIT, # A/R is debit entry
+        ap = Entry(
+            entry_type=EntryType.CREDIT, # A/P is credit entry
             # A/R is output tax -- predefined
-            acct=AcctService.get_account(SystemAcctNumber.ACCT_RECEIV),
-            amount=ar_base_cur, # amount in base currency
-            amount_base=ar_base_cur, # amount in base currency
-            description=f'account receivable in base currency'
+            acct=AcctService.get_account(SystemAcctNumber.ACCT_PAYAB),
+            amount=ap_base_cur, # amount in base currency
+            amount_base=ap_base_cur, # amount in base currency
+            description=f'account payable in base currency'
         )
-        entries.append(ar)
+        entries.append(ap)
         
         # create journal
         journal = Journal(
             jrn_date=invoice.invoice_dt,
             entries=entries,
-            jrn_src=JournalSrc.SALES,
+            jrn_src=JournalSrc.PURCHASE,
             note=invoice.note
         )
         journal.reduce_entries()
@@ -220,7 +215,7 @@ class SalesService:
         entries = []
         
         # AR/AP offset amount, expressed in base currency
-        ar_offset_raw_base = 0
+        ap_offset_raw_base = 0
         for payment_item in payment.payment_items:
             _invoice, _jrn_id  = invoiceDao.get(payment_item.invoice_id)
             amount_base = FxService.convert_to_base(
@@ -229,16 +224,16 @@ class SalesService:
                 # for A/R, A/P offset by payment, it should reflect amount at invoice date
                 cur_dt=_invoice.invoice_dt, # convert fx at invoice date # TODO: convert at invoice date or payment date?
             )
-            ar_offset_raw_base += amount_base
+            ap_offset_raw_base += amount_base
         
-        ar = Entry(
-            entry_type=EntryType.CREDIT, # offset A/R is credit entry
-            acct=AcctService.get_account(SystemAcctNumber.ACCT_RECEIV),
-            amount=ar_offset_raw_base, # amount in base currency
-            amount_base=ar_offset_raw_base, # amount in base currency
-            description=f'account receivable offset, converting to base currency using fx rate at invoice date'
+        ap = Entry(
+            entry_type=EntryType.DEBIT, # offset A/P is debit entry
+            acct=AcctService.get_account(SystemAcctNumber.ACCT_PAYAB),
+            amount=ap_offset_raw_base, # amount in base currency
+            amount_base=ap_offset_raw_base, # amount in base currency
+            description=f'account payable offset, converting to base currency using fx rate at invoice date'
         )
-        entries.append(ar)
+        entries.append(ap)
         
         # payment fee entry
         fee_amount_base = FxService.convert_to_base(
@@ -264,16 +259,16 @@ class SalesService:
             cur_dt=payment.payment_dt, # convert at payment date
         )
         pmt = Entry(
-            entry_type=EntryType.DEBIT, # payment receive is debit entry
+            entry_type=EntryType.CREDIT, # payment paid is credit entry
             acct=payment_acct, # debit to payment account
             amount=net_pmt, # in payment currency
             amount_base=pmt_amount_base, # converted to base currency
-            description='total payment received (net of fee)'
+            description='total payment paid (including fee)'
         )
         entries.append(pmt)
         
         # add fx gain/loss
-        gain = (pmt_amount_base + fee_amount_base) - ar_offset_raw_base # received more than A/R
+        gain = ap_offset_raw_base - (pmt_amount_base - fee_amount_base) # paid less than A/P
         fx_gain = Entry(
             entry_type=EntryType.CREDIT, # fx gain is credit
             acct=AcctService.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
@@ -293,29 +288,28 @@ class SalesService:
         )
         journal.reduce_entries()
         return journal
-        
     
     @classmethod
     def _validate_item(cls, item: Item):
         # validate the default_acct_id is income/expense account
         default_item_acct: Account = AcctService.get_account(item.default_acct_id)
-        # invoice to customer, the acct type must be of income type
-        if not default_item_acct.acct_type in (AcctType.INC, ):
+        # invoice to supplier, the acct type must be of expense type
+        if not default_item_acct.acct_type in (AcctType.EXP, ):
             raise NotMatchWithSystemError(
-                message=f"Default acct type of sales invoice item must be of Income type, get {default_item_acct.acct_type}"
+                message=f"Default acct type of purchase invoice item must be of Expense type, get {default_item_acct.acct_type}"
             )
             
     @classmethod
     def _validate_invoice(cls, invoice: Invoice):
         # validate direction
-        if not invoice.entity_type == EntityType.CUSTOMER:
-            raise OpNotPermittedError('Sales invoice should only be created for customer')
-        # validate customer exist
+        if not invoice.entity_type == EntityType.SUPPLIER:
+            raise OpNotPermittedError('Purchase invoice should only be created for supplier')
+        # validate supplier exist
         try:
-            EntityService.get_customer(invoice.entity_id)
+            EntityService.get_supplier(invoice.entity_id)
         except NotExistError as e:
             raise FKNotExistError(
-                f"Customer id {invoice.entity_id} does not exist",
+                f"Supplier id {invoice.entity_id} does not exist",
                 details=e.details
             )
         
@@ -353,12 +347,12 @@ class SalesService:
                     details=e.details
                 )
             else:
-                # validate if it is of income type
-                if not item_acct.acct_type in (AcctType.INC, ):
+                # validate if it is of expense type
+                if not item_acct.acct_type in (AcctType.EXP, ):
                     raise NotMatchWithSystemError(
-                        message=f"Item Acct type of sales invoice item must be of Income type, get {item_acct.acct_type}"
+                        message=f"Item Acct type of purchase invoice item must be of Expense type, get {item_acct.acct_type}"
                     )
-        
+                    
         # validate general invoice_items
         for ginvoice_item in invoice.ginvoice_items:
             # validate account id exist
@@ -373,15 +367,14 @@ class SalesService:
                 # validate if it is of income/expense type
                 if not gitem_acct.acct_type in (AcctType.INC, AcctType.EXP):
                     raise NotMatchWithSystemError(
-                        message=f"General Item Acct type of sales invoice item must be of Income/Expense type, get {item_acct.acct_type}"
+                        message=f"General Item Acct type of purchase invoice item must be of Income/Expense type, get {item_acct.acct_type}"
                     )
-            
                 
     @classmethod
     def _validate_payment(cls, payment: Payment):
         # validate direction
-        if not payment.entity_type == EntityType.CUSTOMER:
-            raise OpNotPermittedError('Sales payment should only be created for customer')
+        if not payment.entity_type == EntityType.SUPPLIER:
+            raise OpNotPermittedError('Purchase payment should only be created for supplier')
         
         # validate payment account id exist
         try:
@@ -404,8 +397,8 @@ class SalesService:
                 )
             
             # validate invoice direction
-            if not _invoice.entity_type == EntityType.CUSTOMER:
-                raise OpNotPermittedError('Invoice used in sales payment should only be related customer')
+            if not _invoice.entity_type == EntityType.SUPPLIER:
+                raise OpNotPermittedError('Invoice used in purchase payment should only be related supplier')
 
             # validate payment and payment amount raw
             if payment_acct.currency == _invoice.currency:
@@ -415,7 +408,6 @@ class SalesService:
                         f'Same payment and invoice currency ({payment_acct.currency}), payment_amount should equal to payment_amount_raw; '
                         f'payment item amount not expected: {payment_item}'
                     )
-            
     
     @classmethod
     def add_invoice(cls, invoice: Invoice):
@@ -587,8 +579,6 @@ class SalesService:
                 f"Delete journal failed, some component depends on the journal id {jrn_id}",
                 details=e.details
             )
-            
-        
         
     @classmethod
     def update_invoice(cls, invoice: Invoice):
@@ -676,6 +666,7 @@ class SalesService:
         # remove old journal
         JournalService.delete_journal(jrn_id)
         
+        
     @classmethod
     def list_invoice(
         cls,
@@ -683,8 +674,8 @@ class SalesService:
         offset: int = 0,
         invoice_ids: list[str] | None = None,
         invoice_nums: list[str] | None = None,
-        customer_ids: list[str] | None = None,
-        customer_names: list[str] | None = None,
+        supplier_ids: list[str] | None = None,
+        supplier_names: list[str] | None = None,
         is_business: bool | None = None,
         min_dt: date = date(1970, 1, 1), 
         max_dt: date = date(2099, 12, 31), 
@@ -697,11 +688,11 @@ class SalesService:
         return invoiceDao.list_invoice(
             limit=limit,
             offset=offset,
-            entity_type=EntityType.CUSTOMER,
+            entity_type=EntityType.SUPPLIER,
             invoice_ids=invoice_ids,
             invoice_nums=invoice_nums,
-            entity_ids=customer_ids,
-            entity_names=customer_names,
+            entity_ids=supplier_ids,
+            entity_names=supplier_names,
             is_business=is_business,
             min_dt=min_dt,
             max_dt=max_dt,
@@ -710,8 +701,8 @@ class SalesService:
             min_amount=min_amount,
             max_amount=max_amount,
             num_invoice_items=num_invoice_items
-        )
-        
+        ) 
+            
     @classmethod
     def list_payment(
         cls,
@@ -733,7 +724,7 @@ class SalesService:
         return paymentDao.list_payment(
             limit=limit,
             offset=offset,
-            entity_type=EntityType.CUSTOMER,
+            entity_type=EntityType.SUPPLIER,
             payment_ids=payment_ids,
             payment_nums=payment_nums,
             payment_acct_id=payment_acct_id,

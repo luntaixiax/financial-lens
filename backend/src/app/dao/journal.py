@@ -1,13 +1,14 @@
 from datetime import date
 import logging
-from sqlmodel import Session, select, delete, case, func as f
+from sqlmodel import Session, select, delete, case, func as f, and_
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from src.app.model.enums import EntryType
-from src.app.dao.orm import EntryORM, JournalORM, infer_integrity_error
-from src.app.model.journal import _JournalBrief, Entry, Journal
+from src.app.model.accounts import Account
+from src.app.model.enums import EntryType, JournalSrc, AcctType
+from src.app.dao.orm import AcctORM, EntryORM, JournalORM, infer_integrity_error
+from src.app.model.journal import _AcctFlowAGG, _EntryBrief, _JournalBrief, Entry, Journal
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.dao.connection import get_engine
-from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
+from src.app.model.exceptions import AlreadyExistError, OpNotPermittedError, NotExistError
 
 class journalDao:
     @classmethod
@@ -45,7 +46,7 @@ class journalDao:
         return JournalORM(
             journal_id=journal.journal_id,
             jrn_date=journal.jrn_date,
-            is_manual=journal.is_manual,
+            jrn_src=journal.jrn_src,
             note=journal.note
         )
         
@@ -57,7 +58,7 @@ class journalDao:
             entries=[
                 cls.toEntry(entry_orm) for entry_orm in entry_orms
             ],
-            is_manual=journal_orm.is_manual,
+            jrn_src=journal_orm.jrn_src,
             note=journal_orm.note,
         )
         
@@ -152,58 +153,88 @@ class journalDao:
         logging.info(f"updated {journal} by removing existing one and added new one")
         
     @classmethod
-    def list(
+    def list_journal(
         cls,
         limit: int = 50,
         offset: int = 0,
         jrn_ids: list[str] | None = None,
-        is_manual: bool | None = None, 
+        jrn_src: JournalSrc | None = None, 
         min_dt: date = date(1970, 1, 1), 
-        max_dt: date = date(2099, 12, 31), 
+        max_dt: date = date(2099, 12, 31),
+        acct_ids: list[str] | None = None,
+        acct_names: list[str] | None = None, 
         note_keyword: str = '', 
         min_amount: float = -999999999,
         max_amount: float = 999999999,
         num_entries: int | None = None
     ) -> list[_JournalBrief]:
         with Session(get_engine()) as s:
-            jrn_filters = [
-                JournalORM.jrn_date.between(min_dt, max_dt), 
-                JournalORM.note.contains(note_keyword)
-            ]
-            if jrn_ids is not None:
-                jrn_filters.append(JournalORM.journal_id.in_(jrn_ids))
-            if is_manual is not None:
-                jrn_filters.append(JournalORM.is_manual is is_manual)
             
-            
-            entry_filters = [
-                f.sum(EntryORM.amount_base).between(min_amount, max_amount)
-            ]
-            if num_entries is not None:
-                entry_filters.append(f.count(EntryORM.entry_id) == num_entries)
+            acct_case_when = []
+            if acct_ids is not None:
+                acct_case_when.append(
+                    f.max(
+                        case(
+                            (AcctORM.acct_id.in_(acct_ids), 1),
+                            else_=0
+                        )
+                    ).label('contains_acct_id'),
+                )
+            if acct_names is not None:
+                acct_case_when.append(
+                    f.max(
+                        case(
+                            (AcctORM.acct_name.in_(acct_names), 1),
+                            else_=0
+                        )
+                    ).label('contains_acct_name')
+                )
             
             entry_agg = (
                 select(
-                    EntryORM.journal_id, 
+                    EntryORM.journal_id,
+                    f.group_concat(AcctORM.acct_name).label('acct_name_strs'),
                     f.sum(
                         case(
                             (EntryORM.entry_type == EntryType.DEBIT, EntryORM.amount_base), 
                             else_ = 0
                         )
                     ).label('total_base_amount'), 
-                    f.count(EntryORM.entry_id).label('num_entries')
+                    f.count(EntryORM.entry_id).label('num_entries'),
+                    *acct_case_when
+                )
+                .join(
+                    AcctORM,
+                    onclause=EntryORM.acct_id == AcctORM.acct_id,
+                    isouter=True  # left join
                 )
                 .group_by(EntryORM.journal_id)
-                .having(*entry_filters)
                 .subquery()
             )
             
             # join the two
+            jrn_filters = [
+                JournalORM.jrn_date.between(min_dt, max_dt), 
+                JournalORM.note.contains(note_keyword),
+                entry_agg.c.total_base_amount.between(min_amount, max_amount)
+            ]
+            if jrn_ids is not None:
+                jrn_filters.append(JournalORM.journal_id.in_(jrn_ids))
+            if jrn_src is not None:
+                jrn_filters.append(JournalORM.jrn_src == jrn_src)
+            if num_entries is not None:
+                jrn_filters.append(entry_agg.c.num_entries == num_entries)
+            if acct_ids is not None:
+                jrn_filters.append(entry_agg.c.contains_acct_id == 1)
+            if acct_names is not None:
+                jrn_filters.append(entry_agg.c.contains_acct_name == 1)
+            
             sql = (
                 select(
                     JournalORM.journal_id, 
                     JournalORM.jrn_date, 
-                    JournalORM.is_manual, 
+                    JournalORM.jrn_src,
+                    entry_agg.c.acct_name_strs,
                     entry_agg.c.num_entries,
                     entry_agg.c.total_base_amount,
                     JournalORM.note
@@ -214,7 +245,7 @@ class journalDao:
                     onclause=JournalORM.journal_id == entry_agg.c.journal_id,
                     isouter=False
                 )
-                .order_by(JournalORM.jrn_date.desc())
+                .order_by(JournalORM.jrn_date.desc(), JournalORM.journal_id)
                 .offset(offset)
                 .limit(limit)
             )
@@ -225,11 +256,209 @@ class journalDao:
             _JournalBrief(
                 journal_id=jrn.journal_id,
                 jrn_date=jrn.jrn_date,
-                is_manual=jrn.is_manual,
+                jrn_src=jrn.jrn_src,
+                acct_name_strs=jrn.acct_name_strs,
                 num_entries=jrn.num_entries,
                 total_base_amount=jrn.total_base_amount,
                 note=jrn.note
             ) 
             for jrn in jrns
         ]
+
+    
+    @classmethod
+    def sum_acct_flow(cls, acct_id: str, start_dt: date, end_dt: date) -> _AcctFlowAGG:
+        with Session(get_engine()) as s:
+            sql = (
+                select(
+                    AcctORM.acct_type,
+                    f.count(JournalORM.journal_id.distinct()).label('num_journal'),
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.DEBIT, 1), 
+                        else_ = 0
+                    )).label('num_debit_entry'),
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.CREDIT, 1), 
+                        else_ = 0
+                    )).label('num_credit_entry'),
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.DEBIT, EntryORM.amount), 
+                        else_ = 0
+                    )).label('debit_amount_raw'), # meaningless for income statement accounts
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.CREDIT, EntryORM.amount), 
+                        else_ = 0
+                    )).label('credit_amount_raw'), # meaningless for income statement accounts
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.DEBIT, EntryORM.amount_base), 
+                        else_ = 0
+                    )).label('debit_amount_base'),
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.CREDIT, EntryORM.amount_base), 
+                        else_ = 0
+                    )).label('credit_amount_base'),
+                )
+                .join(
+                    AcctORM,
+                    onclause=AcctORM.acct_id == EntryORM.acct_id,
+                    isouter=False
+                )
+                .join(
+                    JournalORM,
+                    onclause=JournalORM.journal_id == EntryORM.journal_id,
+                    isouter=False
+                )
+                .where(
+                    EntryORM.acct_id == acct_id,
+                    JournalORM.jrn_date.between(start_dt, end_dt)
+                )
+                .group_by(AcctORM.acct_type)
+            )
+            try:
+                flow = s.exec(sql).one()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
         
+        return _AcctFlowAGG(
+            **flow._asdict()
+        )
+        
+    @classmethod
+    def agg_accts_flow(cls, start_dt: date, end_dt: date, acct_type: AcctType| None = None) -> dict[str, _AcctFlowAGG]:
+        with Session(get_engine()) as s:
+            
+            entry_summary = (
+                select(
+                    EntryORM.acct_id,
+                    f.count(JournalORM.journal_id.distinct()).label('num_journal'),
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.DEBIT, 1), 
+                        else_ = 0
+                    )).label('num_debit_entry'),
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.CREDIT, 1), 
+                        else_ = 0
+                    )).label('num_credit_entry'),
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.DEBIT, EntryORM.amount), 
+                        else_ = 0
+                    )).label('debit_amount_raw'), # meaningless for income statement accounts
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.CREDIT, EntryORM.amount), 
+                        else_ = 0
+                    )).label('credit_amount_raw'), # meaningless for income statement accounts
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.DEBIT, EntryORM.amount_base), 
+                        else_ = 0
+                    )).label('debit_amount_base'),
+                    f.sum(case(
+                        (EntryORM.entry_type == EntryType.CREDIT, EntryORM.amount_base), 
+                        else_ = 0
+                    )).label('credit_amount_base'),
+                )
+                .join(
+                    JournalORM,
+                    onclause=JournalORM.journal_id == EntryORM.journal_id,
+                    isouter=False # inner join
+                )
+                .where(
+                    JournalORM.jrn_date.between(start_dt, end_dt)
+                )
+                .group_by(
+                    EntryORM.acct_id
+                )
+                .subquery()
+            )
+            
+            filters = []
+            if acct_type is not None:
+                filters.append(AcctORM.acct_type == acct_type)
+            sql = (
+                select(
+                    AcctORM.acct_id,
+                    AcctORM.acct_type,
+                    f.coalesce(entry_summary.c.num_journal, 0).label('num_journal'),
+                    f.coalesce(entry_summary.c.num_debit_entry, 0).label('num_debit_entry'),
+                    f.coalesce(entry_summary.c.num_credit_entry, 0).label('num_credit_entry'),
+                    f.coalesce(entry_summary.c.debit_amount_raw, 0).label('debit_amount_raw'),
+                    f.coalesce(entry_summary.c.credit_amount_raw, 0).label('credit_amount_raw'),
+                    f.coalesce(entry_summary.c.debit_amount_base, 0).label('debit_amount_base'),
+                    f.coalesce(entry_summary.c.credit_amount_base, 0).label('credit_amount_base'),
+                )
+                .join(
+                    entry_summary,
+                    onclause=AcctORM.acct_id == entry_summary.c.acct_id,
+                    isouter=True # acct left join entry
+                )
+                .where(*filters)
+            )
+            
+            
+            flows = s.exec(sql).all()
+        
+        return {
+            flow.acct_id : _AcctFlowAGG(
+                acct_type=flow.acct_type,
+                num_journal=flow.num_journal,
+                num_debit_entry=flow.num_debit_entry,
+                num_credit_entry=flow.num_credit_entry,
+                debit_amount_raw=flow.debit_amount_raw,
+                credit_amount_raw=flow.credit_amount_raw,
+                debit_amount_base=flow.debit_amount_base,
+                credit_amount_base=flow.credit_amount_base
+            )
+            for flow in flows
+        }
+        
+    @classmethod
+    def list_entry_by_acct(cls, acct_id: str) -> list[_EntryBrief]:
+        # cumulative numbers is debit - credit
+        with Session(get_engine()) as s:
+            sql = (
+                select(
+                    EntryORM.entry_id,
+                    EntryORM.journal_id,
+                    JournalORM.jrn_date,
+                    EntryORM.entry_type,
+                    EntryORM.cur_incexp,
+                    EntryORM.amount.label('amount_raw'),
+                    (
+                        f.sum(
+                            EntryORM.amount
+                            # flip for debit and credit
+                            * case((EntryORM.entry_type == EntryType.DEBIT, 1), else_ = -1)
+                            # flip for account type
+                            * case((AcctORM.acct_type.in_([AcctType.AST, AcctType.EXP]), 1), else_ = -1)
+                        )
+                        .over(order_by=[JournalORM.jrn_date, EntryORM.entry_id])
+                    ).label('cum_acount_raw'),
+                    EntryORM.amount_base,
+                    (
+                        f.sum(
+                            EntryORM.amount_base 
+                            # flip for debit and credit
+                            * case((EntryORM.entry_type == EntryType.DEBIT, 1), else_ = -1)
+                            # flip for account type
+                            * case((AcctORM.acct_type.in_([AcctType.AST, AcctType.EXP]), 1), else_ = -1)
+                        )
+                        .over(order_by=[JournalORM.jrn_date, EntryORM.entry_id])
+                    ).label('cum_account_base'),
+                    EntryORM.description
+                )
+                .join(
+                    JournalORM,
+                    onclause=JournalORM.journal_id == EntryORM.journal_id,
+                    isouter=False # inner join
+                )
+                .join(
+                    AcctORM,
+                    onclause=AcctORM.acct_id == EntryORM.acct_id,
+                    isouter=False # inner join
+                )
+                .where(EntryORM.acct_id == acct_id)
+                .order_by(JournalORM.jrn_date)
+            )
+            
+            entries = s.exec(sql).all()
+            
+        return [_EntryBrief.model_validate(entry._mapping) for entry in entries]

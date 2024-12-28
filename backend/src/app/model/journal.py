@@ -2,10 +2,11 @@
 
 from datetime import date
 from functools import partial
+import math
 from typing import Tuple
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.accounts import Account
-from src.app.model.enums import CurType, EntryType
+from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
 from src.app.utils.tools import get_base_cur, id_generator
 from src.app.utils.base import EnhancedBaseModel
 
@@ -42,14 +43,64 @@ class Entry(EnhancedBaseModel):
                 f"Acct Currency is base currency, Amount {self.amount} not equal to base amount {self.amount_base}"
         return self
 
+class _AcctFlowAGG(EnhancedBaseModel):
+    acct_type: AcctType
+    num_journal: int
+    num_debit_entry: int
+    num_credit_entry: int
+    debit_amount_raw: float
+    credit_amount_raw: float
+    debit_amount_base: float
+    credit_amount_base: float
+    
+    @computed_field
+    def num_entry(self) -> int:
+        return self.num_debit_entry + self.num_credit_entry
+    
+    @computed_field
+    def net_raw(self) -> float:
+        if self.acct_type in (AcctType.AST, AcctType.EXP):
+            return self.debit_amount_raw - self.credit_amount_raw
+        else:
+            return self.credit_amount_raw - self.debit_amount_raw
+    
+    @computed_field
+    def net_base(self) -> float:
+        if self.acct_type in (AcctType.AST, AcctType.EXP):
+            return self.debit_amount_base - self.credit_amount_base
+        else:
+            return self.credit_amount_base - self.debit_amount_base
+    
 
 class _JournalBrief(EnhancedBaseModel):
     journal_id: str
     jrn_date: date
-    is_manual: bool
+    jrn_src: JournalSrc
+    acct_name_strs: str
     num_entries: int
     total_base_amount: float
     note: str
+    
+    @computed_field
+    def acct_names(self) -> list[str]:
+        return self.acct_name_strs.split(',')
+    
+class _EntryBrief(EnhancedBaseModel):
+    # used by list by account
+    entry_id: str
+    journal_id: str
+    jrn_date: date
+    entry_type: EntryType
+    cur_incexp: CurType | None = Field(None)
+    amount_raw: float
+    cum_acount_raw: float = Field(
+        description='(Debit - Credit) Cumulative amount expressed in raw entry/account currency, only meaningful for balance sheet account'
+    )
+    amount_base: float
+    cum_account_base: float = Field(
+        description='(Debit - Credit) Cumulative amount expressed in base currency'
+    )
+    description: str | None = Field(None)
     
 class Journal(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
@@ -66,7 +117,10 @@ class Journal(EnhancedBaseModel):
     entries: list[Entry] = Field(
         min_length=2
     )
-    is_manual: bool = Field(True)
+    jrn_src: JournalSrc = Field(
+        JournalSrc.MANUAL,
+        description='Journal Source, e.g., Manual/Expense/Invoice/Purchase/Payment'
+    )
     note: str | None = Field(None)
     
     @property
@@ -80,6 +134,7 @@ class Journal(EnhancedBaseModel):
     def reduce_entries(self):
         # combine same entry and add up amounts
         # description will be combined as well
+        # TODO: remove entry with 0 amount
         reduced: dict[Tuple[Account, EntryType, CurType | None], Entry] = {}
         for entry in self.entries:
             pk = (entry.acct.acct_id, entry.entry_type, entry.cur_incexp)
@@ -129,7 +184,7 @@ class Journal(EnhancedBaseModel):
     def validate_balance(self):
         debits = self.total_debits
         credits = self.total_credits
-        assert abs(debits - credits) / abs(debits) <= 1e-6, \
+        assert math.isclose(debits, credits, rel_tol=1e-6), \
             f"Total debits: {debits} not equal to total credits: {credits}"
         return self
     
@@ -140,7 +195,7 @@ class Journal(EnhancedBaseModel):
         if (
             other.journal_id == self.journal_id
             and other.jrn_date == self.jrn_date
-            and other.is_manual == self.is_manual
+            and other.jrn_src == self.jrn_src
             and other.note == self.note
         ):
             # sequence not important

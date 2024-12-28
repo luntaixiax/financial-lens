@@ -145,7 +145,7 @@ def test_account(mock_engine, engine_with_basic_choa):
     assert _meal == meal
     # test get accounts by chart
     _exps = AcctService.get_accounts_by_chart(exp_chart)
-    assert len(_exps) == 2
+    assert len(_exps) == 3
     assert rental in _exps
     assert meal in _exps
     
@@ -183,6 +183,9 @@ def test_account(mock_engine, engine_with_basic_choa):
     AcctService.delete_account(acct_id='random_acct', ignore_nonexist=True)
     
     for acct in AcctService.get_accounts_by_chart(exp_chart):
-        AcctService.delete_account(acct.acct_id)
+        try:
+            AcctService.delete_account(acct.acct_id)
+        except OpNotPermittedError:
+            pass
     
-    assert len(AcctService.get_accounts_by_chart(exp_chart)) == 0
+    assert len(AcctService.get_accounts_by_chart(exp_chart)) == 1 # leave 1 system account

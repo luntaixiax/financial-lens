@@ -6,9 +6,10 @@ import pytest
 from src.app.utils.tools import get_base_cur
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.model.const import SystemAcctNumber, SystemChartOfAcctNumber
-from src.app.model.enums import AcctType, CurType, EntryType
+from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from src.app.model.entity import Address, Contact, Customer
 from src.app.model.journal import Entry, Journal
+from src.app.model.invoice import GeneralInvoiceItem, Invoice, InvoiceItem, Item
 
 
 @pytest.fixture(scope='module')
@@ -149,13 +150,14 @@ def sample_journal_meal(engine_with_sample_choa, settings) -> Generator[Journal,
         
     with mock.patch("src.app.dao.connection.get_engine")  as mock_engine, \
         mock.patch("src.app.utils.tools.get_settings") as mock_settings:
-        mock_engine.return_value = engine_with_basic_choa
+        mock_engine.return_value = engine_with_sample_choa
         mock_settings.return_value = settings
         
         
         from src.app.service.acct import AcctService
         
         journal = Journal(
+            journal_id='jrn-sample',
             jrn_date=date(2024, 1, 1),
             entries=[
                 Entry(
@@ -189,8 +191,93 @@ def sample_journal_meal(engine_with_sample_choa, settings) -> Generator[Journal,
                     description=None
                 ),
             ],
-            is_manual=True,
+            jrn_src=JournalSrc.MANUAL,
             note='sample meal journal'
         )
         
         yield journal
+        
+@pytest.fixture
+def sample_items() -> list[Item]:
+    item_consult = Item(
+        name='Item - Consulting',
+        item_type=ItemType.SERVICE,
+        entity_type=EntityType.CUSTOMER,
+        unit=UnitType.HOUR,
+        unit_price=100,
+        currency=CurType.USD,
+        default_acct_id='acct-consul'
+    )
+    item_meeting = Item(
+        name='Item - Meeting',
+        item_type=ItemType.SERVICE,
+        entity_type=EntityType.CUSTOMER,
+        unit=UnitType.HOUR,
+        unit_price=75,
+        currency=CurType.USD,
+        default_acct_id='acct-consul'
+    )
+    return [item_consult, item_meeting]
+
+@pytest.fixture
+def sample_invoice(engine_with_sample_choa, sample_items, customer1) -> Generator[Invoice, None, None]:
+    with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
+        mock_engine.return_value = engine_with_sample_choa
+        
+        from src.app.dao.invoice import itemDao
+        from src.app.dao.entity import customerDao, contactDao
+        
+        # add customer
+        contactDao.add(contact = customer1.bill_contact)
+        customerDao.add(customer1)
+        
+        # add items
+        for item in sample_items:
+            itemDao.add(item)
+        
+        # create invoice
+        invoice = Invoice(
+            invoice_id='inv-sample',
+            invoice_num='INV-001',
+            invoice_dt=date(2024, 1, 1),
+            due_dt=date(2024, 1, 5),
+            entity_id=customer1.cust_id,
+            entity_type=EntityType.CUSTOMER,
+            subject='General Consulting - Jan 2024',
+            currency=CurType.USD,
+            invoice_items=[
+                InvoiceItem(
+                    item=sample_items[0],
+                    quantity=5,
+                    description="Programming"
+                ),
+                InvoiceItem(
+                    item=sample_items[1],
+                    quantity=10,
+                    description="Meeting Around",
+                    discount_rate=0.05,
+                )
+            ],
+            ginvoice_items=[
+                GeneralInvoiceItem(
+                    incur_dt=date(2023, 12, 10),
+                    acct_id='acct-meal',
+                    currency=CurType.EUR,
+                    amount_pre_tax_raw=100,
+                    amount_pre_tax=120,
+                    tax_rate=0.05,
+                    description='Meal for business trip'
+                )
+            ],
+            shipping=10,
+            note="Thanks for business"
+        )
+        
+        
+        yield invoice
+        
+        # delete items
+        for item in sample_items:
+            itemDao.remove(item.item_id)
+        customerDao.remove(customer1.cust_id)
+        contactDao.remove(customer1.bill_contact.contact_id)

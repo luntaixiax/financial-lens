@@ -3,77 +3,8 @@ from typing import Generator
 from unittest import mock
 import pytest
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError
-from src.app.model.enums import CurType, ItemType, UnitType
+from src.app.model.enums import CurType, EntityType, ItemType, UnitType
 from src.app.model.invoice import Invoice, InvoiceItem, Item
-
-@pytest.fixture
-def sample_items() -> list[Item]:
-    item_consult = Item(
-        name='Item - Consulting',
-        item_type=ItemType.SERVICE,
-        unit=UnitType.HOUR,
-        unit_price=100,
-        currency=CurType.USD,
-        default_acct_id='acct-consul'
-    )
-    item_meeting = Item(
-        name='Item - Meeting',
-        item_type=ItemType.SERVICE,
-        unit=UnitType.HOUR,
-        unit_price=75,
-        currency=CurType.USD,
-        default_acct_id='acct-consul'
-    )
-    return [item_consult, item_meeting]
-
-@pytest.fixture
-def sample_invoice(engine_with_sample_choa, sample_items, customer1) -> Generator[Invoice, None, None]:
-    with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
-        mock_engine.return_value = engine_with_sample_choa
-        
-        from src.app.dao.invoice import itemDao
-        from src.app.dao.entity import customerDao, contactDao
-        
-        # add customer
-        contactDao.add(contact = customer1.bill_contact)
-        customerDao.add(customer1)
-        
-        # add items
-        for item in sample_items:
-            itemDao.add(item)
-        
-        # create invoice
-        invoice = Invoice(
-            invoice_num='INV-001',
-            invoice_dt=date(2024, 1, 1),
-            due_dt=date(2024, 1, 5),
-            customer_id=customer1.cust_id,
-            subject='General Consulting - Jan 2024',
-            invoice_items=[
-                InvoiceItem(
-                    item=sample_items[0],
-                    quantity=5,
-                    description="Programming"
-                ),
-                InvoiceItem(
-                    item=sample_items[1],
-                    quantity=10,
-                    description="Meeting Around",
-                    discount_rate=0.05,
-                )
-            ],
-            shipping=10,
-            note="Thanks for business"
-        )
-        
-        
-        yield invoice
-        
-        # delete items
-        for item in sample_items:
-            itemDao.remove(item.item_id)
-        customerDao.remove(customer1.cust_id)
-        contactDao.remove(customer1.bill_contact.contact_id)
         
 
 @mock.patch("src.app.dao.connection.get_engine")
@@ -136,20 +67,22 @@ def test_invoice(mock_engine, engine, sample_invoice, sample_journal_meal):
     _invoice, _jrn_id = invoiceDao.get(sample_invoice.invoice_id)
     assert _jrn_id == sample_journal_meal.journal_id
     assert _invoice == sample_invoice
+    assert len(_invoice.ginvoice_items) == 1
+    assert len(_invoice.invoice_items) == 2
     
     # test list and filter
-    _invoices = invoiceDao.list()
+    _invoices = invoiceDao.list_invoice()
     assert len(_invoices) == 1
-    _invoices = invoiceDao.list(currency=CurType.USD)
+    _invoices = invoiceDao.list_invoice(currency=CurType.USD)
     assert len(_invoices) == 1
-    _invoices = invoiceDao.list(currency=CurType.EUR)
+    _invoices = invoiceDao.list_invoice(currency=CurType.EUR)
     assert len(_invoices) == 0
-    _invoices = invoiceDao.list(num_invoice_items=2)
+    _invoices = invoiceDao.list_invoice(num_invoice_items=2)
     assert len(_invoices) == 1
-    _invoices = invoiceDao.list(num_invoice_items=3)
+    _invoices = invoiceDao.list_invoice(num_invoice_items=3)
     assert len(_invoices) == 0
-    _invoices = invoiceDao.list(max_amount=1000)
-    assert len(_invoices) == 0
+    _invoices = invoiceDao.list_invoice(max_amount=1000)
+    assert len(_invoices) == 1
     
     
     # test remove invoice

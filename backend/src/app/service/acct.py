@@ -179,6 +179,18 @@ class AcctService:
             acct_type=AcctType.INC,
             chart=total_income.chart
         )
+        fx_gain = Account(
+            acct_id=SystemAcctNumber.FX_GAIN,
+            acct_name="FX Gain",
+            acct_type=AcctType.INC,
+            chart=total_income.chart
+        )
+        bank_fee = Account(
+            acct_id=SystemAcctNumber.BANK_FEE,
+            acct_name="Bank Fee",
+            acct_type=AcctType.EXP,
+            chart=total_expense.chart
+        ) # for payment entry
         
         cls.add_account(input_tax)
         cls.add_account(output_tax)
@@ -190,6 +202,8 @@ class AcctService:
         cls.add_account(oci)
         cls.add_account(sc)
         cls.add_account(disc)
+        cls.add_account(fx_gain)
+        cls.add_account(bank_fee)
         
     @classmethod
     def create_sample(cls):
@@ -205,6 +219,9 @@ class AcctService:
         noncur_chart = AcctService.get_chart(
             chart_id=SystemChartOfAcctNumber.NONCUR_ASSET
         )
+        curlib_chart = AcctService.get_chart(
+            chart_id=SystemChartOfAcctNumber.CUR_LIB
+        )
         ncurlib_chart = AcctService.get_chart(
             chart_id=SystemChartOfAcctNumber.NONCUR_LIB
         )
@@ -214,6 +231,12 @@ class AcctService:
             acct_name='Consulting Income',
             acct_type=AcctType.INC,
             chart=total_inc_chart
+        )
+        cogs = Account(
+            acct_id='acct-cogs',
+            acct_name='Cost of Service Sold',
+            acct_type=AcctType.EXP,
+            chart=total_exp_chart
         )
         meal = Account(
             acct_id='acct-meal',
@@ -247,6 +270,13 @@ class AcctService:
             currency=CurType.JPY,
             chart=bank_chart
         )
+        bank_foreign2 = Account(
+            acct_id='acct-fbank2',
+            acct_name="Bank Acct (USD)",
+            acct_type=AcctType.AST,
+            currency=CurType.USD,
+            chart=bank_chart
+        )
         fixed_asset = Account(
             acct_id='acct-fass',
             acct_name="Fixed Asset",
@@ -259,18 +289,28 @@ class AcctService:
             acct_name="Credit Acct",
             acct_type=AcctType.LIB,
             currency=get_base_cur(),
+            chart=curlib_chart
+        )
+        shareholder_loan = Account(
+            acct_id='acct-shareloan',
+            acct_name="Shareholder Loan",
+            acct_type=AcctType.LIB,
+            currency=get_base_cur(),
             chart=ncurlib_chart
         )
         
         # add to db
         AcctService.add_account(consult_inc)
+        AcctService.add_account(cogs)
         AcctService.add_account(meal)
         AcctService.add_account(tip)
         AcctService.add_account(rental)
         AcctService.add_account(bank)
         AcctService.add_account(bank_foreign)
+        AcctService.add_account(bank_foreign2)
         AcctService.add_account(fixed_asset)
         AcctService.add_account(credit)
+        AcctService.add_account(shareholder_loan)
         
     @classmethod
     def clear_sample(cls):
@@ -538,7 +578,7 @@ class AcctService:
                        restrictive: bool = True):
         if restrictive:
             # cannot delete system created accounts
-            if acct_id in SystemAcctNumber.list():
+            if acct_id in SystemAcctNumber.list_():
                 raise OpNotPermittedError(
                     f"Acct id {acct_id} is system account, not permitted to delete"
                 )
