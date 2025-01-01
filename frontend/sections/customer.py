@@ -1,7 +1,6 @@
 from functools import wraps
 import streamlit as st
 import streamlit_shadcn_ui as ui
-import pandas as pd
 from utils.tools import DropdownSelect
 from utils.apis import list_contacts, get_contact, list_customer, add_customer, \
     update_customer, get_customer, delete_customer
@@ -9,6 +8,22 @@ from utils.apis import list_contacts, get_contact, list_customer, add_customer, 
 tabs = st.tabs(['Customers', 'Add/Edit Customer'])
 with tabs[0]:
     customers = list_customer()
+    
+    card_cols = st.columns(2)
+    with card_cols[0]:
+        ui.metric_card(
+            title="# Customers", 
+            content=len(customers), 
+            description="registered in system", 
+            key="card1"
+        )
+    with card_cols[1]:
+        ui.metric_card(
+            title="# Business Customers", 
+            content=len(list(1 for cust in customers if cust['is_business'])), 
+            description="registered in system", 
+            key="card2"
+        )
     
     st.data_editor(
         data=customers, 
@@ -21,34 +36,48 @@ with tabs[1]:
     
     dds_entities = DropdownSelect(
         briefs=customers,
-        include_null=True,
+        include_null=False,
         id_key='cust_id',
         display_keys=['cust_id', 'customer_name']
     )
-    edit_entity = st.selectbox(
-        label='Select Customer',
-        options=dds_entities.options,
-        index=0
-    )
-    if edit_entity is not None:
+    
+    edit_cols = st.columns([1, 3])
+    with edit_cols[0]:
+        edit_mode = st.radio(
+            label='Edit Mode',
+            options=['Add', 'Edit'],
+            #default='Add',
+            #selection_mode ='single',
+            horizontal=True,
+        )
+    
+    if edit_mode == 'Edit':
+        with edit_cols[1]:
+            edit_entity = st.selectbox(
+                label='Select Customer',
+                options=dds_entities.options,
+                index=0
+            )
         # selected something, will load it from database first
         existing_entity_id = dds_entities.get_id(edit_entity)
         existing_entity = get_customer(existing_entity_id)
     
+    st.divider()
+    
     cname = st.text_input(
-        label="Customer Name",
-        value="" if edit_entity is None else existing_entity['customer_name'],
+        label="👤 Customer Name",
+        value="" if edit_mode == 'Add' else existing_entity['customer_name'],
         type='default', 
         placeholder="customer name here", 
         key="cname"
     )
     
-    cust_cols = st.columns(2)
+    cust_cols = st.columns(2, border=True)
     with cust_cols[0]:
-        if edit_entity is None:
+        if edit_mode == 'Add':
             # need if...else... bc of bug
             is_business = st.toggle(
-                label='Is Business',
+                label='Is Business 💼',
                 value=True,
                 key='isbus1'
             )
@@ -69,9 +98,9 @@ with tabs[1]:
 
     with cust_cols[0]:
         bill_contact_option = st.selectbox(
-            label='Billing Contact',
+            label='📧 Billing Contact',
             options=dds_contacts.options,
-            index=0 if edit_entity is None else dds_contacts.get_idx_from_id(
+            index=0 if edit_mode == 'Add' else dds_contacts.get_idx_from_id(
                 existing_entity['bill_contact']['contact_id']
             ),
         )
@@ -80,7 +109,7 @@ with tabs[1]:
             st.json(get_contact(bill_contact_id))
     
     with cust_cols[1]:
-        if edit_entity is None:
+        if edit_mode == 'Add':
             # need if...else... bc of bug
             ship_same_as_bill = st.toggle(
                 label='Ship Address Same as Billing Address',
@@ -97,9 +126,9 @@ with tabs[1]:
     if not ship_same_as_bill:
         with cust_cols[1]:
             ship_contact_option = st.selectbox(
-                label='Shipping Contact',
+                label='📧 Shipping Contact',
                 options=dds_contacts.options,
-                index=0 if edit_entity is None else dds_contacts.get_idx_from_id(
+                index=0 if edit_mode == 'Add' else dds_contacts.get_idx_from_id(
                     existing_entity['ship_contact']['contact_id']
                 )
             )
@@ -110,7 +139,7 @@ with tabs[1]:
         ship_contact_id = None
         
     
-    if edit_entity is None:
+    if edit_mode == 'Add':
         # add button
         st.button(
             label='Add Customer',

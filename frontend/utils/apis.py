@@ -170,3 +170,69 @@ def update_customer(cust_id: str, customer_name: str, is_business: bool, bill_co
             "ship_contact": ship_contact
         }
     )
+    
+@message_box
+def list_supplier() -> list[dict]:
+    return get_req(
+        prefix='entity',
+        endpoint='supplier/list'
+    )
+    
+
+@message_box
+def get_supplier(supplier_id: str) -> dict:
+    return get_req(
+        prefix='entity',
+        endpoint=f'supplier/get/{supplier_id}'
+    )
+
+@message_box
+def delete_supplier(supplier_id: str):
+    delete_req(
+        prefix='entity',
+        endpoint=f'supplier/delete/{supplier_id}'
+    )
+
+@message_box
+def add_supplier(supplier_name: str, is_business: bool, bill_contact_id: str, 
+                 ship_same_as_bill: bool, ship_contact_id: str | None):
+    
+    bill_contact = get_contact(bill_contact_id)
+    if ship_contact_id is None:
+        ship_contact = None
+    else:
+        ship_contact = get_contact(ship_contact_id)
+    
+    post_req(
+        prefix='entity',
+        endpoint='supplier/add',
+        data={
+            "supplier_name": supplier_name,
+            "is_business": is_business,
+            "bill_contact": bill_contact,
+            "ship_same_as_bill": ship_same_as_bill,
+            "ship_contact": ship_contact
+        }
+    )
+
+@message_box
+def update_supplier(supplier_id: str, supplier_name: str, is_business: bool, bill_contact_id: str, 
+                 ship_same_as_bill: bool, ship_contact_id: str | None):
+    bill_contact = get_contact(bill_contact_id)
+    if ship_contact_id is None:
+        ship_contact = None
+    else:
+        ship_contact = get_contact(ship_contact_id)
+        
+    put_req(
+        prefix='entity',
+        endpoint='supplier/update',
+        data={
+            "supplier_id": supplier_id,
+            "supplier_name": supplier_name,
+            "is_business": is_business,
+            "bill_contact": bill_contact,
+            "ship_same_as_bill": ship_same_as_bill,
+            "ship_contact": ship_contact
+        }
+    )
