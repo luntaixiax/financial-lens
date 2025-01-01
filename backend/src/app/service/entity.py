@@ -18,7 +18,7 @@ class EntityService:
                 address1='00 XX St E',
                 suite_no=1234,
                 city='Toronto',
-                state='ON',
+                state='Ontario',
                 country='Canada',
                 postal_code='XYZABC'
             )

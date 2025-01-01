@@ -2,11 +2,11 @@ from pathlib import Path
 import tomli
 from sqlmodel import create_engine
 from functools import lru_cache
+from src.app.utils.tools import get_secret
 
 @lru_cache
 def get_engine():
-    with open(Path.cwd().parent / "secrets.toml", mode="rb") as fp:
-        config = tomli.load(fp)['mysql']
+    config = get_secret()['mysql']
 
     mysql_url = f"mysql+mysqlconnector://{config['username']}:{config['password']}@{config['ip']}:{config['port']}/{config['db']}"
     engine = create_engine(mysql_url, pool_size=10)

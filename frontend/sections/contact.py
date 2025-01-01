@@ -2,7 +2,8 @@ from functools import wraps
 import streamlit as st
 import streamlit_shadcn_ui as ui
 from utils.tools import DropdownSelect
-from utils.apis import country_list, city_list, list_contacts, get_contact, add_contact, update_contact, delete_contact
+from utils.apis import list_country, list_state, list_city, \
+    list_contacts, get_contact, add_contact, update_contact, delete_contact
 
 
 tabs = st.tabs(['Contacts', 'Add/Edit Contact'])
@@ -100,27 +101,49 @@ with tabs[1]:
             placeholder="502", 
             key="bsuitenum"
         )
-        _country_list = country_list()
+        
+        # add country
+        countries = list_country()
+        dds_countries = DropdownSelect(
+            briefs=countries,
+            include_null=False,
+            id_key='iso2',
+            display_keys=['country']
+        )
         bcountry = st.selectbox(
             label="🌎 Country", 
-            options=_country_list,
-            index=0 if edit_mode == 'Add' else _country_list.index(existing_entity['address']['country']),
+            options=dds_countries.options,
+            index=0 if edit_mode == 'Add' else dds_countries.get_idx_from_option(existing_entity['address']['country']),
             key="bcountry"
         )
-        _city_list = city_list(bcountry)
-        bcity = st.selectbox(
-            label="🌇 City", 
-            options=_city_list,
-            index=0 if edit_mode == 'Add' else _city_list.index(existing_entity['address']['city']),
-            key="bcity"
+        # add state
+        states = list_state(
+            country_iso2=dds_countries.get_id(bcountry)
         )
-        bstate = st.text_input(
-            label="State/Province", 
-            value="" if edit_mode == 'Add' else existing_entity['address']['state'], 
-            type='default', 
-            placeholder="Ontario",
+        dds_states = DropdownSelect(
+            briefs=states,
+            include_null=False,
+            id_key='iso2',
+            display_keys=['state']
+        )
+        bstate = st.selectbox(
+            label="🌎 State", 
+            options=dds_states.options,
+            index=0 if edit_mode == 'Add' else dds_states.get_idx_from_option(existing_entity['address']['state']),
             key="bstate"
         )
+        # add city
+        cities = list_city(
+            country_iso2=dds_countries.get_id(bcountry),
+            state_iso2=dds_states.get_id(bstate)
+        )
+        bcity = st.selectbox(
+            label="🌇 City", 
+            options=cities,
+            index=0 if edit_mode == 'Add' else cities.index(existing_entity['address']['city']),
+            key="bcity"
+        )
+        
         bpostal = st.text_input(
             label="📦 Postal Code", 
             value="" if edit_mode == 'Add' else existing_entity['address']['postal_code'], 

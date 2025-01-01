@@ -26,16 +26,25 @@ def message_box(f):
     return decorated
 
 @st.cache_data
-def country_list() -> list[str]:
-    #reqUrl = "https://shivammathur.com/countrycity/countries"
-    #return requests.request("GET", reqUrl).json()
-    return ['Canada', 'China', 'United Kingdom', 'United States']
+def list_country() -> list[dict]:
+    return get_req(
+        prefix='misc',
+        endpoint='geo/countries/list'
+    )
 
 @st.cache_data
-def city_list(country: str) -> list[str]:
-    reqUrl = f"https://shivammathur.com/countrycity/cities/{country}"
+def list_state(country_iso2: str) -> list[dict]:
+    return get_req(
+        prefix='misc',
+        endpoint=f'geo/countries/{country_iso2}/state/list'
+    )
     
-    return requests.request("GET", reqUrl).json()
+@st.cache_data
+def list_city(country_iso2: str, state_iso2: str) -> list[dict]:
+    return get_req(
+        prefix='misc',
+        endpoint=f'geo/countries/{country_iso2}/state/{state_iso2}/city/list'
+    )
 
 @message_box
 def list_contacts() -> list[dict]:
