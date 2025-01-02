@@ -4,7 +4,8 @@ import streamlit_nested_layout # need it for nested structure
 import pandas as pd
 from utils.enums import CurType, AcctType
 from utils.apis import tree_charts, list_charts, get_chart, get_parent_chart, list_accounts_by_chart, \
-    add_chart, update_move_chart, delete_chart
+    add_chart, update_move_chart, delete_chart, list_accounts_by_chart, get_account, \
+    add_account, update_account, delete_account
 from utils.tools import DropdownSelect
 
 st.subheader('Manage Chart of Accounts')
@@ -35,6 +36,7 @@ chart_types = DropdownSelect.from_enum(
 acct_type_option = st.selectbox(
     label='📋 Chart Type',
     options=chart_types.options,
+    key='chart_type_select'
 )
 acct_type: AcctType = chart_types.get_id(acct_type_option)
     
@@ -67,9 +69,10 @@ with tabs[1]:
     if edit_mode == 'Edit':
         with edit_cols[1]:
             edit_chart_option = st.selectbox(
-                label='Select Chart',
+                label='👇 Select Chart',
                 options=dds_charts.options,
-                index=0
+                index=0,
+                key='chart_select'
             )
         existing_chart_id = dds_charts.get_id(edit_chart_option)
         existing_chart = get_chart(existing_chart_id)
@@ -94,7 +97,8 @@ with tabs[1]:
         parent_chart_option = st.selectbox(
             label='👨‍👧 Parent Chart',
             options=dds_charts.options,
-            index=0
+            index=0,
+            key='parent_chart_select1'
         )
         parent_chart_id = dds_charts.get_id(parent_chart_option)
     else:
@@ -103,13 +107,15 @@ with tabs[1]:
                 label='👨‍👧 Parent Chart',
                 options=dds_charts.options,
                 index=dds_charts.get_idx_from_id(existing_parent_chart['chart_id']),
+                key='parent_chart_select2'
             )
             parent_chart_id = dds_charts.get_id(parent_chart_option)
         else:
             parent_chart_option: None = st.selectbox(
                 label='👨‍👧 Parent Chart',
                 options=[None],
-                disabled=True
+                disabled=True,
+                key='parent_chart_select3'
             )
     
     if edit_mode == 'Add':
@@ -160,3 +166,152 @@ with tabs[1]:
                     chart_id=existing_chart_id
                 )
             )
+            
+with tabs[2]:
+    
+    edit_cols = st.columns([1, 3])
+    with edit_cols[0]:
+        edit_mode = st.radio(
+            label='Edit Mode',
+            options=['Add', 'Edit'],
+            horizontal=True,
+            key='radio_acct'
+        )
+        
+    if edit_mode == 'Edit':
+        with edit_cols[1]:
+            edit_acct_chart_option = st.selectbox(
+                label='🔎 Search Account under Chart',
+                options=dds_charts.options,
+                index=0,
+                key='acct_chart_select'
+            )
+            existing_acct_chart_id = dds_charts.get_id(edit_acct_chart_option)
+            existing_acct_chart = get_chart(existing_acct_chart_id)
+        
+            accounts = list_accounts_by_chart(existing_acct_chart_id)
+            accounts = [
+                {
+                    'acct_id': r['acct_id'], 
+                    'acct_name': r['acct_name'], 
+                    'currency': CurType(r['currency']).name if r['currency'] is not None else '-'
+                } 
+                for r in accounts
+            ]
+            dds_accts = DropdownSelect(
+                briefs=accounts,
+                include_null=False,
+                id_key='acct_id',
+                display_keys=['acct_id', 'acct_name', 'currency']
+            )
+            edit_acct_option = st.selectbox(
+                label='👇 Select Account',
+                options=dds_accts.options,
+                index=0,
+                key='acct_select'
+            )
+            if edit_acct_option is not None:
+                # possible no account under some chart
+                existing_acct_id = dds_accts.get_id(edit_acct_option)
+                existing_acct = get_account(existing_acct_id)
+        
+    st.divider()
+    
+    if (edit_mode == 'Edit' and edit_acct_option is not None) or edit_mode == 'Add':
+    
+        if edit_mode == 'Edit':
+            ui.badges(
+                badge_list=[("Account ID", "default"), (existing_acct_id, "secondary")], 
+                class_name="flex gap-2", 
+                key="badges2"
+            )
+        
+        acct_name = st.text_input(
+            label='🏦 Acct Name',
+            value="" if edit_mode == 'Add' else existing_acct['acct_name'],
+            type='default', 
+            placeholder="account name here", 
+        )
+        
+        dds_currency = DropdownSelect.from_enum(
+            CurType,
+            include_null=False
+        )
+        
+        if edit_mode == 'Add':
+            cur_type_option = st.selectbox(
+                label='💲 Currency',
+                options=dds_currency.options,
+                key='cur_type_select',
+                index=0,
+            )
+        
+            parent_acct_chart_option = st.selectbox(
+                label='🔗 Attached to Chart',
+                options=dds_charts.options,
+                key='attach_chart_select',
+                index=0,
+            )
+        else:
+            cur_type_option = st.selectbox(
+                label='💲 Currency',
+                options=dds_currency.options,
+                key='cur_type_select2',
+                index=dds_currency.get_idx_from_id(existing_acct['currency']),
+            )
+        
+            parent_acct_chart_option = st.selectbox(
+                label='🔗 Attached to Chart',
+                options=dds_charts.options,
+                key='attach_chart_select2',
+                index=dds_charts.get_idx_from_id(existing_acct['chart']['chart_id']),
+            )
+        
+        parent_acct_chart_id = dds_charts.get_id(parent_acct_chart_option)
+        currency: CurType = dds_currency.get_id(cur_type_option)
+
+        if edit_mode == 'Add':
+            # add button
+            st.button(
+                label='Add Account',
+                on_click=add_account,
+                kwargs=dict(
+                    acct_name=acct_name,
+                    acct_type=acct_type.value,
+                    currency=currency.value,
+                    chart_id=parent_acct_chart_id,
+                ),
+                key='add_acount'
+            )
+            
+        else:
+            # update and remove button
+            btn_cols = st.columns([1, 1, 5])
+            with btn_cols[0]:
+                st.button(
+                    label='Update',
+                    type='secondary',
+                    on_click=update_account,
+                    kwargs=dict(
+                        acct_id=existing_acct_id,
+                        acct_name=acct_name,
+                        acct_type=acct_type.value,
+                        currency=currency.value,
+                        chart_id=parent_acct_chart_id,
+                    ),
+                    key='update_acount'
+                )
+                    
+            with btn_cols[1]:
+                st.button(
+                    label='Delete',
+                    type='primary',
+                    on_click=delete_account,
+                    kwargs=dict(
+                        acct_id=existing_acct_id,
+                    ),
+                    key='delete_acount'
+                )
+                
+    else:
+        st.warning("No account found under this chart!", icon='🙊')

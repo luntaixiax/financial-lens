@@ -1,7 +1,8 @@
 from functools import wraps
 from typing import Any
 import uuid
-from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError
+from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
+    FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError
 from utils.base import get_req, post_req, delete_req, put_req
 import streamlit_shadcn_ui as ui
 import streamlit as st
@@ -11,7 +12,8 @@ def message_box(f):
     def decorated(*args, **kwargs):
         try:
             r = f(*args, **kwargs)
-        except (AlreadyExistError, NotExistError, FKNotExistError, FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError) as e:
+        except (AlreadyExistError, NotExistError, FKNotExistError, FKNoDeleteUpdateError, 
+                OpNotPermittedError, NotMatchWithSystemError) as e:
             ui.alert_dialog(
                 show=True,
                 title=e.message,
@@ -140,11 +142,17 @@ def delete_customer(cust_id: str):
 def add_customer(customer_name: str, is_business: bool, bill_contact_id: str, 
                  ship_same_as_bill: bool, ship_contact_id: str | None):
     
-    bill_contact = get_contact(bill_contact_id)
+    bill_contact = get_req(
+        prefix='entity',
+        endpoint=f'contact/get/{bill_contact_id}'
+    )
     if ship_contact_id is None:
         ship_contact = None
     else:
-        ship_contact = get_contact(ship_contact_id)
+        ship_contact = get_req(
+            prefix='entity',
+            endpoint=f'contact/get/{ship_contact_id}'
+        )
     
     post_req(
         prefix='entity',
@@ -328,4 +336,60 @@ def delete_chart(chart_id: str):
     delete_req(
         prefix='accounts',
         endpoint=f'chart/delete/{chart_id}'
+    )
+    
+@message_box
+def list_accounts_by_chart(chart_id: str) -> list[dict]:
+    return get_req(
+        prefix='accounts',
+        endpoint=f'account/list/{chart_id}',
+    )
+    
+@message_box
+def get_account(acct_id: str) -> dict:
+    return get_req(
+        prefix='accounts',
+        endpoint=f'account/get/{acct_id}',
+    )
+
+@message_box
+def add_account(acct_name: str, acct_type: int, currency: int, chart_id: str):
+    chart = get_req(
+        prefix='accounts',
+        endpoint=f'chart/get/{chart_id}',
+    )
+    post_req(
+        prefix='accounts',
+        endpoint='account/add',
+        data={
+            "acct_name": acct_name,
+            "acct_type": acct_type,
+            "currency": currency,
+            "chart": chart
+        }
+    )
+    
+@message_box
+def update_account(acct_id: str, acct_name: str, acct_type: int, currency: int, chart_id: str):
+    chart = get_req(
+        prefix='accounts',
+        endpoint=f'chart/get/{chart_id}',
+    )
+    put_req(
+        prefix='accounts',
+        endpoint='account/update',
+        data={
+            "acct_id": acct_id,
+            "acct_name": acct_name,
+            "acct_type": acct_type,
+            "currency": currency,
+            "chart": chart
+        }
+    )
+    
+@message_box
+def delete_account(acct_id: str):
+    delete_req(
+        prefix='accounts',
+        endpoint=f'account/delete/{acct_id}'
     )

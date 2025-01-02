@@ -56,7 +56,7 @@ with tabs[1]:
     if edit_mode == 'Edit':
         with edit_cols[1]:
             edit_entity = st.selectbox(
-                label='Select Customer',
+                label='👇 Select Customer',
                 options=dds_entities.options,
                 index=0
             )
