@@ -4,14 +4,21 @@ pages = {
     "Test" : [
         st.Page("sections/test_api.py", title="Test API"),
     ],
-    "Entity": [
-        st.Page("sections/contact.py", title="Manage Contact"),
-        st.Page("sections/customer.py", title="Manage Customer"),
-        st.Page("sections/supplier.py", title="Manage Supplier"),
+    "Accountant": [
+        st.Page("sections/chart_of_accounts.py", title="Chart of Accounts", icon='📚'),
+        st.Page("sections/journal.py", title="Journal Entry", icon='✍🏼'),
     ],
-    "Chart of Accounts": [
-        st.Page("sections/chart.py", title="Manage Chart")
-    ]
+    "Entity": [
+        st.Page("sections/contact.py", title="Manage Contact", icon='📞'),
+        st.Page("sections/customer.py", title="Manage Customer", icon='👨🏻‍💼'),
+        st.Page("sections/supplier.py", title="Manage Supplier", icon='👨🏻‍🔧'),
+        st.Page("sections/item.py", title="Manage Item", icon='📦'),
+    ],
+    "Transaction": [
+        st.Page("sections/sales.py", title="Manage Sales", icon='💸'),
+        st.Page("sections/purchase.py", title="Manage Purchase", icon='🛒'),
+        st.Page("sections/expense.py", title="Manage Expense", icon='✈️'),
+    ],
 }
 
 pg = st.navigation(pages)

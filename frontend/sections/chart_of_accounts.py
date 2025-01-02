@@ -7,6 +7,7 @@ from utils.apis import tree_charts, list_charts, get_chart, get_parent_chart, li
     add_chart, update_move_chart, delete_chart
 from utils.tools import DropdownSelect
 
+st.subheader('Manage Chart of Accounts')
 
 def show_expander(tree: dict):
     label = f"**{tree['name']}** &nbsp; | &nbsp; :violet-background[{tree['chart_id']}]"
@@ -37,7 +38,7 @@ acct_type_option = st.selectbox(
 )
 acct_type: AcctType = chart_types.get_id(acct_type_option)
     
-tabs = st.tabs(['Chart of Accounts', 'Add/Edit Chart'])
+tabs = st.tabs(['Chart of Accounts', 'Add/Edit Chart', 'Add/Edit Account'])
 with tabs[0]:
     
     
