@@ -17,9 +17,11 @@ def show_expander(tree: dict):
         accts = list_accounts_by_chart(tree['chart_id'])
         accts = pd.DataFrame.from_records([
             {
-                'Acct ID': r['acct_id'], 
+                #'System': ,
+                'Acct ID': ('⭐ ' if r['is_system'] else ' ') + r['acct_id'], 
                 'Acct Name': r['acct_name'], 
-                'Currency': CurType(r['currency']).name if r['currency'] is not None else '-'
+                'Currency': CurType(r['currency']).name if r['currency'] is not None else '-',
+                
             } 
             for r in accts
         ])
@@ -39,6 +41,7 @@ acct_type_option = st.selectbox(
     key='chart_type_select'
 )
 acct_type: AcctType = chart_types.get_id(acct_type_option)
+has_currency = acct_type in (AcctType.AST, AcctType.LIB, AcctType.EQU)
     
 tabs = st.tabs(['Chart of Accounts', 'Add/Edit Chart', 'Add/Edit Account'])
 with tabs[0]:
@@ -202,7 +205,7 @@ with tabs[2]:
                 briefs=accounts,
                 include_null=False,
                 id_key='acct_id',
-                display_keys=['acct_id', 'acct_name', 'currency']
+                display_keys=['acct_id', 'acct_name', 'currency'] if has_currency else ['acct_id', 'acct_name']
             )
             edit_acct_option = st.selectbox(
                 label='👇 Select Account',
@@ -218,10 +221,16 @@ with tabs[2]:
     st.divider()
     
     if (edit_mode == 'Edit' and edit_acct_option is not None) or edit_mode == 'Add':
-    
+        
         if edit_mode == 'Edit':
+            badge_list=[
+                ("Account ID", "default"), 
+                (existing_acct_id, "secondary")
+            ]
+            if existing_acct['is_system']:
+                badge_list.append(('System Account', "destructive"))
             ui.badges(
-                badge_list=[("Account ID", "default"), (existing_acct_id, "secondary")], 
+                badge_list=badge_list, 
                 class_name="flex gap-2", 
                 key="badges2"
             )
@@ -239,12 +248,13 @@ with tabs[2]:
         )
         
         if edit_mode == 'Add':
-            cur_type_option = st.selectbox(
-                label='💲 Currency',
-                options=dds_currency.options,
-                key='cur_type_select',
-                index=0,
-            )
+            if has_currency:
+                cur_type_option = st.selectbox(
+                    label='💲 Currency',
+                    options=dds_currency.options,
+                    key='cur_type_select',
+                    index=0,
+                )
         
             parent_acct_chart_option = st.selectbox(
                 label='🔗 Attached to Chart',
@@ -253,12 +263,13 @@ with tabs[2]:
                 index=0,
             )
         else:
-            cur_type_option = st.selectbox(
-                label='💲 Currency',
-                options=dds_currency.options,
-                key='cur_type_select2',
-                index=dds_currency.get_idx_from_id(existing_acct['currency']),
-            )
+            if has_currency:
+                cur_type_option = st.selectbox(
+                    label='💲 Currency',
+                    options=dds_currency.options,
+                    key='cur_type_select2',
+                    index=dds_currency.get_idx_from_id(existing_acct['currency']),
+                )
         
             parent_acct_chart_option = st.selectbox(
                 label='🔗 Attached to Chart',
@@ -268,7 +279,10 @@ with tabs[2]:
             )
         
         parent_acct_chart_id = dds_charts.get_id(parent_acct_chart_option)
-        currency: CurType = dds_currency.get_id(cur_type_option)
+        if has_currency:
+            currency: CurType = dds_currency.get_id(cur_type_option)
+        else:
+            currency = None
 
         if edit_mode == 'Add':
             # add button
@@ -278,7 +292,7 @@ with tabs[2]:
                 kwargs=dict(
                     acct_name=acct_name,
                     acct_type=acct_type.value,
-                    currency=currency.value,
+                    currency=currency.value if has_currency else None,
                     chart_id=parent_acct_chart_id,
                 ),
                 key='add_acount'
@@ -296,7 +310,7 @@ with tabs[2]:
                         acct_id=existing_acct_id,
                         acct_name=acct_name,
                         acct_type=acct_type.value,
-                        currency=currency.value,
+                        currency=currency.value if has_currency else None,
                         chart_id=parent_acct_chart_id,
                     ),
                     key='update_acount'
@@ -310,7 +324,8 @@ with tabs[2]:
                     kwargs=dict(
                         acct_id=existing_acct_id,
                     ),
-                    key='delete_acount'
+                    key='delete_acount',
+                    disabled=existing_acct['is_system']
                 )
                 
     else:

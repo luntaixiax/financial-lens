@@ -1,11 +1,11 @@
 from __future__ import annotations
-import logging
 from typing import Any, Literal
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import computed_field, ConfigDict, Field, model_validator
 from functools import partial
 from anytree import NodeMixin, Node, RenderTree, find_by_attr
 from anytree.exporter import DictExporter
 from anytree.importer import DictImporter
+from src.app.model.const import SystemAcctNumber
 from src.app.model.enums import AcctType, CurType, BankAcctType
 from src.app.utils.tools import id_generator
 from src.app.utils.base import EnhancedBaseModel
@@ -96,6 +96,10 @@ class Account(EnhancedBaseModel):
         frozen=True
     )
     chart: Chart
+    
+    @computed_field()
+    def is_system(self) -> bool:
+        return self.acct_id in SystemAcctNumber.list_()
     
     @model_validator(mode='after')
     def validate_chart(self):
