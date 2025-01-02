@@ -43,3 +43,18 @@ class DropdownSelect:
         if self._include_null:
             idx += 1
         return idx
+    
+    @classmethod
+    def from_enum(cls, enum_cls, include_null: bool):
+        return DropdownSelect(
+            briefs = [
+                {
+                    'name': e.name,
+                    'value': e
+                }
+                for e in enum_cls
+            ],
+            include_null = include_null,
+            id_key = 'value',
+            display_keys = ['name']
+        )

@@ -1,6 +1,6 @@
 from functools import wraps
+from typing import Any
 import uuid
-import requests
 from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError
 from utils.base import get_req, post_req, delete_req, put_req
 import streamlit_shadcn_ui as ui
@@ -244,4 +244,88 @@ def update_supplier(supplier_id: str, supplier_name: str, is_business: bool, bil
             "ship_same_as_bill": ship_same_as_bill,
             "ship_contact": ship_contact
         }
+    )
+    
+@message_box
+def tree_charts(acct_type: int) -> dict[str, Any]:
+    return get_req(
+        prefix='accounts',
+        endpoint=f'chart/tree',
+        params={
+            'acct_type': acct_type
+        }
+    )
+
+@message_box
+def list_charts(acct_type: int) -> list[dict]:
+    return get_req(
+        prefix='accounts',
+        endpoint='chart/list',
+        params={
+            'acct_type': acct_type
+        }
+    )
+
+@message_box
+def get_chart(chart_id: str) -> dict:
+    return get_req(
+        prefix='accounts',
+        endpoint=f'chart/get/{chart_id}',
+    )
+    
+@message_box
+def get_parent_chart(chart_id: str) -> dict:
+    return get_req(
+        prefix='accounts',
+        endpoint=f'chart/{chart_id}/get_parent',
+    )
+    
+@message_box
+def list_accounts_by_chart(chart_id: str) -> list[dict]:
+    return get_req(
+        prefix='accounts',
+        endpoint=f'account/list/{chart_id}',
+    )
+
+@message_box  
+def add_chart(chart: dict, parent_chart_id: str):
+    post_req(
+        prefix='accounts',
+        endpoint='chart/add',
+        params={
+            'parent_chart_id': parent_chart_id
+        },
+        data={
+            "name": chart['name'],
+            "acct_type": chart['acct_type'],
+        }
+    )
+
+@message_box
+def update_move_chart(chart: dict, parent_chart_id: str):
+    # update chart
+    put_req(
+        prefix='accounts',
+        endpoint='chart/update',
+        data={
+            "chart_id": chart['chart_id'],
+            "name": chart['name'],
+            "acct_type": chart['acct_type'],
+        }
+    )
+    # move chart
+    put_req(
+        prefix='accounts',
+        endpoint='chart/move',
+        params={
+            "chart_id": chart['chart_id'],
+            "new_parent_chart_id": parent_chart_id,
+        }
+    )
+
+@message_box
+def delete_chart(chart_id: str):
+    delete_req(
+        prefix='accounts',
+        endpoint=f'chart/delete/{chart_id}'
     )

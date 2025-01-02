@@ -1,4 +1,3 @@
-from functools import wraps
 import streamlit as st
 import streamlit_shadcn_ui as ui
 from utils.tools import DropdownSelect
@@ -53,6 +52,14 @@ with tabs[1]:
         existing_entity = get_contact(existing_entity_id)
     
     st.divider()
+    
+    if edit_mode == 'Edit':
+        ui.badges(
+            badge_list=[("Contact ID", "default"), (existing_entity_id, "secondary")], 
+            class_name="flex gap-2", 
+            key="badges1"
+        )
+    
     
     bname = st.text_input(
         label="👤 Name",

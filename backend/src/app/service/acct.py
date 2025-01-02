@@ -346,7 +346,7 @@ class AcctService:
         _charts = cls.get_charts(node.chart.acct_type)
         # compare and find out charts to be deleted = _charts - charts
         charts = [n.chart for n in PreOrderIter(node)]
-        chart_to_delete = [c for c in _charts if c not in charts]
+        chart_to_delete = [c for c in _charts if c.chart_id not in [h.chart_id for h in charts]]
         # make sure they dont have account attached
         for _chart in chart_to_delete:
             accts = cls.get_accounts_by_chart(_chart)
@@ -421,6 +421,11 @@ class AcctService:
         
     @classmethod
     def move_chart(cls, chart_id: str, new_parent_chart_id: str):
+        if chart_id == new_parent_chart_id:
+            raise OpNotPermittedError(
+                message="Cannot move to same chart",
+                details=f"chart_id = new_parent_chart_id = {chart_id}"
+            )
         chart = cls.get_chart(chart_id)
         root = cls.get_coa(chart.acct_type)
         new_parent_node = root.find_node_by_id(new_parent_chart_id)
@@ -440,6 +445,13 @@ class AcctService:
             )
         return chart
     
+    @classmethod
+    def get_parent_chart(cls, chart_id: str) -> Chart | None:
+        try:
+            parent_chart = chartOfAcctDao.get_parent_chart(chart_id=chart_id)
+        except NotExistError as e:
+            parent_chart = None # not exist or top node
+        return parent_chart
 
     @classmethod
     def get_charts(cls, acct_type: AcctType) -> list[Chart]:

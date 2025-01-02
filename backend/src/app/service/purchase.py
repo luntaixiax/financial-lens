@@ -405,8 +405,8 @@ class PurchaseService:
                 # if invoice currency equals payment currency, the amount should equal
                 if not math.isclose(payment_item.payment_amount, payment_item.payment_amount_raw, rel_tol=1e-6):
                     raise OpNotPermittedError(
-                        f'Same payment and invoice currency ({payment_acct.currency}), payment_amount should equal to payment_amount_raw; '
-                        f'payment item amount not expected: {payment_item}'
+                        message=f'Payment_amount should equal to payment_amount_raw',
+                        details=f'Same payment and invoice currency ({payment_acct.currency}), payment item amount not expected: {payment_item}'
                     )
     
     @classmethod

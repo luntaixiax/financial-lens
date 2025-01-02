@@ -64,6 +64,13 @@ with tabs[1]:
     
     st.divider()
     
+    if edit_mode == 'Edit':
+        ui.badges(
+            badge_list=[("Supplier ID", "default"), (existing_entity_id, "secondary")], 
+            class_name="flex gap-2", 
+            key="badges1"
+        )
+    
     cname = st.text_input(
         label="👤 Supplier Name",
         value="" if edit_mode == 'Add' else existing_entity['supplier_name'],

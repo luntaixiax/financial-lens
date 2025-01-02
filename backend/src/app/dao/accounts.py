@@ -198,6 +198,25 @@ class chartOfAcctDao:
                 raise NotExistError(details=str(e))
             
         return [cls.toChart(chart_orm) for chart_orm in chart_orms]
+    
+    @classmethod
+    def get_parent_chart(cls, chart_id: str) -> Chart:
+        with Session(get_engine()) as s:
+            sql = select(ChartOfAccountORM).where(
+                ChartOfAccountORM.chart_id == (
+                    select(ChartOfAccountORM.parent_chart_id)
+                    .where(
+                        ChartOfAccountORM.chart_id == chart_id
+                    )
+                )
+            )
+            
+            try:
+                chart_orm = s.exec(sql).one() # get the chart
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
+            
+        return cls.toChart(chart_orm)
 
 class acctDao:
     @classmethod

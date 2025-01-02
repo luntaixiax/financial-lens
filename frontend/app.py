@@ -9,6 +9,9 @@ pages = {
         st.Page("sections/customer.py", title="Manage Customer"),
         st.Page("sections/supplier.py", title="Manage Supplier"),
     ],
+    "Chart of Accounts": [
+        st.Page("sections/chart.py", title="Manage Chart")
+    ]
 }
 
 pg = st.navigation(pages)

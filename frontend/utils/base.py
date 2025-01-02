@@ -77,6 +77,7 @@ def put_req(prefix:str, endpoint: str, params:dict=None, data:dict = None) -> di
         headers = headers
     )
 
+@handle_error
 def delete_req(prefix:str, endpoint: str,params:dict=None, data:dict = None) -> dict:
     headers = {
         "Content-type" : "application/json"

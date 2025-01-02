@@ -48,5 +48,8 @@ class NotMatchWithSystemError(ValueError):
         return f"{self.args[0]} (Details: {self.details})"
     
 class OpNotPermittedError(SystemError):
-    ... # does not allow to do some operation
+    def __init__(self, message: str = "N/A", details: str = "N/A"):
+        super().__init__(message)
+        self.message = message
+        self.details = details
     
