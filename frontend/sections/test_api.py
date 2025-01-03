@@ -84,6 +84,7 @@ df = pd.DataFrame([
 # Function to handle changes in the DataFrame
 def df_on_change():
     state = st.session_state["df_editor"]
+    print(state)
     for index, updates in state["edited_rows"].items():
         st.session_state["df"].loc[st.session_state["df"].index == index, "edited"] = True
         for key, value in updates.items():
@@ -100,7 +101,8 @@ if "df" not in st.session_state:
 st.data_editor(
     st.session_state["df"],
     key="df_editor",
-    on_change=df_on_change
+    on_change=df_on_change,
+    num_rows='dynamic'
 )
 
 # Run the editor

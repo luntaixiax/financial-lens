@@ -451,9 +451,41 @@ def list_journal(
             'acct_names': acct_names,
         }
     )
-    
+
+@message_box
 def get_journal(journal_id: str) -> dict:
     return get_req(
         prefix='journal',
         endpoint=f'get/{journal_id}',
+    )
+
+@st.cache_data
+@message_box
+def get_fx(src_currency: int, tgt_currency: int, cur_dt: date) -> float:
+    return get_req(
+        prefix='misc',
+        endpoint='fx/get_rate',
+        params={
+            'src_currency': src_currency,
+            'tgt_currency': tgt_currency,
+            'cur_dt': cur_dt.strftime('%Y-%m-%d'), 
+        }
+    )
+    
+@st.cache_data
+@message_box
+def convert_to_base(amount: float, src_currency: int, cur_dt: date) -> float:
+    print({
+            'amount': amount,
+            'src_currency': src_currency,
+            'cur_dt': cur_dt.strftime('%Y-%m-%d'), 
+        })
+    return get_req(
+        prefix='misc',
+        endpoint='fx/convert_to_base',
+        params={
+            'amount': amount,
+            'src_currency': src_currency,
+            'cur_dt': cur_dt.strftime('%Y-%m-%d'), 
+        }
     )
