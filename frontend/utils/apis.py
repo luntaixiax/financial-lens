@@ -1,3 +1,4 @@
+from datetime import date
 from functools import wraps
 from typing import Any
 import uuid
@@ -253,7 +254,8 @@ def update_supplier(supplier_id: str, supplier_name: str, is_business: bool, bil
             "ship_contact": ship_contact
         }
     )
-    
+
+@st.cache_data
 @message_box
 def tree_charts(acct_type: int) -> dict[str, Any]:
     return get_req(
@@ -264,6 +266,7 @@ def tree_charts(acct_type: int) -> dict[str, Any]:
         }
     )
 
+@st.cache_data
 @message_box
 def list_charts(acct_type: int) -> list[dict]:
     return get_req(
@@ -308,6 +311,8 @@ def add_chart(chart: dict, parent_chart_id: str):
             "acct_type": chart['acct_type'],
         }
     )
+    tree_charts.clear()
+    list_charts.clear()
 
 @message_box
 def update_move_chart(chart: dict, parent_chart_id: str):
@@ -330,6 +335,8 @@ def update_move_chart(chart: dict, parent_chart_id: str):
             "new_parent_chart_id": parent_chart_id,
         }
     )
+    tree_charts.clear()
+    list_charts.clear()
 
 @message_box
 def delete_chart(chart_id: str):
@@ -337,6 +344,8 @@ def delete_chart(chart_id: str):
         prefix='accounts',
         endpoint=f'chart/delete/{chart_id}'
     )
+    tree_charts.clear()
+    list_charts.clear()
     
 @message_box
 def list_accounts_by_chart(chart_id: str) -> list[dict]:
@@ -352,6 +361,16 @@ def get_account(acct_id: str) -> dict:
         endpoint=f'account/get/{acct_id}',
     )
 
+@st.cache_data
+@message_box
+def get_all_accounts() -> list[dict]:
+    accts = []
+    for acct_type in (1, 2, 3, 4, 5):
+        charts = list_charts(acct_type)
+        for chart in charts:
+            accts.extend(list_accounts_by_chart(chart['chart_id']))
+    return accts
+    
 @message_box
 def add_account(acct_name: str, acct_type: int, currency: int, chart_id: str):
     chart = get_req(
@@ -368,6 +387,7 @@ def add_account(acct_name: str, acct_type: int, currency: int, chart_id: str):
             "chart": chart
         }
     )
+    get_all_accounts.clear()
     
 @message_box
 def update_account(acct_id: str, acct_name: str, acct_type: int, currency: int, chart_id: str):
@@ -386,10 +406,54 @@ def update_account(acct_id: str, acct_name: str, acct_type: int, currency: int, 
             "chart": chart
         }
     )
+    get_all_accounts.clear()
     
 @message_box
 def delete_account(acct_id: str):
     delete_req(
         prefix='accounts',
         endpoint=f'account/delete/{acct_id}'
+    )
+    get_all_accounts.clear()
+
+@message_box
+def list_journal(
+    limit: int = 50,
+    offset: int = 0, 
+    jrn_ids: list[str] | None = None,
+    jrn_src: int | None = None, 
+    min_dt: date = date(1970, 1, 1), 
+    max_dt: date = date(2099, 12, 31), 
+    acct_ids: list[str] | None = None,
+    acct_names: list[str] | None = None,
+    note_keyword: str = '', 
+    min_amount: float = -999999999,
+    max_amount: float = 999999999,
+    num_entries: int | None = None
+) -> list[dict]:
+    return post_req(
+        prefix='journal',
+        endpoint='list',
+        params={
+            'limit': limit,
+            'offset': offset, 
+            'jrn_src': jrn_src, 
+            'min_dt': min_dt.strftime('%Y-%m-%d'), 
+            'max_dt': max_dt.strftime('%Y-%m-%d'), 
+            'note_keyword': note_keyword, 
+            'min_amount': min_amount,
+            'max_amount': max_amount,
+            'num_entries': num_entries
+        },
+        data={
+            'jrn_ids': jrn_ids,
+            'acct_ids': acct_ids,
+            'acct_names': acct_names,
+        }
+    )
+    
+def get_journal(journal_id: str) -> dict:
+    return get_req(
+        prefix='journal',
+        endpoint=f'get/{journal_id}',
     )

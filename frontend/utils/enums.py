@@ -61,6 +61,12 @@ class JournalSrc(IntEnum):
     PAYMENT = 4
     EXPENSE = 5
     
+    # @property
+    # def format(self) ->:
+    #     {
+    #        JournalSrc.MANUAL: '' 
+    #     }
+    
 @unique
 class EntityType(IntEnum):
     CUSTOMER = 1
