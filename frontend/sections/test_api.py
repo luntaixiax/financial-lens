@@ -71,39 +71,3 @@ with st.form(key='api', clear_on_submit=True):
             else:
                 st.json(result)
                 
-import streamlit as st
-import pandas as pd
-
-# Initial DataFrame
-df = pd.DataFrame([
-    {"name": "Alice", "edited": False, "input": 0, "result": 0},
-    {"name": "Bob", "edited": False, "input": 0, "result": 0},
-    {"name": "Cecil", "edited": False, "input": 0, "result": 0},
-])
-
-# Function to handle changes in the DataFrame
-def df_on_change():
-    state = st.session_state["df_editor"]
-    print(state)
-    for index, updates in state["edited_rows"].items():
-        st.session_state["df"].loc[st.session_state["df"].index == index, "edited"] = True
-        for key, value in updates.items():
-            st.session_state["df"].loc[st.session_state["df"].index == index, key] = value
-        # Update the result column based on the input column
-        st.session_state["df"].loc[st.session_state["df"].index == index, "result"] = (
-            st.session_state["df"].loc[st.session_state["df"].index == index, "input"] * 3
-        )
-
-# Main editor function
-#def editor():
-if "df" not in st.session_state:
-    st.session_state["df"] = df
-st.data_editor(
-    st.session_state["df"],
-    key="df_editor",
-    on_change=df_on_change,
-    num_rows='dynamic'
-)
-
-# Run the editor
-#editor()

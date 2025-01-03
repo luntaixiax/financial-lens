@@ -8,7 +8,7 @@ import streamlit_shadcn_ui as ui
 from datetime import datetime, date
 from utils.tools import DropdownSelect
 from utils.enums import CurType, EntryType, JournalSrc
-from utils.apis import convert_to_base, get_fx, list_journal, get_journal, get_all_accounts, get_account
+from utils.apis import convert_to_base, get_base_currency, list_journal, get_journal, get_all_accounts, get_account
 from utils.exceptions import OpNotPermittedError
     
 def display_journal(jrn: dict) -> dict:
@@ -56,7 +56,7 @@ def correct_entry(entry: dict) -> dict:
     
     if 'amount' in entry:
         # if has amount entered
-        if entry.get('currency') == 'CAD': # TODO, switch to use base currency
+        if entry.get('currency') == CurType(get_base_currency()).name: # TODO, switch to use base currency
             entry['amount_base'] = entry['amount']
         elif entry.get('currency') is not None:
             # if currency exist and not base currency, do live FX conversion for user
@@ -91,10 +91,10 @@ def validate_entry(entry: dict):
                 details=f"{entry['acct_name']} should have currency {CurType(acct['currency']).name}",
             )
             
-    if entry['currency'] == 'CAD':
+    if entry['currency'] == CurType(get_base_currency()).name:
         if entry['amount_base'] != entry['amount']:
             OpNotPermittedError(
-                message='Base Amount not equal to Raw Amount when currency is CAD', # TODO
+                message=f'Base Amount not equal to Raw Amount when currency is {CurType(get_base_currency()).name}', # TODO
                 details=f"{entry['acct_name']} should have same raw and base amount",
             )
     

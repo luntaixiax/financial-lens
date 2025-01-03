@@ -461,6 +461,14 @@ def get_journal(journal_id: str) -> dict:
 
 @st.cache_data
 @message_box
+def get_base_currency() -> int:
+    return get_req(
+        prefix='misc',
+        endpoint='fx/get_base_cur'
+    )
+
+@st.cache_data
+@message_box
 def get_fx(src_currency: int, tgt_currency: int, cur_dt: date) -> float:
     return get_req(
         prefix='misc',

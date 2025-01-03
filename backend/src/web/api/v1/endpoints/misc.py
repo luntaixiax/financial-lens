@@ -21,6 +21,10 @@ def list_states(country_iso2: str) -> list[_StateBrief]:
 def list_cities(country_iso2: str, state_iso2: str) -> list[str]:
     return GeoService.list_cities(country_iso2, state_iso2)
 
+@router.get("/fx/get_base_cur")
+def get_base_currency() -> CurType:
+    return FxService.BASE_CUR
+
 @router.get("/fx/get_rate")
 def get_fx_rate(src_currency: CurType, tgt_currency: CurType, cur_dt: date) -> float:
     return FxService.convert(1.0, src_currency, tgt_currency, cur_dt)
