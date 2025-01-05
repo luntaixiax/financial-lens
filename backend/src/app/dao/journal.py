@@ -305,9 +305,9 @@ class journalDao:
     @classmethod
     def sum_acct_flow(cls, acct_id: str, start_dt: date, end_dt: date) -> _AcctFlowAGG:
         with Session(get_engine()) as s:
-            sql = (
+            entry_summary = (
                 select(
-                    AcctORM.acct_type,
+                    EntryORM.acct_id,
                     f.count(JournalORM.journal_id.distinct()).label('num_journal'),
                     f.sum(case(
                         (EntryORM.entry_type == EntryType.DEBIT, 1), 
@@ -335,20 +335,37 @@ class journalDao:
                     )).label('credit_amount_base'),
                 )
                 .join(
-                    AcctORM,
-                    onclause=AcctORM.acct_id == EntryORM.acct_id,
-                    isouter=False
-                )
-                .join(
                     JournalORM,
                     onclause=JournalORM.journal_id == EntryORM.journal_id,
-                    isouter=False
+                    isouter=False # inner join
                 )
                 .where(
                     EntryORM.acct_id == acct_id,
                     JournalORM.jrn_date.between(start_dt, end_dt)
                 )
-                .group_by(AcctORM.acct_type)
+                .group_by(EntryORM.acct_id)
+                .subquery()
+            )
+            
+            sql = (
+                select(
+                    AcctORM.acct_type,
+                    f.coalesce(entry_summary.c.num_journal, 0).label('num_journal'),
+                    f.coalesce(entry_summary.c.num_debit_entry, 0).label('num_debit_entry'),
+                    f.coalesce(entry_summary.c.num_credit_entry, 0).label('num_credit_entry'),
+                    f.coalesce(entry_summary.c.debit_amount_raw, 0).label('debit_amount_raw'),
+                    f.coalesce(entry_summary.c.credit_amount_raw, 0).label('credit_amount_raw'),
+                    f.coalesce(entry_summary.c.debit_amount_base, 0).label('debit_amount_base'),
+                    f.coalesce(entry_summary.c.credit_amount_base, 0).label('credit_amount_base'),
+                )
+                .join(
+                    entry_summary,
+                    onclause=entry_summary.c.acct_id == AcctORM.acct_id,
+                    isouter=True # left join
+                )
+                .where(
+                    AcctORM.acct_id == acct_id
+                )
             )
             try:
                 flow = s.exec(sql).one()

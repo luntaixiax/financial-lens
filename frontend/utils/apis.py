@@ -420,6 +420,8 @@ def update_account(acct_id: str, acct_name: str, acct_type: int, currency: int, 
     get_all_accounts.clear()
     list_journal.clear()
     get_journal.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
     
 @message_box
 def delete_account(acct_id: str):
@@ -432,6 +434,8 @@ def delete_account(acct_id: str):
     get_all_accounts.clear()
     list_journal.clear()
     get_journal.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
 
 @st.cache_data
 @message_box
@@ -502,6 +506,8 @@ def delete_journal(journal_id: str):
     stat_journal_by_src.clear()
     list_journal.clear()
     get_journal.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
 
 @message_box
 def add_journal(jrn_date: date, jrn_src: int, entries: list[dict], note: str | None):
@@ -534,6 +540,8 @@ def add_journal(jrn_date: date, jrn_src: int, entries: list[dict], note: str | N
     )
     list_journal.clear()
     stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
     
 @message_box
 def update_journal(jrn_id: str, jrn_date: date, jrn_src: int, entries: list[dict], note: str | None):
@@ -568,6 +576,8 @@ def update_journal(jrn_id: str, jrn_date: date, jrn_src: int, entries: list[dict
     stat_journal_by_src.clear()
     list_journal.clear()
     get_journal.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
     
 @st.cache_data
 @message_box
@@ -600,5 +610,28 @@ def convert_to_base(amount: float, src_currency: int, cur_dt: date) -> float:
             'amount': amount,
             'src_currency': src_currency,
             'cur_dt': cur_dt.strftime('%Y-%m-%d'), 
+        }
+    )
+
+@st.cache_data
+@message_box
+def get_blsh_balance(acct_id: str, report_dt: date) -> dict:
+    return get_req(
+        prefix='journal',
+        endpoint=f'summary/blsh_balance/get/{acct_id}',
+        params={
+            'report_dt': report_dt.strftime('%Y-%m-%d'),
+        }
+    )
+
+@st.cache_data
+@message_box
+def get_incexp_flow(acct_id: str, start_dt: date, end_dt: date) -> dict:
+    return get_req(
+        prefix='journal',
+        endpoint=f'summary/incexp_flow/get/{acct_id}',
+        params={
+            'start_dt': start_dt.strftime('%Y-%m-%d'),
+            'end_dt': end_dt.strftime('%Y-%m-%d'),
         }
     )
