@@ -350,7 +350,7 @@ if edit_mode == 'Edit':
     jrns, num_jrns = list_journal(
         limit=PAGE_LIMIT,
         offset=st.session_state['search_page'] * PAGE_LIMIT, # page number
-        #jrn_src=jrn_src.value,
+        jrn_src=jrn_src.value,
         jrn_ids=[search_jrn_id] if search_jrn_id else None,
         min_dt=search_min_dt,
         max_dt=search_max_dt,
@@ -396,7 +396,7 @@ if edit_mode == 'Edit':
         #         body=f"Total journals found: {num_jrns}; page: {st.session_state['search_page'] + 1}/{total_page}",  
         #     )
         
-        min_page_btn_num = max(0, st.session_state['search_page'] - MAX_PAGE_BTN // 2)
+        min_page_btn_num = max(0, min(st.session_state['search_page'] - MAX_PAGE_BTN // 2, total_page - MAX_PAGE_BTN))
         max_page_btn_num = min(total_page - 1, max(st.session_state['search_page'] + MAX_PAGE_BTN // 2, MAX_PAGE_BTN - 1))
         #print(min_page_btn_num, max_page_btn_num)
         for i, pg in enumerate(range(min_page_btn_num, max_page_btn_num + 1)):
