@@ -459,6 +459,74 @@ def get_journal(journal_id: str) -> dict:
         endpoint=f'get/{journal_id}',
     )
 
+@message_box
+def delete_journal(journal_id: str):
+    delete_req(
+        prefix='journal',
+        endpoint=f'delete/{journal_id}'
+    )
+
+@message_box
+def add_journal(jrn_date: date, jrn_src: int, entries: list[dict], note: str | None):
+    converted_entries = []
+    for e in entries:
+        # convert acct_id to acct
+        acct = get_req(
+            prefix='accounts',
+            endpoint=f"account/get/{e['acct_id']}",
+        )
+        acct.pop('is_system')
+        e['acct'] =acct
+        #e.pop('acct_id')
+        # for balance sheet account, convert cur_incexp to None
+        if acct['acct_type'] in (1, 2, 3):
+            # balance sheet items
+            e['cur_incexp'] = None
+    
+        converted_entries.append(e)
+    
+    post_req(
+        prefix='journal',
+        endpoint='add',
+        data={
+            'jrn_date': jrn_date.strftime('%Y-%m-%d'),
+            'entries': converted_entries,
+            'jrn_src': jrn_src,
+            'note': note
+        }
+    )
+    
+@message_box
+def update_journal(jrn_id: str, jrn_date: date, jrn_src: int, entries: list[dict], note: str | None):
+    converted_entries = []
+    for e in entries:
+        # convert acct_id to acct
+        acct = get_req(
+            prefix='accounts',
+            endpoint=f"account/get/{e['acct_id']}",
+        )
+        acct.pop('is_system')
+        e['acct'] =acct
+        #e.pop('acct_id')
+        # for balance sheet account, convert cur_incexp to None
+        if acct['acct_type'] in (1, 2, 3):
+            # balance sheet items
+            e['cur_incexp'] = None
+    
+        converted_entries.append(e)
+    
+    put_req(
+        prefix='journal',
+        endpoint='update',
+        data={
+            'journal_id': jrn_id,
+            'jrn_date': jrn_date.strftime('%Y-%m-%d'),
+            'entries': converted_entries,
+            'jrn_src': jrn_src,
+            'note': note
+        }
+    )
+    
 @st.cache_data
 @message_box
 def get_base_currency() -> int:

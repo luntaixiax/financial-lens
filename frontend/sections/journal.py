@@ -8,7 +8,8 @@ import streamlit_shadcn_ui as ui
 from datetime import datetime, date
 from utils.tools import DropdownSelect
 from utils.enums import CurType, EntryType, JournalSrc
-from utils.apis import convert_to_base, get_base_currency, list_journal, get_journal, get_all_accounts, get_account
+from utils.apis import convert_to_base, get_base_currency, list_journal, get_journal, \
+    get_all_accounts, get_account, add_journal, delete_journal, update_journal
 from utils.exceptions import OpNotPermittedError
     
 def display_journal(jrn: dict) -> dict:
@@ -47,14 +48,14 @@ class JournalEntryHelper:
         
 def correct_entry(entry: dict) -> dict:
     # correct and populate fields automatically
-    if 'acct_name' in entry:
+    if entry.get('acct_name') is not None:
         acct_id = dds_accts.get_id(entry['acct_name'])
         acct = get_account(acct_id)
         if acct['acct_type'] in (1, 2, 3):
             # balance sheet accounts
             entry['currency'] = CurType(acct['currency']).name
     
-    if 'amount' in entry:
+    if entry.get('amount') is not None:
         # if has amount entered
         if entry.get('currency') == CurType(get_base_currency()).name: # TODO, switch to use base currency
             entry['amount_base'] = entry['amount']
@@ -68,7 +69,7 @@ def correct_entry(entry: dict) -> dict:
                     src_currency = CurType[entry['currency']].value,
                     cur_dt = jrn_date
                 )
-                entry['amount_base'] = entry['amount'] * fx
+                entry['amount_base'] = round(entry['amount'] * fx, 2)
                 
                 if entry.get('description') in (None, ""):
                     entry['description'] = f"convert using fx={fx:.4f}"
@@ -97,9 +98,20 @@ def validate_entry(entry: dict):
                 message=f'Base Amount not equal to Raw Amount when currency is {CurType(get_base_currency()).name}', # TODO
                 details=f"{entry['acct_name']} should have same raw and base amount",
             )
-    
+
+def convert_entry_to_db(entry: dict, entry_type: EntryType):
+    return {
+        'entry_type': entry_type.value,
+        'acct_id': dds_accts.get_id(entry['acct_name']), # convert to acct in apis
+        'cur_incexp': CurType[entry['currency']].value, # convert to None for balance sheet item in apis
+        'amount': entry['amount'],
+        'amount_base': entry['amount_base'],
+        'description': entry['description'],
+    }
+
 
 def clear_entries_from_cache():
+    st.session_state['validated'] = False
     if 'debit_entries' in st.session_state:
         del st.session_state['debit_entries']
     if 'credit_entries' in st.session_state:
@@ -156,6 +168,7 @@ def validate_entries(debit_entries, credit_entries):
         cancel_label="Cancel",
         key='alert_suc'
     )
+    st.session_state['validated'] = True # set to validated
 
 def get_total_amount_base(entries):
     return sum(
@@ -165,6 +178,9 @@ def get_total_amount_base(entries):
     )
 
 def on_change_data_editor(key_name: str, session_key: str):
+    # clear validate status if any change
+    st.session_state['validated'] = False
+    
     # get changes from data editor
     state = st.session_state[key_name]
     # print(f"Rows edited: {state['edited_rows']}")
@@ -190,101 +206,119 @@ def on_change_data_editor(key_name: str, session_key: str):
         for k, v in new_e.items():
             st.session_state[session_key][i][k] = v
 
-
-jrn_src_types = DropdownSelect.from_enum(
-    JournalSrc,
-    include_null=False
+edit_mode = st.radio(
+    label='Edit Mode',
+    options=['Add', 'Edit'],
+    format_func=lambda o: 'Search/Edit' if o == 'Edit' else 'Add',
+    # when user is in edit mode, the data will be kept in st.session_state['debit_entries]
+    # when user navigate to other pages, the data will still be kepted
+    # but when user navigate back to journal page, need to make sure the Edit tab is selected
+    # otherwise the Add page will contain edit mode cache
+    index=1,
+    horizontal=True,
+    on_change=clear_entries_from_cache, # clear cache
 )
 
-jrn_src_type_option = st.selectbox(
-    label='📋 Journal Source',
-    options=jrn_src_types.options,
-    key='jrn_src_type_select'
-)
-jrn_src: JournalSrc = jrn_src_types.get_id(jrn_src_type_option)
-jrns = list_journal(jrn_src=jrn_src.value)
-jrn_displays = map(display_journal, jrns)
-
-selected: dict = st.dataframe(
-    data=jrn_displays,
-    use_container_width=True,
-    hide_index=True,
-    column_order=[
-        #'journal_id',
-        'jrn_date',
-        #'jrn_src',
-        'num_entries',
-        'total_base_amount',
-        'acct_names',
-        'note'
-    ],
-    column_config={
-        # 'journal_id': st.column_config.TextColumn(
-        #     label='Journal ID',
-        #     width=None,
-        #     pinned=True,
-        # ),
-        'jrn_date': st.column_config.DateColumn(
-            label='Date',
-            width=None,
-            pinned=True,
-        ),
-        'jrn_src': st.column_config.SelectboxColumn(
-            label='Source',
-            width=None,
-            options=jrn_src_types.options
-        ),
-        'num_entries': st.column_config.NumberColumn(
-            label='Entries',
-            width=None,
-            format='%d'
-        ),
-        'total_base_amount': st.column_config.NumberColumn(
-            label='$Amount',
-            width=None,
-            format='$ %.2f'
-        ),
-        'acct_names': st.column_config.ListColumn(
-            label='Involved Accounts',
-            width=None
-        ),
-        'note': st.column_config.TextColumn(
-            label='Note',
-            width=None,
-        ),
-    },
-    on_select=clear_entries_from_cache, # TODO: callbale to show details maybe
-    selection_mode=(
-        'single-row',
-    )
-)
-
-st.divider()
-
-if _row_list := selected['selection']['rows']:
-    jrn_id_sel = jrns[_row_list[0]]['journal_id']
-    jrn_sel = get_journal(jrn_id_sel)
-    #st.json(jrn_sel)
+if edit_mode == 'Edit':
     
-    badge_cols = st.columns([1, 2])
-    with badge_cols[0]:
-        ui.badges(
-            badge_list=[("Journal ID", "default"), (jrn_id_sel, "secondary")], 
-            class_name="flex gap-2", 
-            key="badges1"
+    jrn_src_types = DropdownSelect.from_enum(
+        JournalSrc,
+        include_null=False
+    )
+
+    jrn_src_type_option = st.selectbox(
+        label='📋 Journal Source',
+        options=jrn_src_types.options,
+        key='jrn_src_type_select'
+    )
+    jrn_src: JournalSrc = jrn_src_types.get_id(jrn_src_type_option)
+    jrns = list_journal(jrn_src=jrn_src.value)
+    jrn_displays = map(display_journal, jrns)
+
+    selected: dict = st.dataframe(
+        data=jrn_displays,
+        use_container_width=True,
+        hide_index=True,
+        column_order=[
+            #'journal_id',
+            'jrn_date',
+            #'jrn_src',
+            'num_entries',
+            'total_base_amount',
+            'acct_names',
+            'note'
+        ],
+        column_config={
+            # 'journal_id': st.column_config.TextColumn(
+            #     label='Journal ID',
+            #     width=None,
+            #     pinned=True,
+            # ),
+            'jrn_date': st.column_config.DateColumn(
+                label='Date',
+                width=None,
+                pinned=True,
+            ),
+            'jrn_src': st.column_config.SelectboxColumn(
+                label='Source',
+                width=None,
+                options=jrn_src_types.options
+            ),
+            'num_entries': st.column_config.NumberColumn(
+                label='Entries',
+                width=None,
+                format='%d'
+            ),
+            'total_base_amount': st.column_config.NumberColumn(
+                label='$Amount',
+                width=None,
+                format='$ %.2f'
+            ),
+            'acct_names': st.column_config.ListColumn(
+                label='Involved Accounts',
+                width=None
+            ),
+            'note': st.column_config.TextColumn(
+                label='Note',
+                width=None,
+            ),
+        },
+        on_select=clear_entries_from_cache,
+        selection_mode=(
+            'single-row',
         )
-    with badge_cols[1]:
-        ui.badges(
-            badge_list=[("Journal Source", "destructive"), (JournalSrc(jrn_sel['jrn_src']).name, "secondary")], 
-            class_name="flex gap-2", 
-            key="badges2"
-        )
+    )
+
+    st.divider()
+
+    if  _row_list := selected['selection']['rows']:
+        jrn_id_sel = jrns[_row_list[0]]['journal_id']
+        jrn_sel = get_journal(jrn_id_sel)
+        #st.json(jrn_sel)
+        
+        badge_cols = st.columns([1, 2])
+        with badge_cols[0]:
+            ui.badges(
+                badge_list=[("Journal ID", "default"), (jrn_id_sel, "secondary")], 
+                class_name="flex gap-2", 
+                key="badges1"
+            )
+        with badge_cols[1]:
+            ui.badges(
+                badge_list=[("Journal Source", "destructive"), (JournalSrc(jrn_sel['jrn_src']).name, "secondary")], 
+                class_name="flex gap-2", 
+                key="badges2"
+            )
+
+# either add mode or selected edit/view mode
+if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
+    disbale_edit = (edit_mode == 'Edit' and jrn_src!=JournalSrc.MANUAL)
     
     jrn_date = st.date_input(
         label='Journal Date',
-        value=jrn_sel['jrn_date'],
+        value=date.today() if edit_mode == 'Add' else jrn_sel['jrn_date'],
         key=f'date_input',
-        disabled=(jrn_src!=JournalSrc.MANUAL)
+        disabled=disbale_edit
     )
     
     # prepare data editor
@@ -301,12 +335,31 @@ if _row_list := selected['selection']['rows']:
         include_null=False
     )
     
-    jhelper = JournalEntryHelper(jrn_sel)
-    
+    if edit_mode == 'Edit':
+        # TODO: need to clear something in session state when switch from edit to add mode?
+        jhelper = JournalEntryHelper(jrn_sel)
+        default_debit_entries = jhelper.debit_entries
+        default_credit_entries = jhelper.credit_entries
+    else:
+        default_debit_entries = [{c: None for c in [
+            'acct_name',
+            'currency',
+            'amount',
+            'amount_base',
+            'description'
+        ]}]
+        default_credit_entries = [{c: None for c in [
+            'acct_name',
+            'currency',
+            'amount',
+            'amount_base',
+            'description'
+        ]}]
+        
     if 'debit_entries' not in st.session_state:
-        st.session_state['debit_entries'] = jhelper.debit_entries
+        st.session_state['debit_entries'] = default_debit_entries
     if 'credit_entries' not in st.session_state:
-        st.session_state['credit_entries'] = jhelper.credit_entries
+        st.session_state['credit_entries'] = default_credit_entries
     
     debit_container = st.container(border=True)
     debit_container.caption('Debit Entries')
@@ -339,12 +392,14 @@ if _row_list := selected['selection']['rows']:
                 label='Raw Amt',
                 width=None,
                 format='$ %.2f',
+                step=0.01,
                 #required=True
             ),
             'amount_base': st.column_config.NumberColumn(
                 label='Base Amt',
                 width=None,
                 format='$ %.2f',
+                step=0.01,
                 #required=True
             ),
             'description': st.column_config.TextColumn(
@@ -357,7 +412,7 @@ if _row_list := selected['selection']['rows']:
         hide_index=True,
         key='key_editor_debit',
         #key=st.session_state.get('key_debit_editor', str(uuid.uuid4()))
-        disabled=(jrn_src!=JournalSrc.MANUAL),
+        disabled=disbale_edit,
         on_change=on_change_data_editor,
         kwargs={
             'key_name': 'key_editor_debit',
@@ -396,12 +451,14 @@ if _row_list := selected['selection']['rows']:
                 label='Raw Amt',
                 width=None,
                 format='$ %.2f',
+                step=0.01
                 #required=True
             ),
             'amount_base': st.column_config.NumberColumn(
                 label='Base Amt',
                 width=None,
                 format='$ %.2f',
+                step=0.01
                 #required=True
             ),
             'description': st.column_config.TextColumn(
@@ -414,7 +471,7 @@ if _row_list := selected['selection']['rows']:
         hide_index=True,
         key='key_editor_credit',
         #key=st.session_state.get('key_credit_editor', str(uuid.uuid4()))
-        disabled=(jrn_src!=JournalSrc.MANUAL),
+        disabled=disbale_edit,
         on_change=on_change_data_editor,
         kwargs={
             'key_name': 'key_editor_credit',
@@ -431,9 +488,72 @@ if _row_list := selected['selection']['rows']:
     #credit_container.json(credit_entries)
     credit_container.markdown(f'📤 **Total Credit**: :blue-background[{total_credit:.2f}]')
     
-    if jrn_src == JournalSrc.MANUAL:
+    if not disbale_edit:
         validate_btn = st.button(
             label='Validate',
             on_click=validate_entries,
             args=(debit_entries, credit_entries)
         )
+        
+    note = st.text_input(
+        label='🗒️ Note',
+        value="" if edit_mode == 'Add' else jrn_sel['note'],
+        key=f'note_input',
+        disabled=disbale_edit
+    )
+    
+    
+    #st.json(journal)
+    
+    if edit_mode == 'Add':
+        if st.session_state['validated']:
+            # add button
+            st.button(
+                label='Add Journal',
+                on_click=add_journal,
+                kwargs=dict(
+                    jrn_date=jrn_date,
+                    jrn_src=JournalSrc.MANUAL.value if edit_mode == 'Add' else jrn_src,
+                    entries=[
+                        convert_entry_to_db(e, entry_type=EntryType.DEBIT) 
+                        for e in debit_entries
+                    ] + [
+                        convert_entry_to_db(e, entry_type=EntryType.CREDIT) 
+                        for e in credit_entries
+                    ],
+                    note=note
+                )
+            )
+            
+    elif not disbale_edit:
+        # update and remove button
+        btn_cols = st.columns([1, 1, 5])
+        with btn_cols[1]:
+            if st.session_state['validated']:
+                st.button(
+                    label='Update',
+                    type='secondary',
+                    on_click=update_journal,
+                    kwargs=dict(
+                        jrn_id=jrn_id_sel,
+                        jrn_date=jrn_date,
+                        jrn_src=JournalSrc.MANUAL.value if edit_mode == 'Add' else jrn_src,
+                        entries=[
+                            convert_entry_to_db(e, entry_type=EntryType.DEBIT) 
+                            for e in debit_entries
+                        ] + [
+                            convert_entry_to_db(e, entry_type=EntryType.CREDIT) 
+                            for e in credit_entries
+                        ],
+                        note=note
+                    )
+                )
+        with btn_cols[0]:
+            st.button(
+                label='Delete',
+                type='primary',
+                on_click=delete_journal,
+                kwargs=dict(
+                    journal_id=jrn_id_sel
+                )
+            )

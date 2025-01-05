@@ -133,7 +133,10 @@ class journalDao:
             sql = select(JournalORM).where(
                 JournalORM.journal_id == journal_id
             )
-            j = s.exec(sql).one()
+            try:
+                j = s.exec(sql).one()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
             
             # commit at same time
             try:

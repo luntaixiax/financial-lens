@@ -157,6 +157,11 @@ class JournalService:
             journalDao.remove(journal_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError()
+        except NotExistError as e:
+            raise NotExistError(
+                message=f'Journal {journal_id} not exist, cannot delete',
+                details=e.details
+            )
         
     @classmethod
     def update_journal(cls, journal: Journal):
