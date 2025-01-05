@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Any
+from typing import Any, Tuple
 from fastapi import APIRouter
 from src.app.model.enums import JournalSrc
 from src.app.model.journal import _AcctFlowAGG, _EntryBrief, _JournalBrief, Journal
@@ -41,7 +41,7 @@ def list_journal(
     min_amount: float = -999999999,
     max_amount: float = 999999999,
     num_entries: int | None = None
-) -> list[_JournalBrief]:
+) -> Tuple[list[_JournalBrief], int]:
     return JournalService.list_journal(
         limit = limit,
         offset = offset,

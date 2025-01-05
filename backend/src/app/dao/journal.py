@@ -1,5 +1,6 @@
 from datetime import date
 import logging
+from typing import Tuple
 from sqlmodel import Session, select, delete, case, func as f, and_
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.accounts import Account
@@ -170,7 +171,8 @@ class journalDao:
         min_amount: float = -999999999,
         max_amount: float = 999999999,
         num_entries: int | None = None
-    ) -> list[_JournalBrief]:
+    ) -> Tuple[list[_JournalBrief], int]:
+        # return list of filtered journal, and count without applying limit and offset
         with Session(get_engine()) as s:
             
             acct_case_when = []
@@ -252,8 +254,20 @@ class journalDao:
                 .offset(offset)
                 .limit(limit)
             )
+            count_sql = (
+                select(
+                    f.count(JournalORM.journal_id)
+                )
+                .where(*jrn_filters)
+                .join(
+                    entry_agg,
+                    onclause=JournalORM.journal_id == entry_agg.c.journal_id,
+                    isouter=False
+                )
+            )
             
             jrns = s.exec(sql).all()
+            num_records = s.exec(count_sql).one()
             
         return [
             _JournalBrief(
@@ -266,7 +280,7 @@ class journalDao:
                 note=jrn.note
             ) 
             for jrn in jrns
-        ]
+        ], num_records
 
     
     @classmethod

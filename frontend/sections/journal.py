@@ -219,99 +219,216 @@ edit_mode = st.radio(
     on_change=clear_entries_from_cache, # clear cache
 )
 
+all_accts = get_all_accounts()
+dds_accts = DropdownSelect(
+    briefs=all_accts,
+    include_null=False,
+    id_key='acct_id',
+    display_keys=['acct_name']
+)
+    
 if edit_mode == 'Edit':
     
     jrn_src_types = DropdownSelect.from_enum(
         JournalSrc,
         include_null=False
     )
-
-    jrn_src_type_option = st.selectbox(
-        label='📋 Journal Source',
-        options=jrn_src_types.options,
-        key='jrn_src_type_select'
+    
+    search_cols = st.columns([1, 3])
+    with search_cols[0]:
+        jrn_src_type_option = st.selectbox(
+            label='📋 Journal Source',
+            options=jrn_src_types.options,
+            key='jrn_src_type_select'
+        )
+        jrn_src: JournalSrc = jrn_src_types.get_id(jrn_src_type_option)
+    
+    with search_cols[1]:
+        # search for journal
+        search_criterias = st.segmented_control(
+            label='Search By',
+            options=['Date', 'Amount', 'No. Entry', 'Account', 'Keyword', 'Journal ID'],
+            selection_mode='multi',
+            #default=['Date', 'Amount']
+        )
+    
+    search_cols = st.columns([1, 3])
+    with search_cols[0]:
+        search_jrn_id = None
+        if 'Journal ID' in search_criterias:
+            search_jrn_id = st.text_input(
+                label='Journal ID',
+                key='search_jrn_id',
+                value=''
+            )
+    
+    with search_cols[1]:
+        search_note = ""
+        if 'Keyword' in search_criterias:
+            search_note = st.text_input(
+                label='Note Keyword',
+                value="",
+                placeholder='Keyword here',
+                key='search_keyword'
+            )
+    
+    search_cols = st.columns([1, 3])
+    with search_cols[0]:
+        search_num_entries = None
+        if 'No. Entry' in search_criterias:
+            search_num_entries = st.number_input(
+                label='# Entries',
+                min_value=2,
+                max_value=25,
+                step=1,
+                key='search_no_entry'
+            )
+    
+    with search_cols[1]:
+        search_acct_names = None
+        if 'Account' in search_criterias: 
+            search_acct_names = st.multiselect(
+                label='Involved Accounts',
+                options=dds_accts.options,
+                key='search_acct_names'
+            )
+    
+    search_cols = st.columns(2)
+    # search by amount
+    search_min_dt = date(1970, 1, 1)
+    search_max_dt = date(2099, 12, 31)
+    if 'Date' in search_criterias:
+        with search_cols[0]:
+            search_min_dt = st.date_input(
+                label='Min Journal Date',
+                value='today',
+                key='search_min_dt',
+            )
+        with search_cols[1]:
+            search_max_dt = st.date_input(
+                label='Max Journal Date',
+                value='today',
+                key='search_max_dt',
+            )
+            
+    # search by amount
+    search_min_amount = -1
+    search_max_amount = 9e8
+    if 'Amount' in search_criterias:
+        with search_cols[0]:
+            search_min_amount = st.select_slider(
+                label='Min Base Amount',
+                options=[0, 10, 100, 1000, 10000, 100000, 1000000, 10000000],
+                value=0,
+                format_func=lambda x: '{:,.0f}'.format(x),
+                key='search_min_amount'
+            )
+        with search_cols[1]:
+            search_max_amount = st.select_slider(
+                label='Max Base Amount',
+                options=[0, 10, 100, 1000, 10000, 100000, 1000000, 10000000],
+                value=10000000,
+                format_func=lambda x: '{:,.0f}'.format(x),
+                key='search_max_amount'
+            )
+    
+    
+    jrns, num_jrns = list_journal(
+        jrn_src=jrn_src.value,
+        jrn_ids=[search_jrn_id] if search_jrn_id else None,
+        min_dt=search_min_dt,
+        max_dt=search_max_dt,
+        acct_names=search_acct_names,
+        note_keyword=search_note,
+        min_amount=search_min_amount,
+        max_amount=search_max_amount,
+        num_entries=search_num_entries
     )
-    jrn_src: JournalSrc = jrn_src_types.get_id(jrn_src_type_option)
-    jrns = list_journal(jrn_src=jrn_src.value)
     jrn_displays = map(display_journal, jrns)
 
-    selected: dict = st.dataframe(
-        data=jrn_displays,
-        use_container_width=True,
-        hide_index=True,
-        column_order=[
-            #'journal_id',
-            'jrn_date',
-            #'jrn_src',
-            'num_entries',
-            'total_base_amount',
-            'acct_names',
-            'note'
-        ],
-        column_config={
-            # 'journal_id': st.column_config.TextColumn(
-            #     label='Journal ID',
-            #     width=None,
-            #     pinned=True,
-            # ),
-            'jrn_date': st.column_config.DateColumn(
-                label='Date',
-                width=None,
-                pinned=True,
-            ),
-            'jrn_src': st.column_config.SelectboxColumn(
-                label='Source',
-                width=None,
-                options=jrn_src_types.options
-            ),
-            'num_entries': st.column_config.NumberColumn(
-                label='Entries',
-                width=None,
-                format='%d'
-            ),
-            'total_base_amount': st.column_config.NumberColumn(
-                label='$Amount',
-                width=None,
-                format='$ %.2f'
-            ),
-            'acct_names': st.column_config.ListColumn(
-                label='Involved Accounts',
-                width=None
-            ),
-            'note': st.column_config.TextColumn(
-                label='Note',
-                width=None,
-            ),
-        },
-        on_select=clear_entries_from_cache,
-        selection_mode=(
-            'single-row',
+    if num_jrns > 0:
+        st.info(f"Total journals found: {num_jrns}", icon='👏')
+    else:
+        st.warning(f"No journal found", icon='🥵')
+    
+    if num_jrns > 0:
+        selected: dict = st.dataframe(
+            data=jrn_displays,
+            use_container_width=True,
+            hide_index=True,
+            column_order=[
+                #'journal_id',
+                'jrn_date',
+                #'jrn_src',
+                'num_entries',
+                'total_base_amount',
+                'acct_names',
+                'note'
+            ],
+            column_config={
+                # 'journal_id': st.column_config.TextColumn(
+                #     label='Journal ID',
+                #     width=None,
+                #     pinned=True,
+                # ),
+                'jrn_date': st.column_config.DateColumn(
+                    label='Date',
+                    width=None,
+                    pinned=True,
+                ),
+                'jrn_src': st.column_config.SelectboxColumn(
+                    label='Source',
+                    width=None,
+                    options=jrn_src_types.options
+                ),
+                'num_entries': st.column_config.NumberColumn(
+                    label='Entries',
+                    width=None,
+                    format='%d'
+                ),
+                'total_base_amount': st.column_config.NumberColumn(
+                    label='$Amount',
+                    width=None,
+                    format='$ %.2f'
+                ),
+                'acct_names': st.column_config.ListColumn(
+                    label='Involved Accounts',
+                    width=None
+                ),
+                'note': st.column_config.TextColumn(
+                    label='Note',
+                    width=None,
+                ),
+            },
+            on_select=clear_entries_from_cache,
+            selection_mode=(
+                'single-row',
+            )
         )
-    )
 
-    st.divider()
+        st.divider()
 
-    if  _row_list := selected['selection']['rows']:
-        jrn_id_sel = jrns[_row_list[0]]['journal_id']
-        jrn_sel = get_journal(jrn_id_sel)
-        #st.json(jrn_sel)
-        
-        badge_cols = st.columns([1, 2])
-        with badge_cols[0]:
-            ui.badges(
-                badge_list=[("Journal ID", "default"), (jrn_id_sel, "secondary")], 
-                class_name="flex gap-2", 
-                key="badges1"
-            )
-        with badge_cols[1]:
-            ui.badges(
-                badge_list=[("Journal Source", "destructive"), (JournalSrc(jrn_sel['jrn_src']).name, "secondary")], 
-                class_name="flex gap-2", 
-                key="badges2"
-            )
+        if  _row_list := selected['selection']['rows']:
+            jrn_id_sel = jrns[_row_list[0]]['journal_id']
+            jrn_sel = get_journal(jrn_id_sel)
+            #st.json(jrn_sel)
+            
+            badge_cols = st.columns([1, 2])
+            with badge_cols[0]:
+                ui.badges(
+                    badge_list=[("Journal ID", "default"), (jrn_id_sel, "secondary")], 
+                    class_name="flex gap-2", 
+                    key="badges1"
+                )
+            with badge_cols[1]:
+                ui.badges(
+                    badge_list=[("Journal Source", "destructive"), (JournalSrc(jrn_sel['jrn_src']).name, "secondary")], 
+                    class_name="flex gap-2", 
+                    key="badges2"
+                )
 
 # either add mode or selected edit/view mode
-if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
+if edit_mode == 'Add' or (edit_mode == 'Edit' and num_jrns > 0 and _row_list):
     disbale_edit = (edit_mode == 'Edit' and jrn_src!=JournalSrc.MANUAL)
     
     jrn_date = st.date_input(
@@ -322,14 +439,6 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
     )
     
     # prepare data editor
-    all_accts = get_all_accounts()
-    dds_accts = DropdownSelect(
-        briefs=all_accts,
-        include_null=False,
-        id_key='acct_id',
-        display_keys=['acct_name']
-    )
-    
     dds_currency = DropdownSelect.from_enum(
         CurType,
         include_null=False

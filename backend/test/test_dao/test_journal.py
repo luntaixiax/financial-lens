@@ -22,15 +22,15 @@ def test_journal(mock_engine, engine_with_sample_choa, sample_journal_meal):
     assert _journal == sample_journal_meal
     
     # test list
-    jb = journalDao.list_journal()
+    jb, _ = journalDao.list_journal()
     assert len(jb) == 1
-    jb = journalDao.list_journal(jrn_src = JournalSrc.MANUAL)
+    jb, _ = journalDao.list_journal(jrn_src = JournalSrc.MANUAL)
     assert len(jb) == 1
-    jb = journalDao.list_journal(num_entries=4)
+    jb, _ = journalDao.list_journal(num_entries=4)
     assert len(jb) == 1
-    jb = journalDao.list_journal(acct_ids=['acct-meal'])
+    jb, _ = journalDao.list_journal(acct_ids=['acct-meal'])
     assert len(jb) == 1
-    jb = journalDao.list_journal(acct_names=['acct-random'])
+    jb, _ = journalDao.list_journal(acct_names=['acct-random'])
     assert len(jb) == 0
     
     # test flow

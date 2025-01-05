@@ -1,6 +1,6 @@
 from datetime import date
 from functools import wraps
-from typing import Any
+from typing import Any, Tuple
 import uuid
 from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
     FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError
@@ -430,7 +430,23 @@ def list_journal(
     min_amount: float = -999999999,
     max_amount: float = 999999999,
     num_entries: int | None = None
-) -> list[dict]:
+) -> Tuple[list[dict], int]:
+    print({
+            'limit': limit,
+            'offset': offset, 
+            'jrn_src': jrn_src, 
+            'min_dt': min_dt.strftime('%Y-%m-%d'), 
+            'max_dt': max_dt.strftime('%Y-%m-%d'), 
+            'note_keyword': note_keyword, 
+            'min_amount': min_amount,
+            'max_amount': max_amount,
+            'num_entries': num_entries
+        })
+    print({
+            'jrn_ids': jrn_ids,
+            'acct_ids': acct_ids,
+            'acct_names': acct_names,
+        })
     return post_req(
         prefix='journal',
         endpoint='list',

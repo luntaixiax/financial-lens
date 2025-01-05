@@ -1,5 +1,6 @@
 
 from datetime import date
+from typing import Tuple
 from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
 from src.app.model.exceptions import FKNoDeleteUpdateError, NotExistError, AlreadyExistError, FKNotExistError
 from src.app.dao.journal import journalDao
@@ -183,7 +184,7 @@ class JournalService:
         min_amount: float = -999999999,
         max_amount: float = 999999999,
         num_entries: int | None = None
-    ) -> list[_JournalBrief]:
+    ) -> Tuple[list[_JournalBrief], int]:
         return journalDao.list_journal(
             limit = limit,
             offset = offset,
