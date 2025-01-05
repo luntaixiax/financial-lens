@@ -282,6 +282,25 @@ class journalDao:
             for jrn in jrns
         ], num_records
 
+    @classmethod
+    def stat_journal_by_src(cls) -> list[Tuple[JournalSrc, int, float]]:
+        with Session(get_engine()) as s:
+            sql = (
+                select(
+                    JournalORM.jrn_src,
+                    f.count(JournalORM.journal_id).label('num_journals'),
+                    f.sum(EntryORM.amount_base).label('total_amount_base')
+                )
+                .join(
+                    JournalORM,
+                    onclause=JournalORM.journal_id == EntryORM.journal_id,
+                    isouter=False
+                )
+                .group_by(JournalORM.jrn_src)
+            )
+            stats = s.exec(sql).all()
+            
+        return stats
     
     @classmethod
     def sum_acct_flow(cls, acct_id: str, start_dt: date, end_dt: date) -> _AcctFlowAGG:

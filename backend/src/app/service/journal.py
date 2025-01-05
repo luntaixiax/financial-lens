@@ -201,6 +201,10 @@ class JournalService:
         )
         
     @classmethod
+    def stat_journal_by_src(cls) -> list[Tuple[JournalSrc, int, float]]:
+        return journalDao.stat_journal_by_src()
+        
+    @classmethod
     def list_entry_by_acct(cls, acct_id: str) -> list[_EntryBrief]:
         return journalDao.list_entry_by_acct(
             acct_id = acct_id

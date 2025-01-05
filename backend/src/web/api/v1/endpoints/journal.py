@@ -56,6 +56,10 @@ def list_journal(
         max_amount = max_amount,
         num_entries = num_entries
     )
+
+@router.get("/stat/stat_by_src") 
+def stat_journal_by_src() -> list[Tuple[JournalSrc, int, float]]:
+    return JournalService.stat_journal_by_src()
     
 @router.get("/summary/blsh_balance/get/{acct_id}")
 def get_blsh_balance(acct_id: str, report_dt: date) -> _AcctFlowAGG:

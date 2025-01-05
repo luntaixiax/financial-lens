@@ -313,6 +313,7 @@ def add_chart(chart: dict, parent_chart_id: str):
     )
     tree_charts.clear()
     list_charts.clear()
+    list_accounts_by_chart.clear()
 
 @message_box
 def update_move_chart(chart: dict, parent_chart_id: str):
@@ -337,6 +338,7 @@ def update_move_chart(chart: dict, parent_chart_id: str):
     )
     tree_charts.clear()
     list_charts.clear()
+    list_accounts_by_chart.clear()
 
 @message_box
 def delete_chart(chart_id: str):
@@ -346,14 +348,17 @@ def delete_chart(chart_id: str):
     )
     tree_charts.clear()
     list_charts.clear()
-    
+    list_accounts_by_chart.clear()
+
+@st.cache_data
 @message_box
 def list_accounts_by_chart(chart_id: str) -> list[dict]:
     return get_req(
         prefix='accounts',
         endpoint=f'account/list/{chart_id}',
     )
-    
+
+@st.cache_data  
 @message_box
 def get_account(acct_id: str) -> dict:
     return get_req(
@@ -387,7 +392,11 @@ def add_account(acct_name: str, acct_type: int, currency: int, chart_id: str):
             "chart": chart
         }
     )
+    get_account.clear()
     get_all_accounts.clear()
+    list_accounts_by_chart.clear()
+    list_journal.clear()
+    get_journal.clear()
     
 @message_box
 def update_account(acct_id: str, acct_name: str, acct_type: int, currency: int, chart_id: str):
@@ -406,7 +415,11 @@ def update_account(acct_id: str, acct_name: str, acct_type: int, currency: int, 
             "chart": chart
         }
     )
+    get_account.clear()
+    list_accounts_by_chart.clear()
     get_all_accounts.clear()
+    list_journal.clear()
+    get_journal.clear()
     
 @message_box
 def delete_account(acct_id: str):
@@ -414,8 +427,13 @@ def delete_account(acct_id: str):
         prefix='accounts',
         endpoint=f'account/delete/{acct_id}'
     )
+    get_account.clear()
+    list_accounts_by_chart.clear()
     get_all_accounts.clear()
+    list_journal.clear()
+    get_journal.clear()
 
+@st.cache_data
 @message_box
 def list_journal(
     limit: int = 50,
@@ -431,22 +449,6 @@ def list_journal(
     max_amount: float = 999999999,
     num_entries: int | None = None
 ) -> Tuple[list[dict], int]:
-    print({
-            'limit': limit,
-            'offset': offset, 
-            'jrn_src': jrn_src, 
-            'min_dt': min_dt.strftime('%Y-%m-%d'), 
-            'max_dt': max_dt.strftime('%Y-%m-%d'), 
-            'note_keyword': note_keyword, 
-            'min_amount': min_amount,
-            'max_amount': max_amount,
-            'num_entries': num_entries
-        })
-    print({
-            'jrn_ids': jrn_ids,
-            'acct_ids': acct_ids,
-            'acct_names': acct_names,
-        })
     return post_req(
         prefix='journal',
         endpoint='list',
@@ -467,7 +469,23 @@ def list_journal(
             'acct_names': acct_names,
         }
     )
+    
+@st.cache_data
+@message_box
+def stat_journal_by_src() -> dict[int, Tuple[int, float]]:
+    # [(jrn_src, count, sum amount)]
+    result = get_req(
+        prefix='journal',
+        endpoint=f'stat/stat_by_src',
+    )
+    return dict(
+        map(
+            lambda r: (r[0], (r[1], r[2])),
+            result
+        )
+    )
 
+@st.cache_data
 @message_box
 def get_journal(journal_id: str) -> dict:
     return get_req(
@@ -481,6 +499,9 @@ def delete_journal(journal_id: str):
         prefix='journal',
         endpoint=f'delete/{journal_id}'
     )
+    stat_journal_by_src.clear()
+    list_journal.clear()
+    get_journal.clear()
 
 @message_box
 def add_journal(jrn_date: date, jrn_src: int, entries: list[dict], note: str | None):
@@ -511,6 +532,8 @@ def add_journal(jrn_date: date, jrn_src: int, entries: list[dict], note: str | N
             'note': note
         }
     )
+    list_journal.clear()
+    stat_journal_by_src.clear()
     
 @message_box
 def update_journal(jrn_id: str, jrn_date: date, jrn_src: int, entries: list[dict], note: str | None):
@@ -542,6 +565,9 @@ def update_journal(jrn_id: str, jrn_date: date, jrn_src: int, entries: list[dict
             'note': note
         }
     )
+    stat_journal_by_src.clear()
+    list_journal.clear()
+    get_journal.clear()
     
 @st.cache_data
 @message_box
@@ -567,11 +593,6 @@ def get_fx(src_currency: int, tgt_currency: int, cur_dt: date) -> float:
 @st.cache_data
 @message_box
 def convert_to_base(amount: float, src_currency: int, cur_dt: date) -> float:
-    print({
-            'amount': amount,
-            'src_currency': src_currency,
-            'cur_dt': cur_dt.strftime('%Y-%m-%d'), 
-        })
     return get_req(
         prefix='misc',
         endpoint='fx/convert_to_base',
