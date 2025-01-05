@@ -206,6 +206,15 @@ def on_change_data_editor(key_name: str, session_key: str):
         for k, v in new_e.items():
             st.session_state[session_key][i][k] = v
 
+def increment_page():
+    st.session_state['search_page'] += 1
+    
+def decrement_page():
+    st.session_state['search_page'] -= 1
+    
+def navigate_to_page(page: int):
+    st.session_state['search_page'] = page
+
 edit_mode = st.radio(
     label='Edit Mode',
     options=['Add', 'Edit'],
@@ -332,9 +341,16 @@ if edit_mode == 'Edit':
                 key='search_max_amount'
             )
     
+    # save page to
+    if 'search_page' not in st.session_state:
+        st.session_state['search_page'] = 0
+    
+    PAGE_LIMIT = 1
     
     jrns, num_jrns = list_journal(
-        jrn_src=jrn_src.value,
+        limit=PAGE_LIMIT,
+        offset=st.session_state['search_page'] * PAGE_LIMIT, # page number
+        #jrn_src=jrn_src.value,
         jrn_ids=[search_jrn_id] if search_jrn_id else None,
         min_dt=search_min_dt,
         max_dt=search_max_dt,
@@ -344,14 +360,82 @@ if edit_mode == 'Edit':
         max_amount=search_max_amount,
         num_entries=search_num_entries
     )
-    jrn_displays = map(display_journal, jrns)
-
+    
     if num_jrns > 0:
-        st.info(f"Total journals found: {num_jrns}", icon='👏')
+        total_page = -(-num_jrns // PAGE_LIMIT)
+        
+        MAX_PAGE_BTN = 7 # only be odd number (3, 5, 7, 9, etc...)
+        info_btn_cols = st.columns(
+            [1, 1] + [1 for i in range(MAX_PAGE_BTN)] + [1, 1], 
+            vertical_alignment='center'
+        )
+        # with info_btn_cols[0]:
+        #     st.info(f"Total journals found: {num_jrns}", icon='👏')
+        
+        with info_btn_cols[0]:
+            st.button(
+                label='',
+                icon='⏮',
+                #disabled=(st.session_state['search_page'] < 1),
+                key='first_btn',
+                on_click=navigate_to_page,
+                kwargs={'page': 0}
+            )
+            
+        with info_btn_cols[1]:
+            st.button(
+                label='',
+                icon='◀',
+                disabled=(st.session_state['search_page'] < 1),
+                key='prev_btn',
+                on_click=decrement_page
+            )
+        
+        # with info_btn_cols[1]:
+        #     st.info(
+        #         body=f"Total journals found: {num_jrns}; page: {st.session_state['search_page'] + 1}/{total_page}",  
+        #     )
+        
+        min_page_btn_num = max(0, st.session_state['search_page'] - MAX_PAGE_BTN // 2)
+        max_page_btn_num = min(total_page - 1, max(st.session_state['search_page'] + MAX_PAGE_BTN // 2, MAX_PAGE_BTN - 1))
+        #print(min_page_btn_num, max_page_btn_num)
+        for i, pg in enumerate(range(min_page_btn_num, max_page_btn_num + 1)):
+            with info_btn_cols[i + 2]: # bypass first 2 btns
+                st.button(
+                    label=f'{pg + 1}',
+                    #icon='⏭️',
+                    disabled=(st.session_state['search_page'] == pg),
+                    type='tertiary' if st.session_state['search_page'] == pg else 'secondary',
+                    key=f'page_btn_{pg}',
+                    on_click=navigate_to_page,
+                    kwargs={'page': pg}
+                )
+        
+        with info_btn_cols[MAX_PAGE_BTN + 2]:
+            st.button(
+                label='',
+                icon='▶',
+                disabled=(st.session_state['search_page'] >= total_page - 1),
+                key='next_btn',
+                on_click=increment_page
+            )
+            
+        with info_btn_cols[MAX_PAGE_BTN + 3]:
+            st.button(
+                label='',
+                icon='⏭',
+                #disabled=(st.session_state['search_page'] >= total_page - 1),
+                key='last_btn',
+                on_click=navigate_to_page,
+                kwargs={'page': total_page - 1}
+            )
+            
     else:
         st.warning(f"No journal found", icon='🥵')
     
     if num_jrns > 0:
+        
+        jrn_displays = map(display_journal, jrns)
         selected: dict = st.dataframe(
             data=jrn_displays,
             use_container_width=True,
