@@ -635,3 +635,11 @@ def get_incexp_flow(acct_id: str, start_dt: date, end_dt: date) -> dict:
             'end_dt': end_dt.strftime('%Y-%m-%d'),
         }
     )
+    
+@st.cache_data
+@message_box
+def list_entry_by_acct(acct_id: str) -> list[dict]:
+    return get_req(
+        prefix='journal',
+        endpoint=f'entry/list/{acct_id}',
+    )
