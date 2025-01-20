@@ -49,6 +49,74 @@ def list_city(country_iso2: str, state_iso2: str) -> list[dict]:
         endpoint=f'geo/countries/{country_iso2}/state/{state_iso2}/city/list'
     )
 
+@st.cache_data
+@message_box
+def list_item(entity_type: int) -> list[dict]:
+    return get_req(
+        prefix='item',
+        endpoint='list',
+        params={
+            "entity_type": entity_type
+        }
+    )
+
+@st.cache_data
+@message_box
+def get_item(item_id: str) -> dict:
+    return get_req(
+        prefix='item',
+        endpoint=f'get/{item_id}',
+    )
+
+@message_box
+def delete_item(item_id: str):
+    delete_req(
+        prefix='item',
+        endpoint=f'delete/{item_id}',
+    )
+    get_item.clear()
+    list_item.clear()
+
+@message_box
+def add_item(name: str, item_type: int, entity_type: int, unit: int, 
+             unit_price: float, currency: int, default_acct_id: str):
+    post_req(
+        prefix='item',
+        endpoint='add',
+        data={
+            "name": name,
+            "item_type": item_type,
+            "entity_type": entity_type,
+            "unit": unit,
+            "unit_price": unit_price,
+            "currency": currency,
+            "default_acct_id": default_acct_id,
+        }
+    )
+    get_item.clear()
+    list_item.clear()
+    
+@message_box
+def update_item(item_id: str, name: str, item_type: int, entity_type: int, unit: int, 
+             unit_price: float, currency: int, default_acct_id: str):
+    put_req(
+        prefix='item',
+        endpoint='update',
+        data={
+            "item_id": item_id,
+            "name": name,
+            "item_type": item_type,
+            "entity_type": entity_type,
+            "unit": unit,
+            "unit_price": unit_price,
+            "currency": currency,
+            "default_acct_id": default_acct_id,
+        }
+    )
+    get_item.clear()
+    list_item.clear()
+
+
 @message_box
 def list_contacts() -> list[dict]:
     return get_req(
@@ -368,12 +436,18 @@ def get_account(acct_id: str) -> dict:
 
 @st.cache_data
 @message_box
+def get_accounts_by_type(acct_type: int) -> list[dict]:
+    accts = []
+    charts = list_charts(acct_type)
+    for chart in charts:
+        accts.extend(list_accounts_by_chart(chart['chart_id']))
+    return accts
+
+@message_box
 def get_all_accounts() -> list[dict]:
     accts = []
     for acct_type in (1, 2, 3, 4, 5):
-        charts = list_charts(acct_type)
-        for chart in charts:
-            accts.extend(list_accounts_by_chart(chart['chart_id']))
+        accts.extend(get_accounts_by_type(acct_type))
     return accts
     
 @message_box
@@ -393,7 +467,7 @@ def add_account(acct_name: str, acct_type: int, currency: int, chart_id: str):
         }
     )
     get_account.clear()
-    get_all_accounts.clear()
+    get_accounts_by_type.clear()
     list_accounts_by_chart.clear()
     list_journal.clear()
     get_journal.clear()
@@ -418,7 +492,7 @@ def update_account(acct_id: str, acct_name: str, acct_type: int, currency: int, 
     )
     get_account.clear()
     list_accounts_by_chart.clear()
-    get_all_accounts.clear()
+    get_accounts_by_type.clear()
     list_journal.clear()
     get_journal.clear()
     get_blsh_balance.clear()
@@ -433,7 +507,7 @@ def delete_account(acct_id: str):
     )
     get_account.clear()
     list_accounts_by_chart.clear()
-    get_all_accounts.clear()
+    get_accounts_by_type.clear()
     list_journal.clear()
     get_journal.clear()
     get_blsh_balance.clear()
