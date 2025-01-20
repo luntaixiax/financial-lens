@@ -509,7 +509,7 @@ class journalDao:
                     isouter=False # inner join
                 )
                 .where(EntryORM.acct_id == acct_id)
-                .order_by(JournalORM.jrn_date.desc())
+                .order_by(JournalORM.jrn_date.desc(), EntryORM.entry_id.desc())
             )
             
             entries = s.exec(sql).all()

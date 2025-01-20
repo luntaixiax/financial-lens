@@ -397,6 +397,7 @@ def add_account(acct_name: str, acct_type: int, currency: int, chart_id: str):
     list_accounts_by_chart.clear()
     list_journal.clear()
     get_journal.clear()
+    list_entry_by_acct.clear()
     
 @message_box
 def update_account(acct_id: str, acct_name: str, acct_type: int, currency: int, chart_id: str):
@@ -422,6 +423,7 @@ def update_account(acct_id: str, acct_name: str, acct_type: int, currency: int, 
     get_journal.clear()
     get_blsh_balance.clear()
     get_incexp_flow.clear()
+    list_entry_by_acct.clear()
     
 @message_box
 def delete_account(acct_id: str):
@@ -436,6 +438,7 @@ def delete_account(acct_id: str):
     get_journal.clear()
     get_blsh_balance.clear()
     get_incexp_flow.clear()
+    list_entry_by_acct.clear()
 
 @st.cache_data
 @message_box
@@ -508,6 +511,7 @@ def delete_journal(journal_id: str):
     get_journal.clear()
     get_blsh_balance.clear()
     get_incexp_flow.clear()
+    list_entry_by_acct.clear()
 
 @message_box
 def add_journal(jrn_date: date, jrn_src: int, entries: list[dict], note: str | None):
@@ -542,6 +546,7 @@ def add_journal(jrn_date: date, jrn_src: int, entries: list[dict], note: str | N
     stat_journal_by_src.clear()
     get_blsh_balance.clear()
     get_incexp_flow.clear()
+    list_entry_by_acct.clear()
     
 @message_box
 def update_journal(jrn_id: str, jrn_date: date, jrn_src: int, entries: list[dict], note: str | None):
@@ -578,6 +583,7 @@ def update_journal(jrn_id: str, jrn_date: date, jrn_src: int, entries: list[dict
     get_journal.clear()
     get_blsh_balance.clear()
     get_incexp_flow.clear()
+    list_entry_by_acct.clear()
     
 @st.cache_data
 @message_box
