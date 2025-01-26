@@ -734,10 +734,10 @@ with tabs[1]:
         #st.json(debit_entries)
         total_debit = get_total_amount_base(debit_entries)
         #debit_container.json(debit_entries)
-        debit_container.markdown(f'📥 **Total Debit**: :green-background[{total_debit:.2f}]')
+        debit_container.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{total_debit:.2f}]')
         total_credit = get_total_amount_base(credit_entries)
         #credit_container.json(credit_entries)
-        credit_container.markdown(f'📤 **Total Credit**: :blue-background[{total_credit:.2f}]')
+        credit_container.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{total_credit:.2f}]')
         
         if not disbale_edit:
             validate_btn = st.button(

@@ -44,6 +44,17 @@ def handle_error(f):
 def assemble_url(prefix:str, endpoint: str) -> str:
     return f"{BASE_URL}/{prefix}/{endpoint}"
 
+def plain_get_req(prefix:str, endpoint: str, params:dict=None, data:dict = None) -> str:
+    resp = requests.get(
+        url = assemble_url(prefix, endpoint),
+        params = params,
+        json = data,
+    )
+    if resp.status_code == 200:
+        return resp.text
+    else:
+        raise UnprocessableEntityError()
+
 @handle_error
 def get_req(prefix:str, endpoint: str, params:dict=None, data:dict = None) -> dict:
     headers = {

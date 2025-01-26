@@ -474,7 +474,7 @@ class invoiceDao:
                 inv_filters.append(InvoiceORM.currency == currency)
             # add num items filter
             if num_invoice_items is not None:
-                inv_filters.append(invoice_item_agg.c.num_invoice_items == num_invoice_items)
+                inv_filters.append(f.coalesce(invoice_item_agg.c.num_invoice_items, 0) == num_invoice_items)
             # add amount filter (raw amount):
             inv_filters.append(
                 journal_summary.c.amount_base
@@ -498,13 +498,13 @@ class invoiceDao:
                     InvoiceORM.subject,
                     InvoiceORM.currency,
                     (
-                        invoice_item_agg.c.num_invoice_items 
-                        + ginvoice_item_agg.c.num_ginvoice_items
+                        f.coalesce(invoice_item_agg.c.num_invoice_items, 0)
+                        + f.coalesce(ginvoice_item_agg.c.num_ginvoice_items, 0)
                     ).label('num_invoice_items'),
                     (
                         InvoiceORM.shipping 
-                        + invoice_item_agg.c.total_raw_amount 
-                        + ginvoice_item_agg.c.total_raw_amount
+                        + f.coalesce(invoice_item_agg.c.total_raw_amount , 0)
+                        + f.coalesce(ginvoice_item_agg.c.total_raw_amount, 0)
                     ).label('total_raw_amount'),
                     journal_summary.c.amount_base.label('total_base_amount')
                 )
@@ -516,12 +516,12 @@ class invoiceDao:
                 .join(
                     invoice_item_agg,
                     onclause=InvoiceORM.invoice_id  == invoice_item_agg.c.invoice_id, 
-                    isouter=False
+                    isouter=True # use left join bc there is chance that an invoice does not have item
                 )
                 .join(
                     ginvoice_item_agg,
                     onclause=InvoiceORM.invoice_id  == ginvoice_item_agg.c.invoice_id, 
-                    isouter=False
+                    isouter=True # use left join bc there is chance that an invoice does not have general item
                     
                 )
                 .join(

@@ -4,7 +4,7 @@ from typing import Any, Tuple
 import uuid
 from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
     FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError, UnprocessableEntityError
-from utils.base import get_req, post_req, delete_req, put_req
+from utils.base import get_req, plain_get_req, post_req, delete_req, put_req
 import streamlit_shadcn_ui as ui
 import streamlit as st
 
@@ -788,4 +788,69 @@ def validate_sales(invoice: dict) -> dict:
         prefix='sales',
         endpoint='invoice/validate',
         data=invoice
+    )
+
+@message_box
+def create_journal_from_new_sales_invoice(invoice: dict) -> dict:
+    return get_req(
+        prefix='sales',
+        endpoint='invoice/trial_journal',
+        data=invoice
+    )
+
+@message_box
+def add_sales_invoice(invoice: dict):
+    post_req(
+        prefix='sales',
+        endpoint='invoice/add',
+        data=invoice
+    )
+    
+
+    list_sales_invoice.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+
+@message_box
+def update_sales_invoice(invoice: dict):
+    put_req(
+        prefix='sales',
+        endpoint='invoice/update',
+        data=invoice
+    )
+
+    list_sales_invoice.clear()
+    get_sales_invoice_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    preview_sales_invoice.clear()
+
+@message_box
+def delete_sales_invoice(invoice_id: str):
+    delete_req(
+        prefix='sales',
+        endpoint=f'invoice/delete/{invoice_id}'
+    )
+    list_sales_invoice.clear()
+    get_sales_invoice_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    preview_sales_invoice.clear()
+
+@st.cache_data
+@message_box
+def preview_sales_invoice(invoice_id: str) -> str:
+    return plain_get_req(
+        prefix='sales',
+        endpoint='invoice/preview',
+        params={'invoice_id': invoice_id}
     )
