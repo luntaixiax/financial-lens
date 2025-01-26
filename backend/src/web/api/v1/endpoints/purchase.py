@@ -16,8 +16,8 @@ from src.app.service.entity import EntityService
 router = APIRouter(prefix="/purchase", tags=["purchase"])
 
 @router.post("/invoice/validate")
-def validate_purchase(invoice: Invoice):
-    PurchaseService._validate_invoice(invoice)
+def validate_purchase(invoice: Invoice) -> Invoice:
+    return PurchaseService._validate_invoice(invoice)
 
 @router.get(
     "/invoice/trial_journal",
@@ -113,8 +113,8 @@ def preview_purchase_invoice(request: Request, invoice_id: str):
 
     
 @router.post("/payment/validate")
-def validate_payment(payment: Payment):
-    PurchaseService._validate_payment(payment)
+def validate_payment(payment: Payment) -> Payment:
+    return PurchaseService._validate_payment(payment)
     
 @router.get(
     "/payment/trial_journal",

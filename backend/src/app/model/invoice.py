@@ -150,7 +150,7 @@ class Invoice(EnhancedBaseModel):
     due_dt: date | None = Field(None)
     subject: str
     currency: CurType
-    invoice_items: list[InvoiceItem] = Field(min_length=1)
+    invoice_items: list[InvoiceItem] = Field([])
     ginvoice_items: list[GeneralInvoiceItem] = Field(
         [],
         description='General invoice item, e.g., billable expense'
@@ -159,15 +159,23 @@ class Invoice(EnhancedBaseModel):
     note: str | None = Field(None)
     
     @model_validator(mode='after')
+    def validate_item_length(self):
+        assert len(self.invoice_items) + len(self.ginvoice_items) >= 1, \
+            "At least 1 of Invoice item or general invoice item should be sent, all missing!"
+            
+        return self
+    
+    @model_validator(mode='after')
     def validate_currency(self):
-        # make sure currency within all items are in same currency
-        all_currency = set(inv_item.item.currency for inv_item in self.invoice_items)
-        assert len(all_currency) == 1, \
-            f"Only allow 1 currency across all invoice items, found: {all_currency}"
-        # should match with main currency
-        item_currency = list(all_currency)[0]
-        assert item_currency == self.currency, \
-            f"Invoice currency is set to be {self.currency}, while invoice items are of currency {item_currency}"
+        if len(self.invoice_items) > 0:
+            # make sure currency within all items are in same currency
+            all_currency = set(inv_item.item.currency for inv_item in self.invoice_items)
+            assert len(all_currency) == 1, \
+                f"Only allow 1 currency across all invoice items, found: {all_currency}"
+            # should match with main currency
+            item_currency = list(all_currency)[0]
+            assert item_currency == self.currency, \
+                f"Invoice currency is set to be {self.currency}, while invoice items are of currency {item_currency}"
         return self
     
     @model_validator(mode='after')

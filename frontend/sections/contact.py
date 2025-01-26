@@ -4,6 +4,8 @@ from utils.tools import DropdownSelect
 from utils.apis import list_country, list_state, list_city, \
     list_contacts, get_contact, add_contact, update_contact, delete_contact
 
+st.set_page_config(layout="centered")
+
 st.subheader('Manage Contact')
 
 tabs = st.tabs(['Contacts', 'Add/Edit Contact'])

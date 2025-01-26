@@ -306,7 +306,7 @@ class SalesService:
             )
             
     @classmethod
-    def _validate_invoice(cls, invoice: Invoice):
+    def _validate_invoice(cls, invoice: Invoice) -> Invoice:
         # validate direction
         if not invoice.entity_type == EntityType.CUSTOMER:
             raise OpNotPermittedError('Sales invoice should only be created for customer')
@@ -375,10 +375,12 @@ class SalesService:
                     raise NotMatchWithSystemError(
                         message=f"General Item Acct type of sales invoice item must be of Income/Expense type, get {item_acct.acct_type}"
                     )
+        
+        return invoice
             
                 
     @classmethod
-    def _validate_payment(cls, payment: Payment):
+    def _validate_payment(cls, payment: Payment) -> Payment:
         # validate direction
         if not payment.entity_type == EntityType.CUSTOMER:
             raise OpNotPermittedError('Sales payment should only be created for customer')
@@ -415,7 +417,8 @@ class SalesService:
                         f'Same payment and invoice currency ({payment_acct.currency}), payment_amount should equal to payment_amount_raw; '
                         f'payment item amount not expected: {payment_item}'
                     )
-            
+        
+        return payment
     
     @classmethod
     def add_invoice(cls, invoice: Invoice):

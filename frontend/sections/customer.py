@@ -5,6 +5,8 @@ from utils.tools import DropdownSelect
 from utils.apis import list_contacts, get_contact, list_customer, add_customer, \
     update_customer, get_customer, delete_customer
 
+st.set_page_config(layout="centered")
+
 st.subheader('Manage Customer')
 
 tabs = st.tabs(['Customers', 'Add/Edit Customer'])

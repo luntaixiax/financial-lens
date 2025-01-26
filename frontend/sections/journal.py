@@ -12,7 +12,9 @@ from utils.apis import convert_to_base, get_base_currency, list_journal, get_jou
     get_all_accounts, get_account, add_journal, delete_journal, update_journal, \
     stat_journal_by_src
 from utils.exceptions import OpNotPermittedError
-    
+
+st.set_page_config(layout="centered")
+
 def display_journal(jrn: dict) -> dict:
     return {
         'journal_id': jrn['journal_id'],

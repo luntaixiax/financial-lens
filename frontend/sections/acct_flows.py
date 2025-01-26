@@ -9,6 +9,8 @@ from utils.apis import get_account, get_all_accounts, get_blsh_balance, get_ince
 from utils.tools import DropdownSelect
 from utils.enums import CurType, EntryType, AcctType
 
+st.set_page_config(layout="centered")
+
 def group_entries_by_dates(entries: list[dict], year: int) -> dict[int, dict[int, list[dict]]]:
     # group entries by month and day
     grouped = OrderedDict()

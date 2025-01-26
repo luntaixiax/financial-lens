@@ -5,6 +5,8 @@ from utils.tools import DropdownSelect
 from utils.apis import list_contacts, get_contact, list_supplier, add_supplier, \
     update_supplier, get_supplier, delete_supplier
 
+st.set_page_config(layout="centered")
+
 st.subheader('Manage Supplier')
 
 tabs = st.tabs(['Suppliers', 'Add/Edit Supplier'])

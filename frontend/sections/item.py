@@ -4,6 +4,8 @@ from utils.enums import EntityType, ItemType, UnitType, CurType, AcctType
 from utils.tools import DropdownSelect
 from utils.apis import list_item, get_item, delete_item, update_item, add_item, get_accounts_by_type
 
+st.set_page_config(layout="centered")
+
 def show_item(item: dict) -> dict:
     # convert enums
     r = {}

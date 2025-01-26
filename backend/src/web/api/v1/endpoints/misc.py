@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from src.app.model.enums import CurType
 from src.app.service.fx import FxService
-from src.app.service.misc import GeoService
+from src.app.service.misc import GeoService, SettingService
 from src.app.model.misc import _CountryBrief, _StateBrief
 
 router = APIRouter(prefix="/misc", tags=["misc"])
@@ -36,3 +36,7 @@ def convert_to_base(amount: float, src_currency: CurType, cur_dt: date) -> float
 @router.get("/fx/convert_from_base")
 def convert_from_base(amount: float, tgt_currency: CurType, cur_dt: date) -> float:
     return FxService.convert_from_base(amount, tgt_currency, cur_dt)
+
+@router.get("/settings/get_default_tax_rate")
+def get_default_tax_rate() -> float:
+    return SettingService.get_default_tax_rate()

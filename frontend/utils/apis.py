@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Any, Tuple
 import uuid
 from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
-    FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError
+    FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError, UnprocessableEntityError
 from utils.base import get_req, post_req, delete_req, put_req
 import streamlit_shadcn_ui as ui
 import streamlit as st
@@ -14,7 +14,7 @@ def message_box(f):
         try:
             r = f(*args, **kwargs)
         except (AlreadyExistError, NotExistError, FKNotExistError, FKNoDeleteUpdateError, 
-                OpNotPermittedError, NotMatchWithSystemError) as e:
+                OpNotPermittedError, NotMatchWithSystemError, UnprocessableEntityError) as e:
             ui.alert_dialog(
                 show=True,
                 title=e.message,
@@ -722,4 +722,70 @@ def list_entry_by_acct(acct_id: str) -> list[dict]:
     return get_req(
         prefix='journal',
         endpoint=f'entry/list/{acct_id}',
+    )
+
+@st.cache_data
+@message_box
+def get_default_tax_rate() -> float:
+    return get_req(
+        prefix='misc',
+        endpoint='settings/get_default_tax_rate',
+    )
+
+@st.cache_data
+@message_box
+def list_sales_invoice(
+    limit: int = 50,
+    offset: int = 0,
+    invoice_ids: list[str] | None = None,
+    invoice_nums: list[str] | None = None,
+    customer_ids: list[str] | None = None,
+    customer_names: list[str] | None = None,
+    is_business: bool | None = None,
+    min_dt: date = date(1970, 1, 1), 
+    max_dt: date = date(2099, 12, 31), 
+    subject_keyword: str = '',
+    currency: int | None = None,
+    min_amount: float = -999999999,
+    max_amount: float = 999999999,
+    num_invoice_items: int | None = None
+) -> list[dict]:
+    return post_req(
+        prefix='sales',
+        endpoint='invoice/list',
+        params={
+            'limit': limit,
+            'offset': offset, 
+            'is_business': is_business, 
+            'min_dt': min_dt.strftime('%Y-%m-%d'), 
+            'max_dt': max_dt.strftime('%Y-%m-%d'), 
+            'subject_keyword': subject_keyword, 
+            'currency': currency,
+            'min_amount': min_amount,
+            'max_amount': max_amount,
+            'num_invoice_items': num_invoice_items
+        },
+        data={
+            'invoice_ids': invoice_ids,
+            'invoice_nums': invoice_nums,
+            'customer_ids': customer_ids,
+            'customer_names': customer_names,
+            
+        }
+    )
+
+@st.cache_data
+@message_box
+def get_sales_invoice_journal(invoice_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='sales',
+        endpoint=f'invoice/get/{invoice_id}',
+    )
+
+@message_box
+def validate_sales(invoice: dict) -> dict:
+    return post_req(
+        prefix='sales',
+        endpoint='invoice/validate',
+        data=invoice
     )

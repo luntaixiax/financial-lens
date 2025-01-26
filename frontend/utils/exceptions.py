@@ -1,3 +1,11 @@
+class UnprocessableEntityError(TypeError):
+    def __init__(self, message: str = "N/A", details: str = "N/A"):
+        super().__init__(message)
+        self.message = message
+        self.details = details
+        
+    def __str__(self):
+        return f"{self.args[0]} (Details: {self.details})"
 
 class AlreadyExistError(FileExistsError):
     def __init__(self, message: str = "N/A", details: str = "N/A"):

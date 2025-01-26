@@ -3,7 +3,7 @@ import os
 from typing import Any
 import requests
 
-from utils.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
+from utils.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError, UnprocessableEntityError
 
 SERVE_APP_HOST = os.environ.get('SERVE_APP_HOST', 'localhost')
 SERVE_APP_PORT = os.environ.get('SERVE_APP_PORT', 8181)
@@ -32,6 +32,9 @@ def handle_error(f):
                 raise OpNotPermittedError(**js)
             elif r.status_code == 550:
                 raise NotMatchWithSystemError(**js)
+            elif r.status_code == 422:
+                # unprocess entity
+                raise UnprocessableEntityError()
             else:
                 raise
 

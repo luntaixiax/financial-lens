@@ -1,6 +1,6 @@
 from functools import lru_cache
 import requests
-from src.app.utils.tools import get_secret
+from src.app.utils.tools import get_default_tax_rate, get_secret
 from src.app.model.misc import _CountryBrief, _StateBrief
 
 
@@ -43,3 +43,9 @@ class GeoService:
             r['name']
             for r in results
         ]
+
+class SettingService:
+    
+    @classmethod
+    def get_default_tax_rate(cls) -> float:
+        return get_default_tax_rate()

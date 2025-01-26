@@ -8,6 +8,8 @@ from utils.apis import tree_charts, list_charts, get_chart, get_parent_chart, li
     add_account, update_account, delete_account
 from utils.tools import DropdownSelect
 
+st.set_page_config(layout="centered")
+
 st.subheader('Manage Chart of Accounts')
 
 def show_expander(tree: dict):
