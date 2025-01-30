@@ -127,7 +127,7 @@ def create_journal_from_new_sales_payment(payment: Payment) -> Journal:
     "/payment/get/{payment_id}",
     description='get existing sales payment and journal from database'
 )
-def get_sales_invoice_journal(payment_id: str) -> Tuple[Payment, Journal]:
+def get_sales_payment_journal(payment_id: str) -> Tuple[Payment, Journal]:
     return SalesService.get_payment_journal(payment_id=payment_id)
 
 @router.post("/payment/list")

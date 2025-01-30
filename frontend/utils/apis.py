@@ -854,3 +854,113 @@ def preview_sales_invoice(invoice_id: str) -> str:
         endpoint='invoice/preview',
         params={'invoice_id': invoice_id}
     )
+
+@st.cache_data
+@message_box
+def list_sales_payment(
+    limit: int = 50,
+    offset: int = 0,
+    payment_ids: list[str] | None = None,
+    payment_nums: list[str] | None = None,
+    payment_acct_id: str | None = None,
+    payment_acct_name: str | None = None,
+    invoice_ids: list[str] | None = None,
+    invoice_nums: list[str] | None = None,
+    currency: int | None = None,
+    min_dt: date = date(1970, 1, 1), 
+    max_dt: date = date(2099, 12, 31),
+    min_amount: float = -999999999,
+    max_amount: float = 999999999,
+    num_invoices: int | None = None
+) -> list[dict]:
+    return post_req(
+        prefix='sales',
+        endpoint='payment/list',
+        params={
+            'limit': limit,
+            'offset': offset, 
+            'payment_acct_id': payment_acct_id, 
+            'payment_acct_name': payment_acct_name,
+            'min_dt': min_dt.strftime('%Y-%m-%d'), 
+            'max_dt': max_dt.strftime('%Y-%m-%d'), 
+            'currency': currency,
+            'min_amount': min_amount,
+            'max_amount': max_amount,
+            'num_invoices': num_invoices
+        },
+        data={
+            'payment_ids': payment_ids,
+            'payment_nums': payment_nums,
+            'invoice_ids': invoice_ids,
+            'invoice_nums': invoice_nums,            
+        }
+    )
+    
+@st.cache_data
+@message_box
+def get_sales_payment_journal(payment_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='sales',
+        endpoint=f'payment/get/{payment_id}',
+    )
+
+@message_box
+def validate_payment(payment: dict) -> dict:
+    return post_req(
+        prefix='sales',
+        endpoint='payment/validate',
+        data=payment
+    )
+
+@message_box
+def create_journal_from_new_sales_payment(payment: dict) -> dict:
+    return get_req(
+        prefix='sales',
+        endpoint='payment/trial_journal',
+        data=payment
+    )
+    
+@message_box
+def add_sales_payment(payment: dict):
+    post_req(
+        prefix='sales',
+        endpoint='payment/add',
+        data=payment
+    )
+
+    list_sales_payment.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+@message_box
+def update_sales_payment(payment: dict):
+    put_req(
+        prefix='sales',
+        endpoint='payment/update',
+        data=payment
+    )
+
+    list_sales_payment.clear()
+    get_sales_payment_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+
+@message_box
+def delete_sales_payment(payment_id: str):
+    delete_req(
+        prefix='sales',
+        endpoint=f'payment/delete/{payment_id}'
+    )
+    list_sales_payment.clear()
+    get_sales_payment_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()

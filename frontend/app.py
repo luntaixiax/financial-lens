@@ -12,10 +12,10 @@ pages = {
         st.Page("sections/supplier.py", title="Manage Supplier", icon='👨🏻‍🔧'),
         st.Page("sections/item.py", title="Manage Item", icon='📦'),
     ],
-    "Transaction": [
-        st.Page("sections/sales.py", title="Manage Sales", icon='💸'),
-        st.Page("sections/purchase.py", title="Manage Purchase", icon='🛒'),
-        st.Page("sections/expense.py", title="Manage Expense", icon='✈️'),
+    "Sales": [
+        st.Page("sections/sales_overview.py", title="Sales Overview", icon='💸'),
+        st.Page("sections/sales_invoice.py", title="Manage Invoice", icon='🛒'),
+        st.Page("sections/sales_payment.py", title="Manage Payment", icon='✈️'),
     ],
 }
 

@@ -387,6 +387,10 @@ class PurchaseService:
                 details=e.details
             )
         
+        # validate payment account, must be balance sheet item
+        if payment_acct.acct_type not in (AcctType.AST, AcctType.LIB, AcctType.EQU):
+            raise OpNotPermittedError(f'Payment account can only be of balance sheet item')
+        
         # validate payment items
         for payment_item in payment.payment_items:
             # validate invoice exist or not
