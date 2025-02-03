@@ -252,6 +252,29 @@ def validate_invoice(invoice_: dict):
         )
         return
     
+    # detect if payment key info is missing
+    if invoice_['invoice_num'] in (None, ""):
+        ui.alert_dialog(
+            show=True, # TODO
+            title="Invoice Number is missing",
+            description='Must assign a invoice number',
+            confirm_label="OK",
+            cancel_label="Cancel",
+            key=str(uuid.uuid1())
+        )
+        return
+    
+    if invoice_['subject'] in (None, ""):
+        ui.alert_dialog(
+            show=True, # TODO
+            title="Subject is missing",
+            description='Must assign a subject',
+            confirm_label="OK",
+            cancel_label="Cancel",
+            key=str(uuid.uuid1())
+        )
+        return
+    
     invoice_ = validate_sales(invoice_)
     if isinstance(invoice_, dict):
         if invoice_.get('subtotal_invitems') is not None:

@@ -9,7 +9,7 @@ from src.app.utils.tools import get_company
 from src.app.model.entity import Address, Contact, Customer, Supplier
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.model.journal import Journal
-from src.app.model.invoice import InvoiceItem, Item, Invoice, _InvoiceBrief
+from src.app.model.invoice import _InvoiceBalance, InvoiceItem, Item, Invoice, _InvoiceBrief
 from src.app.service.sales import SalesService
 from src.app.service.entity import EntityService
 
@@ -166,13 +166,20 @@ def list_sales_payment(
     
 
 @router.post("/payment/add")
-def add_sales_payment(payment: Invoice):
+def add_sales_payment(payment: Payment):
     SalesService.add_payment(payment=payment)
     
 @router.put("/payment/update")
-def update_sales_payment(payment: Invoice):
+def update_sales_payment(payment: Payment):
     SalesService.update_payment(payment=payment)
     
 @router.delete("/payment/delete/{payment_id}")
 def delete_sales_payment(payment_id: str):
     SalesService.delete_payment(payment_id=payment_id)
+    
+@router.get("/invoice/{invoice_id}/get_balance")
+def get_sales_invoice_balance(invoice_id: str, bal_dt: date) -> _InvoiceBalance:
+    return SalesService.get_invoice_balance(
+        invoice_id=invoice_id,
+        bal_dt=bal_dt
+    )

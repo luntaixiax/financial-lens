@@ -310,7 +310,7 @@ class InvoiceORM(SQLModel, table=True):
         sa_column=Column(String(length = 13), primary_key = True, nullable = False)
     )
     invoice_num: str = Field(
-        sa_column=Column(String(length = 25), primary_key = False, nullable = False)
+        sa_column=Column(String(length = 25), primary_key = False, nullable = False, unique = True)
     )
     invoice_dt: date = Field(sa_column=Column(Date(), nullable = False))
     due_dt: date | None = Field(sa_column=Column(Date(), nullable = True))
@@ -519,7 +519,7 @@ class PaymentORM(SQLModel, table=True):
         sa_column=Column(String(length = 15), primary_key = True, nullable = False)
     )
     payment_num: str = Field(
-        sa_column=Column(String(length = 25), primary_key = False, nullable = False)
+        sa_column=Column(String(length = 25), primary_key = False, nullable = False, unique = True)
     )
     payment_dt: date = Field(sa_column=Column(Date(), nullable = False))
     entity_type: EntityType = Field(

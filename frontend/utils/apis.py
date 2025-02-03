@@ -830,6 +830,7 @@ def update_sales_invoice(invoice: dict):
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
     preview_sales_invoice.clear()
+    get_sales_invoice_balance.clear()
 
 @message_box
 def delete_sales_invoice(invoice_id: str):
@@ -845,6 +846,7 @@ def delete_sales_invoice(invoice_id: str):
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
     preview_sales_invoice.clear()
+    get_sales_invoice_balance.clear()
 
 @st.cache_data
 @message_box
@@ -904,8 +906,19 @@ def get_sales_payment_journal(payment_id: str) -> Tuple[dict, dict]:
         endpoint=f'payment/get/{payment_id}',
     )
 
+@st.cache_data
 @message_box
-def validate_payment(payment: dict) -> dict:
+def get_sales_invoice_balance(invoice_id: str, bal_dt: date) -> dict:
+    return get_req(
+        prefix='sales',
+        endpoint=f'invoice/{invoice_id}/get_balance',
+        params={
+            'bal_dt': bal_dt.strftime('%Y-%m-%d')
+        }
+    )
+
+@message_box
+def validate_sales_payment(payment: dict) -> dict:
     return post_req(
         prefix='sales',
         endpoint='payment/validate',
@@ -934,9 +947,11 @@ def add_sales_payment(payment: dict):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    get_sales_invoice_balance.clear()
     
 @message_box
 def update_sales_payment(payment: dict):
+    print(payment)
     put_req(
         prefix='sales',
         endpoint='payment/update',
@@ -950,6 +965,7 @@ def update_sales_payment(payment: dict):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    get_sales_invoice_balance.clear()
 
 @message_box
 def delete_sales_payment(payment_id: str):
@@ -964,3 +980,4 @@ def delete_sales_payment(payment_id: str):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    get_sales_invoice_balance.clear()

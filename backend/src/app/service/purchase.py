@@ -15,7 +15,7 @@ from src.app.service.journal import JournalService
 from src.app.service.fx import FxService
 from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
-from src.app.model.invoice import _InvoiceBrief, GeneralInvoiceItem, Invoice, InvoiceItem, Item
+from src.app.model.invoice import _InvoiceBalance, _InvoiceBrief, GeneralInvoiceItem, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
 
 
@@ -445,6 +445,11 @@ class PurchaseService:
                     f'Some component of invoice does not exist: {invoice}',
                     details=e.details
                 )
+            except AlreadyExistError as e:
+                raise AlreadyExistError(
+                    f'Invoice Number already exist: , change one please',
+                    details=f"payment number: {invoice.invoice_num}"
+                )
             
         else:
             raise AlreadyExistError(
@@ -479,7 +484,12 @@ class PurchaseService:
                     f'Some component of payment does not exist: {payment}',
                     details=e.details
                 )
-            
+            except AlreadyExistError as e:
+                raise AlreadyExistError(
+                    f'Payment Number already exist: , change one please',
+                    details=f"payment number: {payment.payment_num}"
+                )
+                
         else:
             raise AlreadyExistError(
                 f"Payment id {payment.payment_id} already exist",
@@ -745,4 +755,11 @@ class PurchaseService:
             min_amount=min_amount,
             max_amount=max_amount,
             num_invoices=num_invoices
+        )
+        
+    @classmethod
+    def get_invoice_balance(cls, invoice_id: str, bal_dt: date) -> _InvoiceBalance:
+        return invoiceDao.get_invoice_balance(
+            invoice_id=invoice_id,
+            bal_dt=bal_dt
         )

@@ -129,6 +129,16 @@ class _InvoiceBrief(EnhancedBaseModel):
     num_invoice_items: int = Field(description='Total # of invoice items')
     total_raw_amount: float = Field(description='Total amount in invoice currency')
     total_base_amount: float = Field(description='Total amount in base currency')
+    
+class _InvoiceBalance(EnhancedBaseModel):
+    invoice_id: str = Field(description='Invoice ID')
+    currency: CurType = Field(description='Currency used for the invoice')
+    raw_amount: float = Field(description='Total amount invoiced in invoice currency')
+    paid_amount: float = Field(description='Total amount paid in invoice currency')
+    
+    @computed_field()
+    def balance(self) -> float:
+        return self.raw_amount - self.paid_amount
 
 class Invoice(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
