@@ -763,3 +763,10 @@ class PurchaseService:
             invoice_id=invoice_id,
             bal_dt=bal_dt
         )
+        
+    @classmethod
+    def get_invoices_balance_by_entity(cls, entity_id: str, bal_dt: date) -> list[_InvoiceBalance]:
+        return invoiceDao.get_invoices_balance_by_entity(
+            entity_id=entity_id,
+            bal_dt=bal_dt
+        )

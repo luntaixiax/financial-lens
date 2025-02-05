@@ -628,3 +628,101 @@ class invoiceDao:
             raw_amount=joined.total_raw_amount,
             paid_amount=joined.payment_amount_raw
         )
+        
+    @classmethod
+    def get_invoices_balance_by_entity(cls, entity_id: str, bal_dt: date) -> list[_InvoiceBalance]:
+        with Session(get_engine()) as s:
+            invoice_item_agg = (
+                select(
+                    InvoiceItemORM.invoice_id,
+                    f.sum(
+                        InvoiceItemORM.quantity 
+                        * ItemORM.unit_price 
+                        * (1 - InvoiceItemORM.discount_rate) 
+                        * (1 + InvoiceItemORM.tax_rate)
+                    ).label('total_raw_amount')
+                )
+                .join(
+                    ItemORM, 
+                    onclause=InvoiceItemORM.item_id == ItemORM.item_id, 
+                    isouter=False # inner join
+                )
+                .group_by(
+                    InvoiceItemORM.invoice_id
+                )
+                .subquery()
+            )
+            ginvoice_item_agg = (
+                select(
+                    GeneralInvoiceItemORM.invoice_id,
+                    f.sum(
+                        GeneralInvoiceItemORM.amount_pre_tax 
+                        * (1 + GeneralInvoiceItemORM.tax_rate)
+                    ).label('total_raw_amount')
+                )
+                .group_by(
+                    GeneralInvoiceItemORM.invoice_id
+                )
+                .subquery()
+            )
+            payment_agg = (
+                select(
+                    PaymentItemORM.invoice_id,
+                    f.sum(PaymentItemORM.payment_amount_raw).label('payment_amount_raw')
+                )
+                .join(
+                    PaymentORM, 
+                    onclause=PaymentItemORM.payment_id == PaymentORM.payment_id, 
+                    isouter=False # inner join
+                )
+                .where(
+                    PaymentORM.payment_dt <= bal_dt # only look at payment before given date
+                )
+                .group_by(
+                    PaymentItemORM.invoice_id
+                )
+                .subquery()
+            )
+            
+            invoice_joined = (
+                select(
+                    InvoiceORM.invoice_id,
+                    InvoiceORM.currency,
+                    (
+                        InvoiceORM.shipping 
+                        + f.coalesce(invoice_item_agg.c.total_raw_amount , 0)
+                        + f.coalesce(ginvoice_item_agg.c.total_raw_amount, 0)
+                    ).label('total_raw_amount'),
+                    f.coalesce(payment_agg.c.payment_amount_raw , 0).label('payment_amount_raw')
+                )
+                .join(
+                    invoice_item_agg, 
+                    onclause=invoice_item_agg.c.invoice_id == InvoiceORM.invoice_id, 
+                    isouter=True # left join
+                )
+                .join(
+                    ginvoice_item_agg, 
+                    onclause=ginvoice_item_agg.c.invoice_id == InvoiceORM.invoice_id, 
+                    isouter=True # left join
+                )
+                .join(
+                    payment_agg, 
+                    onclause=payment_agg.c.invoice_id == InvoiceORM.invoice_id, 
+                    isouter=True # left join
+                )
+                .where(
+                    InvoiceORM.entity_id == entity_id,
+                )
+            )
+            
+            joined = s.exec(invoice_joined).all()
+            
+        return [
+            _InvoiceBalance(
+                invoice_id=j.invoice_id,
+                currency=j.currency,
+                raw_amount=j.total_raw_amount,
+                paid_amount=j.payment_amount_raw
+            ) 
+            for j in joined
+        ]

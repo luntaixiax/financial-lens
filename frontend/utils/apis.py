@@ -735,7 +735,7 @@ def get_default_tax_rate() -> float:
 @st.cache_data
 @message_box
 def list_sales_invoice(
-    limit: int = 50,
+    limit: int = 9999,
     offset: int = 0,
     invoice_ids: list[str] | None = None,
     invoice_nums: list[str] | None = None,
@@ -860,7 +860,7 @@ def preview_sales_invoice(invoice_id: str) -> str:
 @st.cache_data
 @message_box
 def list_sales_payment(
-    limit: int = 50,
+    limit: int = 9999,
     offset: int = 0,
     payment_ids: list[str] | None = None,
     payment_nums: list[str] | None = None,
@@ -916,6 +916,17 @@ def get_sales_invoice_balance(invoice_id: str, bal_dt: date) -> dict:
             'bal_dt': bal_dt.strftime('%Y-%m-%d')
         }
     )
+    
+@st.cache_data
+@message_box
+def get_psales_invoices_balance_by_entity(entity_id: str, bal_dt: date) -> dict:
+    return get_req(
+        prefix='sales',
+        endpoint=f'invoice/get_balance_by_entity/{entity_id}',
+        params={
+            'bal_dt': bal_dt.strftime('%Y-%m-%d')
+        }
+    )
 
 @message_box
 def validate_sales_payment(payment: dict) -> dict:
@@ -948,6 +959,7 @@ def add_sales_payment(payment: dict):
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
     get_sales_invoice_balance.clear()
+    get_psales_invoices_balance_by_entity.clear()
     
 @message_box
 def update_sales_payment(payment: dict):
@@ -966,6 +978,7 @@ def update_sales_payment(payment: dict):
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
     get_sales_invoice_balance.clear()
+    get_psales_invoices_balance_by_entity.clear()
 
 @message_box
 def delete_sales_payment(payment_id: str):
@@ -981,3 +994,4 @@ def delete_sales_payment(payment_id: str):
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
     get_sales_invoice_balance.clear()
+    get_psales_invoices_balance_by_entity.clear()

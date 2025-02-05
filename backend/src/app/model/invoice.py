@@ -139,7 +139,7 @@ class _InvoiceBalance(EnhancedBaseModel):
     @computed_field()
     def balance(self) -> float:
         return self.raw_amount - self.paid_amount
-
+    
 class Invoice(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     

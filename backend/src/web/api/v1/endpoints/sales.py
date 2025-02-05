@@ -183,3 +183,10 @@ def get_sales_invoice_balance(invoice_id: str, bal_dt: date) -> _InvoiceBalance:
         invoice_id=invoice_id,
         bal_dt=bal_dt
     )
+
+@router.get("/invoice/get_balance_by_entity/{entity_id}")
+def get_sales_invoices_balance_by_entity(entity_id: str, bal_dt: date) -> list[_InvoiceBalance]:
+    return SalesService.get_invoices_balance_by_entity(
+        entity_id=entity_id,
+        bal_dt=bal_dt
+    )

@@ -228,7 +228,7 @@ if acct['acct_type'] in (1, 2, 3):
                                 st.markdown(base_amount_str)
                             
                             if ent['description'] is not None:
-                                st.text_area(label="Note", value=ent['description'], disabled=True, height=70)
+                                st.text_area(label="Note", value=ent['description'], disabled=True, height=70, key=str(uuid.uuid4()))
     
     
 else:
