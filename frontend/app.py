@@ -13,10 +13,14 @@ pages = {
         st.Page("sections/item.py", title="Manage Item", icon='📦'),
     ],
     "Sales": [
-        st.Page("sections/sales_overview.py", title="Sales Overview", icon='💸'),
-        st.Page("sections/sales_invoice.py", title="Manage Invoice", icon='🛒'),
-        st.Page("sections/sales_payment.py", title="Manage Payment", icon='✈️'),
+        st.Page("sections/sales_overview.py", title="Sales Overview", icon='📊'),
+        st.Page("sections/sales_invoice.py", title="Manage Invoice", icon='💶'),
+        st.Page("sections/sales_payment.py", title="Manage Payment", icon='💸'),
     ],
+    "Expense": [
+        st.Page("sections/expense_overview.py", title="Expense Overview", icon='📊'),
+        st.Page("sections/expense.py", title="Manage Expense", icon='🛒'),
+    ]
 }
 
 pg = st.navigation(pages)

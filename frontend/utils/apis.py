@@ -963,7 +963,6 @@ def add_sales_payment(payment: dict):
     
 @message_box
 def update_sales_payment(payment: dict):
-    print(payment)
     put_req(
         prefix='sales',
         endpoint='payment/update',
@@ -995,3 +994,110 @@ def delete_sales_payment(payment_id: str):
     list_entry_by_acct.clear()
     get_sales_invoice_balance.clear()
     get_psales_invoices_balance_by_entity.clear()
+
+@message_box
+def validate_expense(expense: dict) -> dict:
+    return post_req(
+        prefix='expense',
+        endpoint='validate',
+        data=expense
+    )
+
+@message_box
+def create_journal_from_new_expense(expense: dict) -> dict:
+    return get_req(
+        prefix='expense',
+        endpoint='trial_journal',
+        data=expense
+    )
+
+@st.cache_data
+@message_box
+def get_expense_journal(expense_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='expense',
+        endpoint=f"get_expense_journal/{expense_id}",
+    )
+
+@st.cache_data
+@message_box
+def list_expense(
+    limit: int = 50,
+    offset: int = 0,
+    expense_ids: list[str] | None = None,
+    min_dt: date = date(1970, 1, 1), 
+    max_dt: date = date(2099, 12, 31), 
+    currency: int | None = None,
+    payment_acct_id: str | None = None,
+    payment_acct_name: str | None = None,
+    expense_acct_ids: list[str] | None = None,
+    expense_acct_names: list[str] | None = None,
+    min_amount: float = -999999999,
+    max_amount: float = 999999999,
+    has_receipt: bool | None = None
+) -> Tuple[list[dict], int]:
+    return post_req(
+        prefix='expense',
+        endpoint='list',
+        params={
+            'limit': limit,
+            'offset': offset, 
+            'payment_acct_id': payment_acct_id, 
+            'payment_acct_name': payment_acct_name,
+            'min_dt': min_dt.strftime('%Y-%m-%d'), 
+            'max_dt': max_dt.strftime('%Y-%m-%d'), 
+            'currency': currency,
+            'min_amount': min_amount,
+            'max_amount': max_amount,
+            'has_receipt': has_receipt
+        },
+        data={
+            'expense_ids': expense_ids,
+            'expense_acct_ids': expense_acct_ids,
+            'expense_acct_names': expense_acct_names,          
+        }
+    )
+
+@message_box
+def add_expense(expense: dict):
+    post_req(
+        prefix='expense',
+        endpoint='add',
+        data=expense
+    )
+    list_expense.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+
+@message_box
+def update_expense(expense: dict):
+    put_req(
+        prefix='expense',
+        endpoint='update',
+        data=expense
+    )
+    get_expense_journal.clear()
+    list_expense.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+    
+@message_box
+def delete_expense(expense_id: str):
+    delete_req(
+        prefix='expense',
+        endpoint=f'delete/{expense_id}'
+    )
+    get_expense_journal.clear()
+    list_expense.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()

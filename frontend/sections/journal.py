@@ -350,7 +350,7 @@ if edit_mode == 'Edit':
             )
     
     search_cols = st.columns(2)
-    # search by amount
+    # search by date
     search_min_dt = date(1970, 1, 1)
     search_max_dt = date(2099, 12, 31)
     if 'Date' in search_criterias:

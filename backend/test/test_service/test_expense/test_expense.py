@@ -165,19 +165,19 @@ def test_expense(mock_engine, engine_with_sample_choa, sample_expense_meal, samp
         ExpenseService.get_expense_journal('random-expense')
         
     # test list expenses
-    expenses = ExpenseService.list_expense()
+    expenses, _ = ExpenseService.list_expense()
     assert len(expenses) == 2
-    expenses = ExpenseService.list_expense(max_amount=1000)
+    expenses, _ = ExpenseService.list_expense(max_amount=1000)
     assert len(expenses) == 1
-    expenses = ExpenseService.list_expense(min_amount=1300)
+    expenses, _ = ExpenseService.list_expense(min_amount=1300)
     assert len(expenses) == 1
-    expenses = ExpenseService.list_expense(currency=CurType.EUR)
+    expenses, _ = ExpenseService.list_expense(currency=CurType.EUR)
     assert len(expenses) == 1
-    expenses = ExpenseService.list_expense(has_receipt=True)
+    expenses, _ = ExpenseService.list_expense(has_receipt=True)
     assert len(expenses) == 1
-    expenses = ExpenseService.list_expense(expense_acct_ids=['acct-meal'])
+    expenses, _ = ExpenseService.list_expense(expense_acct_ids=['acct-meal'])
     assert len(expenses) == 1
-    expenses = ExpenseService.list_expense(expense_acct_ids=['acct-rental'])
+    expenses, _ = ExpenseService.list_expense(expense_acct_ids=['acct-rental'])
     assert len(expenses) == 1
     
     # test update expense

@@ -220,7 +220,8 @@ class expenseDao:
         min_amount: float = -999999999,
         max_amount: float = 999999999,
         has_receipt: bool | None = None
-    ) -> list[_ExpenseBrief]:
+    ) -> Tuple[list[_ExpenseBrief], int]:
+        # return list of filtered expense, and count without applying limit and offset
         with Session(get_engine()) as s:
             
             acct_case_when = []
@@ -340,7 +341,30 @@ class expenseDao:
                 .limit(limit)
             )
             
+            count_sql = (
+                select(
+                    f.count(ExpenseORM.expense_id)
+                )
+                .join(
+                    AcctORM,
+                    onclause=ExpenseORM.payment_acct_id == AcctORM.acct_id, 
+                    isouter=True # outer join
+                )
+                .join(
+                    expense_summary,
+                    onclause=ExpenseORM.expense_id  == expense_summary.c.expense_id, 
+                    isouter=False
+                )
+                .join(
+                    journal_summary,
+                    onclause=ExpenseORM.journal_id  == journal_summary.c.journal_id, 
+                    isouter=False
+                )
+                .where(*exp_filters)
+            )
+            
             expenses = s.exec(expense_joined).all()
+            num_records = s.exec(count_sql).one()
             
         return [
             _ExpenseBrief(
@@ -355,4 +379,4 @@ class expenseDao:
                 has_receipt=expense.has_receipt
             ) 
             for expense in expenses
-        ]
+        ], num_records
