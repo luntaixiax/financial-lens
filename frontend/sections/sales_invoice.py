@@ -62,8 +62,11 @@ class JournalEntryHelper:
             if e['entry_type'] == entry_type.value
         ]
 
-def reset_page():
+def reset_validate():
     st.session_state['validated'] = False
+    
+def reset_page():
+    reset_validate()
     if 'journal' in st.session_state:
         del st.session_state['journal']
 
@@ -109,7 +112,7 @@ def update_inv_item(entry: dict) -> dict:
 
 def on_change_inv_items():
     # whenever edited the table
-    st.session_state['validated'] = False
+    reset_validate()
     st.session_state['subtotal_invitems'] = '-'
     st.session_state['subtotal'] = '-'
     st.session_state['tax_amount'] = '-'
@@ -157,7 +160,7 @@ def update_general_inv_item(entry: dict) -> dict:
 
 def on_change_general_inv_items():
     # whenever edited the table
-    st.session_state['validated'] = False
+    reset_validate()
     st.session_state['subtotal_ginvitems'] = '-'
     st.session_state['subtotal'] = '-'
     st.session_state['tax_amount'] = '-'
@@ -449,14 +452,16 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
             label='📅 Invoice Date',
             value=date.today() if edit_mode == 'Add' else inv_sel['invoice_dt'],
             key=f'date_input',
-            disabled=False
+            disabled=False,
+            on_change=reset_validate
         )
         inv_cur_type_option = st.selectbox(
             label='💲 Currency',
             options=dds_currency.options,
             key='cur_type_select',
             index=0 if edit_mode == 'Add' else dds_currency.get_idx_from_id(CurType(inv_sel['currency']).value),
-            disabled=(edit_mode == 'Edit') # avoid error, changing currency means items all become invalid
+            disabled=(edit_mode == 'Edit'), # avoid error, changing currency means items all become invalid,
+            on_change=reset_validate
         )
         inv_cur = CurType[inv_cur_type_option].name
         
@@ -478,7 +483,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
             label='🚚 Shipping Charge',
             value=0.0 if edit_mode == 'Add' else inv_sel['shipping'],
             step=0.01,
-            key='ship_charge_num'
+            key='ship_charge_num',
+            on_change=reset_validate
         )
     
     inv_note = st.text_input(

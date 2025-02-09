@@ -33,8 +33,11 @@ def clear_entries_from_cache():
     if 'journal' in st.session_state:
         del st.session_state['journal']
 
-def reset_page():
+def reset_validate():
     st.session_state['validated'] = False
+    
+def reset_page():
+    reset_validate()
     if 'journal' in st.session_state:
         del st.session_state['journal']
     
@@ -44,7 +47,7 @@ def clear_entries_and_reset_page():
     
 def on_change_pmt_items():
     # whenever edited the table
-    st.session_state['validated'] = False
+    reset_validate()
     
     # get changes from data editor
     state = st.session_state['key_editor_pmt_items']
@@ -341,7 +344,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
             label='📅 Payment Date',
             value=date.today() if edit_mode == 'Add' else pmt_sel['payment_dt'],
             key=f'date_input',
-            disabled=False
+            disabled=False,
+            on_change=reset_validate
         )
     
     with pmt_cols[1]:
@@ -356,7 +360,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
             options=dds_accts.options,
             key='acct_select',
             index=0 if edit_mode == 'Add' else dds_accts.get_idx_from_id(pmt_sel['payment_acct_id']),
-            disabled=False
+            disabled=False,
+            on_change=reset_validate
         )
         # get payment acct details
         pmt_acct_id = dds_accts.get_id(pmt_acct)
@@ -454,8 +459,9 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
         pmt_fee = st.number_input(
             label=f"🚚 Bank Charge ({CurType(pmt_acct['currency']).name})",
             value=0.0 if edit_mode == 'Add' else pmt_sel['payment_fee'],
-            step=0.1,
-            key='fee_charge_num'
+            step=0.01,
+            key='fee_charge_num',
+            on_change=reset_validate
         )
         
         st.markdown(f"📐 **Total Amount Received ({CurType(pmt_acct['currency']).name})**: {total_paid - pmt_fee: .2f}")
