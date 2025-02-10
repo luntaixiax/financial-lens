@@ -28,7 +28,17 @@ def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  F
     
     return e
     
+class FileORM(SQLModel, table=True):
+    __tablename__ = 'file'
     
+    file_id: str = Field(
+        sa_column=Column(
+            String(length = 18), 
+            primary_key = True, 
+            nullable = False)
+    )
+    filename: str = Field(sa_column=Column(String(length = 50), nullable = False, primary_key = False, unique=True))
+    filehash: str = Field(sa_column=Column(String(length = 64), nullable = False, primary_key = False, unique=True))
 
 class FxORM(SQLModel, table=True):
     __tablename__ = "currency"
