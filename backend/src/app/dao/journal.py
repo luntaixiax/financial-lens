@@ -1,5 +1,6 @@
 from datetime import date
 import logging
+from typing import Tuple
 from sqlmodel import Session, select, delete, case, func as f, and_
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.accounts import Account
@@ -133,7 +134,10 @@ class journalDao:
             sql = select(JournalORM).where(
                 JournalORM.journal_id == journal_id
             )
-            j = s.exec(sql).one()
+            try:
+                j = s.exec(sql).one()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
             
             # commit at same time
             try:
@@ -167,7 +171,8 @@ class journalDao:
         min_amount: float = -999999999,
         max_amount: float = 999999999,
         num_entries: int | None = None
-    ) -> list[_JournalBrief]:
+    ) -> Tuple[list[_JournalBrief], int]:
+        # return list of filtered journal, and count without applying limit and offset
         with Session(get_engine()) as s:
             
             acct_case_when = []
@@ -249,8 +254,20 @@ class journalDao:
                 .offset(offset)
                 .limit(limit)
             )
+            count_sql = (
+                select(
+                    f.count(JournalORM.journal_id)
+                )
+                .where(*jrn_filters)
+                .join(
+                    entry_agg,
+                    onclause=JournalORM.journal_id == entry_agg.c.journal_id,
+                    isouter=False
+                )
+            )
             
             jrns = s.exec(sql).all()
+            num_records = s.exec(count_sql).one()
             
         return [
             _JournalBrief(
@@ -263,15 +280,34 @@ class journalDao:
                 note=jrn.note
             ) 
             for jrn in jrns
-        ]
+        ], num_records
 
+    @classmethod
+    def stat_journal_by_src(cls) -> list[Tuple[JournalSrc, int, float]]:
+        with Session(get_engine()) as s:
+            sql = (
+                select(
+                    JournalORM.jrn_src,
+                    f.count(JournalORM.journal_id).label('num_journals'),
+                    f.sum(EntryORM.amount_base).label('total_amount_base')
+                )
+                .join(
+                    JournalORM,
+                    onclause=JournalORM.journal_id == EntryORM.journal_id,
+                    isouter=False
+                )
+                .group_by(JournalORM.jrn_src)
+            )
+            stats = s.exec(sql).all()
+            
+        return stats
     
     @classmethod
     def sum_acct_flow(cls, acct_id: str, start_dt: date, end_dt: date) -> _AcctFlowAGG:
         with Session(get_engine()) as s:
-            sql = (
+            entry_summary = (
                 select(
-                    AcctORM.acct_type,
+                    EntryORM.acct_id,
                     f.count(JournalORM.journal_id.distinct()).label('num_journal'),
                     f.sum(case(
                         (EntryORM.entry_type == EntryType.DEBIT, 1), 
@@ -299,20 +335,37 @@ class journalDao:
                     )).label('credit_amount_base'),
                 )
                 .join(
-                    AcctORM,
-                    onclause=AcctORM.acct_id == EntryORM.acct_id,
-                    isouter=False
-                )
-                .join(
                     JournalORM,
                     onclause=JournalORM.journal_id == EntryORM.journal_id,
-                    isouter=False
+                    isouter=False # inner join
                 )
                 .where(
                     EntryORM.acct_id == acct_id,
                     JournalORM.jrn_date.between(start_dt, end_dt)
                 )
-                .group_by(AcctORM.acct_type)
+                .group_by(EntryORM.acct_id)
+                .subquery()
+            )
+            
+            sql = (
+                select(
+                    AcctORM.acct_type,
+                    f.coalesce(entry_summary.c.num_journal, 0).label('num_journal'),
+                    f.coalesce(entry_summary.c.num_debit_entry, 0).label('num_debit_entry'),
+                    f.coalesce(entry_summary.c.num_credit_entry, 0).label('num_credit_entry'),
+                    f.coalesce(entry_summary.c.debit_amount_raw, 0).label('debit_amount_raw'),
+                    f.coalesce(entry_summary.c.credit_amount_raw, 0).label('credit_amount_raw'),
+                    f.coalesce(entry_summary.c.debit_amount_base, 0).label('debit_amount_base'),
+                    f.coalesce(entry_summary.c.credit_amount_base, 0).label('credit_amount_base'),
+                )
+                .join(
+                    entry_summary,
+                    onclause=entry_summary.c.acct_id == AcctORM.acct_id,
+                    isouter=True # left join
+                )
+                .where(
+                    AcctORM.acct_id == acct_id
+                )
             )
             try:
                 flow = s.exec(sql).one()
@@ -456,7 +509,7 @@ class journalDao:
                     isouter=False # inner join
                 )
                 .where(EntryORM.acct_id == acct_id)
-                .order_by(JournalORM.jrn_date)
+                .order_by(JournalORM.jrn_date.desc(), EntryORM.entry_id.desc())
             )
             
             entries = s.exec(sql).all()

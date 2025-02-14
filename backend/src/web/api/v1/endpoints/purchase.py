@@ -9,15 +9,15 @@ from src.app.utils.tools import get_company
 from src.app.model.entity import Address, Contact, Customer, Supplier
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.model.journal import Journal
-from src.app.model.invoice import InvoiceItem, Item, Invoice, _InvoiceBrief
+from src.app.model.invoice import _InvoiceBalance, InvoiceItem, Item, Invoice, _InvoiceBrief
 from src.app.service.purchase import PurchaseService
 from src.app.service.entity import EntityService
 
 router = APIRouter(prefix="/purchase", tags=["purchase"])
 
 @router.post("/invoice/validate")
-def validate_purchase(invoice: Invoice):
-    PurchaseService._validate_invoice(invoice)
+def validate_purchase(invoice: Invoice) -> Invoice:
+    return PurchaseService._validate_invoice(invoice)
 
 @router.get(
     "/invoice/trial_journal",
@@ -113,8 +113,8 @@ def preview_purchase_invoice(request: Request, invoice_id: str):
 
     
 @router.post("/payment/validate")
-def validate_payment(payment: Payment):
-    PurchaseService._validate_payment(payment)
+def validate_payment(payment: Payment) -> Payment:
+    return PurchaseService._validate_payment(payment)
     
 @router.get(
     "/payment/trial_journal",
@@ -127,7 +127,7 @@ def create_journal_from_new_purchase_payment(payment: Payment) -> Journal:
     "/payment/get/{payment_id}",
     description='get existing purchase payment and journal from database'
 )
-def get_purchase_invoice_journal(payment_id: str) -> Tuple[Payment, Journal]:
+def get_purchase_payment_journal(payment_id: str) -> Tuple[Payment, Journal]:
     return PurchaseService.get_payment_journal(payment_id=payment_id)
 
 @router.post("/payment/list")
@@ -166,13 +166,27 @@ def list_purchase_payment(
     
 
 @router.post("/payment/add")
-def add_purchase_payment(payment: Invoice):
+def add_purchase_payment(payment: Payment):
     PurchaseService.add_payment(payment=payment)
     
 @router.put("/payment/update")
-def update_purchase_payment(payment: Invoice):
+def update_purchase_payment(payment: Payment):
     PurchaseService.update_payment(payment=payment)
     
 @router.delete("/payment/delete/{payment_id}")
 def delete_purchase_payment(payment_id: str):
     PurchaseService.delete_payment(payment_id=payment_id)
+    
+@router.get("/invoice/{invoice_id}/get_balance")
+def get_purchase_invoice_balance(invoice_id: str, bal_dt: date) -> _InvoiceBalance:
+    return PurchaseService.get_invoice_balance(
+        invoice_id=invoice_id,
+        bal_dt=bal_dt
+    )
+    
+@router.get("/invoice/get_balance_by_entity/{entity_id}")
+def get_purchase_invoices_balance_by_entity(entity_id: str, bal_dt: date) -> list[_InvoiceBalance]:
+    return PurchaseService.get_invoices_balance_by_entity(
+        entity_id=entity_id,
+        bal_dt=bal_dt
+    )

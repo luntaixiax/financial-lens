@@ -34,6 +34,10 @@ def delete_chart(chart_id: str):
 def get_chart(chart_id: str) -> Chart:
     return AcctService.get_chart(chart_id=chart_id)
 
+@router.get("/chart/{chart_id}/get_parent")
+def get_parent_chart(chart_id: str) -> Chart | None:
+    return AcctService.get_parent_chart(chart_id=chart_id)
+
 @router.get("/chart/list")
 def list_charts(acct_type: AcctType) -> list[Chart]:
     return AcctService.get_charts(acct_type=acct_type)

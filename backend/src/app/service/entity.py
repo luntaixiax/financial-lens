@@ -18,7 +18,7 @@ class EntityService:
                 address1='00 XX St E',
                 suite_no=1234,
                 city='Toronto',
-                state='ON',
+                state='Ontario',
                 country='Canada',
                 postal_code='XYZABC'
             )
@@ -190,9 +190,9 @@ class EntityService:
             raise e
             
     @classmethod
-    def remove_supplier(cls, cust_id: str, ignore_nonexist: bool = False):
+    def remove_supplier(cls, supplier_id: str, ignore_nonexist: bool = False):
         try:
-            supplierDao.remove(cust_id)
+            supplierDao.remove(supplier_id)
         except NotExistError as e:
             if not ignore_nonexist:
                 raise e
@@ -226,10 +226,10 @@ class EntityService:
             raise e # contact does not exist
             
     @classmethod
-    def get_supplier(cls, cust_id: str) -> Supplier:
+    def get_supplier(cls, supplier_id: str) -> Supplier:
         try:
             bill_contact_id, ship_contact_id = supplierDao.get_bill_ship_contact_ids(
-                cust_id
+                supplier_id
             )
         except NotExistError as e:
             # supplier not even exist
@@ -241,7 +241,7 @@ class EntityService:
             ship_contact = cls.get_contact(ship_contact_id)
             
         # get supplier
-        supplier = supplierDao.get(cust_id, bill_contact, ship_contact)
+        supplier = supplierDao.get(supplier_id, bill_contact, ship_contact)
         return supplier
     
     @classmethod

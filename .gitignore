@@ -7,3 +7,4 @@ secrets.toml
 docker-volume-mapping
 *.db
 backend/configs.yaml
+.idea

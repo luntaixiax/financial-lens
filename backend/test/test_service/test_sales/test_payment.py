@@ -95,6 +95,12 @@ def test_payment(mock_engine, engine, sample_payment):
     with pytest.raises(NotExistError):
         SalesService.get_payment_journal('random-payment')
         
+    # test invoice balance
+    balance = SalesService.get_invoice_balance(
+        invoice_id='inv-sample',
+        bal_dt=date(2024, 1, 2)
+    )
+    
     
     # test update payment
     _payment, _journal = SalesService.get_payment_journal(sample_payment.payment_id)

@@ -28,7 +28,17 @@ def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  F
     
     return e
     
+class FileORM(SQLModel, table=True):
+    __tablename__ = 'file'
     
+    file_id: str = Field(
+        sa_column=Column(
+            String(length = 18), 
+            primary_key = True, 
+            nullable = False)
+    )
+    filename: str = Field(sa_column=Column(String(length = 50), nullable = False, primary_key = False, unique=True))
+    filehash: str = Field(sa_column=Column(String(length = 64), nullable = False, primary_key = False, unique=True))
 
 class FxORM(SQLModel, table=True):
     __tablename__ = "currency"
@@ -310,7 +320,7 @@ class InvoiceORM(SQLModel, table=True):
         sa_column=Column(String(length = 13), primary_key = True, nullable = False)
     )
     invoice_num: str = Field(
-        sa_column=Column(String(length = 25), primary_key = False, nullable = False)
+        sa_column=Column(String(length = 25), primary_key = False, nullable = False, unique = True)
     )
     invoice_dt: date = Field(sa_column=Column(Date(), nullable = False))
     due_dt: date | None = Field(sa_column=Column(Date(), nullable = True))
@@ -519,7 +529,7 @@ class PaymentORM(SQLModel, table=True):
         sa_column=Column(String(length = 15), primary_key = True, nullable = False)
     )
     payment_num: str = Field(
-        sa_column=Column(String(length = 25), primary_key = False, nullable = False)
+        sa_column=Column(String(length = 25), primary_key = False, nullable = False, unique = True)
     )
     payment_dt: date = Field(sa_column=Column(Date(), nullable = False))
     entity_type: EntityType = Field(

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from src.app.service.entity import EntityService
-from src.app.model.entity import _ContactBrief, _CustomerBrief, Contact, Customer
+from src.app.model.entity import _ContactBrief, _CustomerBrief, _SupplierBrief, Contact, Customer, Supplier
 
 router = APIRouter(prefix="/entity", tags=["entity"])
 
@@ -54,3 +54,27 @@ def get_customer(cust_id: str) -> Customer:
 @router.get("/customer/list")
 def list_customer() -> list[_CustomerBrief]:
     return EntityService.list_customer()
+
+@router.post("/supplier/add")
+def add_supplier(supplier: Supplier):
+    EntityService.add_supplier(supplier)
+    
+@router.put("/supplier/update")
+def update_supplier(supplier: Supplier):
+    EntityService.update_supplier(supplier)
+    
+@router.put("/supplier/upsert")
+def upsert_supplier(supplier: Supplier):
+    EntityService.upsert_supplier(supplier)
+    
+@router.delete("/supplier/delete/{supplier_id}")
+def delete_supplier(supplier_id: str):
+    EntityService.remove_supplier(supplier_id=supplier_id)
+    
+@router.get("/supplier/get/{supplier_id}")
+def get_supplier(supplier_id: str) -> Supplier:
+    return EntityService.get_supplier(supplier_id=supplier_id)
+
+@router.get("/supplier/list")
+def list_supplier() -> list[_SupplierBrief]:
+    return EntityService.list_supplier()

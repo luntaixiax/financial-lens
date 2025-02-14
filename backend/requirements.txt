@@ -15,3 +15,4 @@ borb==2.1.18
 pyyaml==6.0.1
 currencyconverter==0.17.11
 Jinja2==3.1.4
+s3fs==2025.2.0

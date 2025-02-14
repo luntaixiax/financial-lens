@@ -1,5 +1,6 @@
 from functools import lru_cache
 import uuid
+import tomli
 import yaml
 from pathlib import Path
 from src.app.model.enums import CurType
@@ -32,4 +33,22 @@ def get_default_tax_rate() -> float:
 def get_company() -> dict:
     settings = get_settings()
     return settings['company_settings']
+
+@lru_cache()
+def get_secret() -> dict:
+    with open(Path.cwd().parent / "secrets.toml", mode="rb") as fp:
+        config = tomli.load(fp)
+    return config
+
+def get_file_root() -> str:
+    settings = get_settings()
     
+    if settings.get('fs', 'obj') == 'obj':
+        # object file system
+        bucket = settings.get('bucket')
+        file_root = settings.get('file_root')
+        return (Path(bucket) / file_root).as_posix()
+    else:
+        # file system
+        file_root = settings.get('file_root')
+        return  (Path(settings.get('root')) / file_root).as_posix()

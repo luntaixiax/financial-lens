@@ -84,7 +84,7 @@ class ExpenseService:
         cls.delete_expense('exp-sample2')
         
     @classmethod
-    def _validate_expense(cls, expense: Expense):
+    def _validate_expense(cls, expense: Expense) -> Expense:
         try:
             payment_acct: Account = AcctService.get_account(
                 expense.payment_acct_id
@@ -113,6 +113,8 @@ class ExpenseService:
                     f"Expense currency equals Payment currency ({expense.currency})",
                     details=f"Expense amount: {expense.total}, while payment amount = {expense.payment_amount}"
                 )
+                
+        return expense
     
     @classmethod
     def create_general_invoice_items_from_expense(cls, expense_id: str, invoice_currency: CurType) -> list[GeneralInvoiceItem]:
@@ -379,7 +381,7 @@ class ExpenseService:
         min_amount: float = -999999999,
         max_amount: float = 999999999,
         has_receipt: bool | None = None
-    ) -> list[_ExpenseBrief]:
+    ) -> Tuple[list[_ExpenseBrief], int]:
         return expenseDao.list_expense(
             limit=limit,
             offset=offset,

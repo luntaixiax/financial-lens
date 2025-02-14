@@ -15,7 +15,7 @@ from src.app.service.journal import JournalService
 from src.app.service.fx import FxService
 from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
-from src.app.model.invoice import _InvoiceBrief, GeneralInvoiceItem, Invoice, InvoiceItem, Item
+from src.app.model.invoice import _InvoiceBalance, _InvoiceBrief, GeneralInvoiceItem, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
 
 
@@ -300,7 +300,7 @@ class PurchaseService:
             )
             
     @classmethod
-    def _validate_invoice(cls, invoice: Invoice):
+    def _validate_invoice(cls, invoice: Invoice) -> Invoice:
         # validate direction
         if not invoice.entity_type == EntityType.SUPPLIER:
             raise OpNotPermittedError('Purchase invoice should only be created for supplier')
@@ -369,9 +369,11 @@ class PurchaseService:
                     raise NotMatchWithSystemError(
                         message=f"General Item Acct type of purchase invoice item must be of Income/Expense type, get {item_acct.acct_type}"
                     )
+                    
+        return invoice
                 
     @classmethod
-    def _validate_payment(cls, payment: Payment):
+    def _validate_payment(cls, payment: Payment) -> Payment:
         # validate direction
         if not payment.entity_type == EntityType.SUPPLIER:
             raise OpNotPermittedError('Purchase payment should only be created for supplier')
@@ -384,6 +386,10 @@ class PurchaseService:
                 f"Account {payment.payment_acct_id} of Payment {payment} does not exist",
                 details=e.details
             )
+        
+        # validate payment account, must be balance sheet item
+        if payment_acct.acct_type not in (AcctType.AST, AcctType.LIB, AcctType.EQU):
+            raise OpNotPermittedError(f'Payment account can only be of balance sheet item')
         
         # validate payment items
         for payment_item in payment.payment_items:
@@ -405,9 +411,11 @@ class PurchaseService:
                 # if invoice currency equals payment currency, the amount should equal
                 if not math.isclose(payment_item.payment_amount, payment_item.payment_amount_raw, rel_tol=1e-6):
                     raise OpNotPermittedError(
-                        f'Same payment and invoice currency ({payment_acct.currency}), payment_amount should equal to payment_amount_raw; '
-                        f'payment item amount not expected: {payment_item}'
+                        message=f'Payment_amount should equal to payment_amount_raw',
+                        details=f'Same payment and invoice currency ({payment_acct.currency}), payment item amount not expected: {payment_item}'
                     )
+                    
+        return payment
     
     @classmethod
     def add_invoice(cls, invoice: Invoice):
@@ -436,6 +444,11 @@ class PurchaseService:
                 raise FKNotExistError(
                     f'Some component of invoice does not exist: {invoice}',
                     details=e.details
+                )
+            except AlreadyExistError as e:
+                raise AlreadyExistError(
+                    f'Invoice Number already exist: , change one please',
+                    details=f"payment number: {invoice.invoice_num}"
                 )
             
         else:
@@ -471,7 +484,12 @@ class PurchaseService:
                     f'Some component of payment does not exist: {payment}',
                     details=e.details
                 )
-            
+            except AlreadyExistError as e:
+                raise AlreadyExistError(
+                    f'Payment Number already exist: , change one please',
+                    details=f"payment number: {payment.payment_num}"
+                )
+                
         else:
             raise AlreadyExistError(
                 f"Payment id {payment.payment_id} already exist",
@@ -737,4 +755,18 @@ class PurchaseService:
             min_amount=min_amount,
             max_amount=max_amount,
             num_invoices=num_invoices
+        )
+        
+    @classmethod
+    def get_invoice_balance(cls, invoice_id: str, bal_dt: date) -> _InvoiceBalance:
+        return invoiceDao.get_invoice_balance(
+            invoice_id=invoice_id,
+            bal_dt=bal_dt
+        )
+        
+    @classmethod
+    def get_invoices_balance_by_entity(cls, entity_id: str, bal_dt: date) -> list[_InvoiceBalance]:
+        return invoiceDao.get_invoices_balance_by_entity(
+            entity_id=entity_id,
+            bal_dt=bal_dt
         )

@@ -78,6 +78,7 @@ async def op_not_permitted_error_handler(_: Request, exc: OpNotPermittedError) -
         status_code = 540,
         content = {
             "message": exc.message,
+            "details": exc.details
         },
     )
     

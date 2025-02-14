@@ -1,5 +1,6 @@
 
 from datetime import date
+from typing import Tuple
 from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
 from src.app.model.exceptions import FKNoDeleteUpdateError, NotExistError, AlreadyExistError, FKNotExistError
 from src.app.dao.journal import journalDao
@@ -157,6 +158,11 @@ class JournalService:
             journalDao.remove(journal_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError()
+        except NotExistError as e:
+            raise NotExistError(
+                message=f'Journal {journal_id} not exist, cannot delete',
+                details=e.details
+            )
         
     @classmethod
     def update_journal(cls, journal: Journal):
@@ -178,7 +184,7 @@ class JournalService:
         min_amount: float = -999999999,
         max_amount: float = 999999999,
         num_entries: int | None = None
-    ) -> list[_JournalBrief]:
+    ) -> Tuple[list[_JournalBrief], int]:
         return journalDao.list_journal(
             limit = limit,
             offset = offset,
@@ -193,6 +199,10 @@ class JournalService:
             max_amount = max_amount,
             num_entries = num_entries
         )
+        
+    @classmethod
+    def stat_journal_by_src(cls) -> list[Tuple[JournalSrc, int, float]]:
+        return journalDao.stat_journal_by_src()
         
     @classmethod
     def list_entry_by_acct(cls, acct_id: str) -> list[_EntryBrief]:

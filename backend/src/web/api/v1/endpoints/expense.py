@@ -14,8 +14,8 @@ from src.app.service.expense import ExpenseService
 router = APIRouter(prefix="/expense", tags=["expense"])
 
 @router.post("/validate")
-def validate_expense(expense: Expense):
-    ExpenseService._validate_expense(expense)
+def validate_expense(expense: Expense) -> Expense:
+    return ExpenseService._validate_expense(expense)
     
 @router.get(
     "/trial_journal",
@@ -56,7 +56,7 @@ def list_expense(
     min_amount: float = -999999999,
     max_amount: float = 999999999,
     has_receipt: bool | None = None
-) -> list[_ExpenseBrief]:
+) -> Tuple[list[_ExpenseBrief], int]:
     return ExpenseService.list_expense(
         limit=limit,
         offset=offset,
