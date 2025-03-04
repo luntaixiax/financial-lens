@@ -41,7 +41,7 @@ def get_secret() -> dict:
     return config
 
 def get_file_root() -> str:
-    settings = get_settings()
+    settings = get_settings().get('files', {})
     
     if settings.get('fs', 'obj') == 'obj':
         # object file system

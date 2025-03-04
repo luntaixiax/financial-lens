@@ -21,7 +21,7 @@ def get_fs() -> S3FileSystem:
         anon=False,
         key=config['access_key'],
         secret=config['secret_access_key'],
-        endpoint_url=f"http://{config['endpoint']}:{config['port']}",
+        endpoint_url=f"https://{config['endpoint']}:{config['port']}" if config['provider'] != 's3' else None,
     )
     return s3a
 
