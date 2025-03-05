@@ -73,6 +73,19 @@ class fileDao:
         return file
     
     @classmethod
+    def get_file_id_by_name(cls, filename: str) -> str:
+        with Session(get_engine()) as s:
+            sql = select(FileORM.file_id).where(
+                FileORM.filename == filename
+            )
+            try:
+                p = s.exec(sql).one() # get the file meta data
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
+        
+        return p
+    
+    @classmethod
     def remove(cls, file_id: str):
         fs = get_fs()
         with Session(get_engine()) as s:

@@ -1,6 +1,6 @@
 from typing import List, Dict, Tuple
 from sqlmodel import Field, SQLModel, Column, create_engine
-from sqlalchemy import ForeignKey, Boolean, JSON, Integer, String, Text, Date, DateTime, Float, Numeric, DECIMAL, UniqueConstraint, inspect, INT, CHAR
+from sqlalchemy import ForeignKey, Boolean, JSON, ARRAY, Integer, String, Text, Date, DateTime, Float, Numeric, DECIMAL, UniqueConstraint, inspect, INT, CHAR
 from sqlalchemy_utils import EmailType, PasswordType, PhoneNumberType, ChoiceType, CurrencyType, PhoneNumber
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from datetime import date, datetime
@@ -37,7 +37,7 @@ class FileORM(SQLModel, table=True):
             primary_key = True, 
             nullable = False)
     )
-    filename: str = Field(sa_column=Column(String(length = 50), nullable = False, primary_key = False, unique=True))
+    filename: str = Field(sa_column=Column(String(length = 200), nullable = False, primary_key = False, unique=True))
     filehash: str = Field(sa_column=Column(String(length = 64), nullable = False, primary_key = False, unique=True))
 
 class FxORM(SQLModel, table=True):

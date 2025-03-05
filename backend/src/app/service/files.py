@@ -45,3 +45,12 @@ class FileService:
             )
         return file
     
+    @classmethod
+    def get_file_id_by_name(cls, filename: str) -> str:
+        try:
+            return fileDao.get_file_id_by_name(filename)
+        except NotExistError as e:
+            raise NotExistError(
+                message=f"File not exist: {filename}",
+                details=e.details
+            )

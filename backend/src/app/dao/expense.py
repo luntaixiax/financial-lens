@@ -49,6 +49,10 @@ class expenseDao:
         
     @classmethod
     def toExpense(cls, expense_orm: ExpenseORM, expense_item_orms: list[ExpenseItemORM]) -> Expense:
+        # receipts should be list or None
+        if expense_orm.receipts == 'null':
+            expense_orm.receipts = None
+        
         return Expense(
             expense_id=expense_orm.expense_id,
             expense_dt=expense_orm.expense_dt,

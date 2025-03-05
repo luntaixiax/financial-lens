@@ -1,6 +1,7 @@
 from datetime import date
 from fastapi import APIRouter, File, UploadFile
 from pydantic import BaseModel
+from src.app.model.exceptions import AlreadyExistError
 from src.app.model.enums import CurType
 from src.app.service.fx import FxService
 from src.app.service.misc import GeoService, SettingService
@@ -56,9 +57,13 @@ def upload_file(files: list[UploadFile] = File(...)) -> list[str]:
         except Exception as e:
             raise e
         else:
-            FileService.add_file(f)
+            try:
+                FileService.add_file(f)
+                file_id = f.file_id
+            except AlreadyExistError as e:
+                file_id = FileService.get_file_id_by_name(filename = file.filename)
         finally:
-            file_ids.append(f.file_id)
+            file_ids.append(file_id)
             file.file.close()
             
     return file_ids
