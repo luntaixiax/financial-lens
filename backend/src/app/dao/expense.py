@@ -1,11 +1,11 @@
 from datetime import date
 import logging
 from typing import Tuple
-from sqlalchemy import JSON
+from sqlalchemy import JSON, column
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.enums import CurType, EntryType
-from src.app.model.expense import _ExpenseBrief, ExpenseItem, Expense, Merchant
+from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, Merchant
 from src.app.dao.orm import AcctORM, EntryORM, ExpenseItemORM, ExpenseORM, infer_integrity_error
 from src.app.dao.connection import get_engine
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, FKNoDeleteUpdateError
@@ -384,3 +384,86 @@ class expenseDao:
             ) 
             for expense in expenses
         ], num_records
+        
+        
+    @classmethod
+    def summary_expense(cls, start_dt: date, end_dt: date) -> list[_ExpenseSummaryBrief]:
+        with Session(get_engine()) as s:
+            journal_summary = (
+                select(
+                    EntryORM.journal_id,
+                    f.sum(EntryORM.amount_base).label('amount_base')
+                )
+                .where(
+                    EntryORM.entry_type == EntryType.DEBIT
+                )
+                .group_by(
+                    EntryORM.journal_id
+                )
+                .subquery()
+            )
+            
+            expense_item_summary = (
+                select(
+                    ExpenseItemORM.expense_acct_id,
+                    ExpenseItemORM.expense_id,
+                    ExpenseORM.expense_dt,
+                    # (ExpenseItemORM.amount_pre_tax * (1 + ExpenseItemORM.tax_rate)).label('raw_amount_after_tax'),
+                    # f.sum(
+                    #     ExpenseItemORM.amount_pre_tax * (1 + ExpenseItemORM.tax_rate)
+                    # ).over(partition_by=[ExpenseItemORM.expense_id]).label('exp_raw_amount_after_tax'),
+                    # journal_summary.c.amount_base,
+                    (
+                        journal_summary.c.amount_base 
+                        * ExpenseItemORM.amount_pre_tax 
+                        * (1 + ExpenseItemORM.tax_rate) 
+                        / f.sum(
+                            ExpenseItemORM.amount_pre_tax * (1 + ExpenseItemORM.tax_rate)
+                        ).over(
+                            partition_by=[ExpenseItemORM.expense_id]
+                        )
+                    ).label('base_amount_after_tax')
+                )
+                .join(
+                    ExpenseORM,
+                    onclause=ExpenseORM.expense_id == ExpenseItemORM.expense_id, 
+                    isouter=False # inner join
+                )
+                .join(
+                    journal_summary,
+                    onclause=ExpenseORM.journal_id == journal_summary.c.journal_id, 
+                    isouter=True # outer join
+                )
+                .where(
+                    ExpenseORM.expense_dt.between(start_dt, end_dt)
+                )
+                .subquery()
+            )
+            
+            expense_summary = (
+                select(
+                    AcctORM.acct_name,
+                    f.sum(
+                        expense_item_summary.c.base_amount_after_tax
+                    ).label('total_base_amount')
+                )
+                .join(
+                    AcctORM,
+                    onclause=expense_item_summary.c.expense_acct_id == AcctORM.acct_id, 
+                    isouter=False # inner join
+                )
+                .group_by(
+                    AcctORM.acct_name
+                )
+                .order_by(column('total_base_amount').desc())
+            )
+            
+            expenses = s.exec(expense_summary).all()
+            
+        return [
+            _ExpenseSummaryBrief(
+                expense_type=expense.acct_name,
+                total_base_amount=expense.total_base_amount,
+            ) 
+            for expense in expenses
+        ]

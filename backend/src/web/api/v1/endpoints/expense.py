@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from src.app.model.invoice import GeneralInvoiceItem
 from src.app.model.enums import CurType
 from src.app.model.journal import Journal
-from src.app.model.expense import _ExpenseBrief, Expense
+from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, Expense
 from src.app.service.expense import ExpenseService
 
 router = APIRouter(prefix="/expense", tags=["expense"])
@@ -72,6 +72,13 @@ def list_expense(
         max_amount=max_amount,
         has_receipt=has_receipt
     ) 
+
+@router.get("/summary")
+def summary_expense(start_dt: date, end_dt: date) -> list[_ExpenseSummaryBrief]:
+    return ExpenseService.summary_expense(
+        start_dt=start_dt,
+        end_dt=end_dt
+    )
     
 @router.post("/add")
 def add_expense(expense: Expense):

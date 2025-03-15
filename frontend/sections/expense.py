@@ -487,7 +487,7 @@ if edit_mode == 'Edit':
                 )
                 
 # either add mode or selected edit/view mode
-if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
+if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
     
     exp_cols = st.columns(2)
     with exp_cols[0]:

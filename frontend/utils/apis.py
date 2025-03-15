@@ -1076,6 +1076,7 @@ def add_expense(expense: dict, files: list[str]):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    summary_expense.clear()
 
 @message_box
 def update_expense(expense: dict, files: list[str]):
@@ -1100,6 +1101,7 @@ def update_expense(expense: dict, files: list[str]):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    summary_expense.clear()
     
     
 @message_box
@@ -1115,6 +1117,19 @@ def delete_expense(expense_id: str):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    summary_expense.clear()
+
+@st.cache_data
+@message_box
+def summary_expense(start_dt: date, end_dt: date) -> list[dict]:
+    return get_req(
+        prefix='expense',
+        endpoint=f"summary",
+        params={
+            'start_dt': start_dt.strftime('%Y-%m-%d'),
+            'end_dt': end_dt.strftime('%Y-%m-%d'), 
+        }
+    )
 
 @message_box
 def upload_file(files: list[Tuple[str, bytes]]) -> list[str]:
