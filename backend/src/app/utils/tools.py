@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 import uuid
 import tomli
 import yaml
@@ -40,8 +41,8 @@ def get_secret() -> dict:
         config = tomli.load(fp)
     return config
 
-def get_file_root() -> str:
-    settings = get_settings().get('files', {})
+def get_file_root(type_: Literal['files', 'backup'] = 'files') -> str:
+    settings = get_settings().get(type_, {})
     
     if settings.get('fs', 'obj') == 'obj':
         # object file system

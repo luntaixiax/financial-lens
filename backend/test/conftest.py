@@ -5,7 +5,7 @@ import sqlalchemy
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlite3 import Connection as SQLite3Connection
-from src.app.dao.orm import SQLModel
+from src.app.dao.orm import SQLModelWithSort
 
 @pytest.fixture(scope='session')
 def settings():
@@ -29,7 +29,7 @@ def engine():
     # setup a sqlite database
     cur_path = Path() / 'test.db'
     engine = sqlalchemy.create_engine(f'sqlite:///{cur_path.as_posix()}')
-    SQLModel.metadata.create_all(engine)
+    SQLModelWithSort.metadata.create_all(engine)
     
     yield engine
         

@@ -10,7 +10,7 @@ def router_test() -> str:
 
 @router.post("/init_sample")
 def init():
-    from src.app.dao.orm import SQLModel
+    from src.app.dao.orm import SQLModelWithSort
     from src.app.dao.connection import get_engine
     from src.app.service.acct import AcctService
     from src.app.service.journal import JournalService
@@ -20,7 +20,7 @@ def init():
     from src.app.service.purchase import PurchaseService
     from src.app.service.expense import ExpenseService
     
-    SQLModel.metadata.create_all(get_engine())
+    SQLModelWithSort.metadata.create_all(get_engine())
     # create basic account structure *standard
     AcctService.init()
     # create additional sample accounts

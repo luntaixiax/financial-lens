@@ -1,6 +1,7 @@
 from datetime import date
 from fastapi import APIRouter, File, UploadFile
 from pydantic import BaseModel
+from src.app.service.backup import BackupService
 from src.app.model.exceptions import AlreadyExistError
 from src.app.model.enums import CurType
 from src.app.service.fx import FxService
@@ -9,6 +10,18 @@ from src.app.service.files import FileService
 from src.app.model.misc import _CountryBrief, _StateBrief, FileWrapper
 
 router = APIRouter(prefix="/misc", tags=["misc"])
+
+@router.get("/list_backup_ids")
+def list_backup_ids() -> list[str]:
+    return BackupService.list_backup_ids()
+
+@router.post("/backup")
+def backup(backup_id: str | None) -> str:
+    return BackupService.backup(backup_id)
+
+@router.post("/restore")
+def restore(backup_id: str):
+    BackupService.restore(backup_id)
 
 @router.get("/geo/countries/list")
 def list_countries() -> list[_CountryBrief]:

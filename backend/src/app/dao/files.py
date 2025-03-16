@@ -5,7 +5,7 @@ from sqlmodel import Session, select, delete, case, func as f
 from src.app.utils.tools import get_file_root
 from src.app.model.misc import FileWrapper
 from src.app.dao.orm import FileORM, infer_integrity_error
-from src.app.dao.connection import get_engine, get_fs
+from src.app.dao.connection import get_engine, get_storage_fs
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
 
 class fileDao:
@@ -34,7 +34,7 @@ class fileDao:
     def add(cls, file: FileWrapper):
         # save file to file system
         filepath = cls.getFilePath(file.filename)
-        fs = get_fs()
+        fs = get_storage_fs()
         with fs.open(filepath, 'wb') as obj:
             obj.write(file.content.encode('latin-1')) # TODO
         
@@ -51,7 +51,7 @@ class fileDao:
             
     @classmethod
     def get(cls, file_id: str) -> FileWrapper:
-        fs = get_fs()
+        fs = get_storage_fs()
         with Session(get_engine()) as s:
             sql = select(FileORM).where(
                 FileORM.file_id == file_id
@@ -87,7 +87,7 @@ class fileDao:
     
     @classmethod
     def remove(cls, file_id: str):
-        fs = get_fs()
+        fs = get_storage_fs()
         with Session(get_engine()) as s:
             sql = select(FileORM).where(FileORM.file_id == file_id)
             try:
