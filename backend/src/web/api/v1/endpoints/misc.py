@@ -16,7 +16,7 @@ def list_backup_ids() -> list[str]:
     return BackupService.list_backup_ids()
 
 @router.post("/backup")
-def backup(backup_id: str | None) -> str:
+def backup(backup_id: str | None = None) -> str:
     return BackupService.backup(backup_id)
 
 @router.post("/restore")
