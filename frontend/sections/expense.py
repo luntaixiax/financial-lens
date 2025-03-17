@@ -1,5 +1,6 @@
 import math
 import time
+import io
 import uuid
 import pandas as pd
 pd.set_option('future.no_silent_downcasting', True)
@@ -10,7 +11,8 @@ from utils.tools import DropdownSelect
 from utils.enums import AcctType, CurType, EntryType, JournalSrc
 from utils.apis import convert_to_base, get_base_currency, list_expense, get_expense_journal, \
     create_journal_from_new_expense, validate_expense, add_expense, update_expense, delete_expense, \
-    get_default_tax_rate, get_accounts_by_type, get_all_accounts, get_account
+    get_default_tax_rate, get_accounts_by_type, get_all_accounts, get_account, \
+    upload_file, delete_file, get_file
     
 st.set_page_config(layout="centered")
 
@@ -485,7 +487,7 @@ if edit_mode == 'Edit':
                 )
                 
 # either add mode or selected edit/view mode
-if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
+if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
     
     exp_cols = st.columns(2)
     with exp_cols[0]:
@@ -642,6 +644,49 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
             height=205
         )
         
+    
+    # add receipt section
+    receipt_section = st.container(border=True)
+    receipt_section.subheader("Manage receipts")
+    receipt_section.caption("Anything uploaded here, once click update/add, will append to existing receipts")
+    uploaded_files = receipt_section.file_uploader(
+        "Upload Receipts", 
+        accept_multiple_files=True,
+        
+    )
+    files = []
+    for file in uploaded_files:
+        # this must be BufferedReader to work properly
+        bytes_file = io.BufferedReader(file)
+        # this must be files to work properly
+        files.append(('files', bytes_file))    
+    
+    if edit_mode == 'Edit' and (recpt_ids := exp_sel['receipts']) is not None:
+        receipts = []
+        remove_receipts = []
+        for recpt_id in recpt_ids:
+            receipt = get_file(file_id = recpt_id)
+            receipts.append(receipt)
+
+            # show receipts
+            with receipt_section.expander(
+                label = f"{receipt['filename']} | {receipt['file_id']}",
+                expanded=False,
+                icon='🖼️'
+            ):
+                try:
+                    st.image(
+                        image=receipt['content'],
+                        caption=receipt['filehash']
+                    )
+                except Exception as e:
+                    st.json({
+                        'file_id': receipt['file_id'],
+                        'file_hash': receipt['filehash']
+                    })
+        
+    
+    # compile expense (without receipts)
     expense_ = {
         #"payment_id": "string",
         "expense_dt": exp_date.strftime('%Y-%m-%d'), # convert to string
@@ -650,12 +695,15 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
         "payment_acct_id": pmt_acct_id,
         "payment_amount": pmt_amt,
         "merchant": {
-            'merchant': None if merchant is "" else merchant,
-            'platform': None if platform is "" else platform,
-            'ref_no': None if ref_no is "" else ref_no,
+            'merchant': None if merchant == "" else merchant,
+            'platform': None if platform == "" else platform,
+            'ref_no': None if ref_no == "" else ref_no,
         },
-        "note": None if note is "" else note
+        "note": None if note == "" else note,
+        "receipts": exp_sel['receipts'] if edit_mode == 'Edit' else None
     }
+    
+    
     
     # TODO: only validate if in add mode or if in edit mode and actually changed something
     validate_btn = st.button(
@@ -806,7 +854,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
         st.button(
             label='Add Expense',
             on_click=add_expense,
-            args=(expense_,)
+            args=(expense_, files)
         )
         
     elif edit_mode == 'Edit':
@@ -819,7 +867,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
                     label='Update',
                     type='secondary',
                     on_click=update_expense,
-                    args=(expense_,)
+                    args=(expense_, files)
                 )
         with btn_cols[0]:
             st.button(

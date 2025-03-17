@@ -1,6 +1,6 @@
 from typing import List, Dict, Tuple
 from sqlmodel import Field, SQLModel, Column, create_engine
-from sqlalchemy import ForeignKey, Boolean, JSON, Integer, String, Text, Date, DateTime, Float, Numeric, DECIMAL, UniqueConstraint, inspect, INT, CHAR
+from sqlalchemy import ForeignKey, Boolean, JSON, ARRAY, Integer, String, Text, Date, DateTime, Float, Numeric, DECIMAL, UniqueConstraint, inspect, INT, CHAR
 from sqlalchemy_utils import EmailType, PasswordType, PhoneNumberType, ChoiceType, CurrencyType, PhoneNumber
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from datetime import date, datetime
@@ -27,8 +27,25 @@ def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  F
         return AlreadyExistError(details=str(e))
     
     return e
+
+def get_class_by_tablename(tablename):
+    """Return class reference mapped to table.
+
+    :param tablename: String with name of table.
+    :return: Class reference or None.
+    """
+    for c in SQLModelWithSort._sa_registry.mappers:
+        if hasattr(c, 'class_') and c.class_.__tablename__ == tablename:
+            return c.class_
+
+class SQLModelWithSort(SQLModel):
     
-class FileORM(SQLModel, table=True):
+    @classmethod
+    def sort_for_backup(cls, rows):
+        # sort rows from query, useful in case of backup
+        return rows
+    
+class FileORM(SQLModelWithSort, table=True):
     __tablename__ = 'file'
     
     file_id: str = Field(
@@ -37,10 +54,10 @@ class FileORM(SQLModel, table=True):
             primary_key = True, 
             nullable = False)
     )
-    filename: str = Field(sa_column=Column(String(length = 50), nullable = False, primary_key = False, unique=True))
+    filename: str = Field(sa_column=Column(String(length = 200), nullable = False, primary_key = False, unique=True))
     filehash: str = Field(sa_column=Column(String(length = 64), nullable = False, primary_key = False, unique=True))
 
-class FxORM(SQLModel, table=True):
+class FxORM(SQLModelWithSort, table=True):
     __tablename__ = "currency"
     
     currency: CurType = Field(
@@ -58,7 +75,7 @@ class FxORM(SQLModel, table=True):
     )
     
     
-class ContactORM(SQLModel, table=True):
+class ContactORM(SQLModelWithSort, table=True):
     
     __tablename__ = "contact"
     
@@ -74,7 +91,7 @@ class ContactORM(SQLModel, table=True):
     address: dict | None = Field(sa_column=Column(JSON(), nullable = True))
 
 
-class EntityORM(SQLModel, table=True):
+class EntityORM(SQLModelWithSort, table=True):
     __tablename__ = "entity"
     
     entity_id: str = Field(
@@ -127,7 +144,7 @@ class EntityORM(SQLModel, table=True):
     )
     
 
-class ChartOfAccountORM(SQLModel, table=True):
+class ChartOfAccountORM(SQLModelWithSort, table=True):
     
     __tablename__ = "chart_of_account"
     
@@ -156,8 +173,45 @@ class ChartOfAccountORM(SQLModel, table=True):
         )
     )
     
+    @classmethod
+    def sort_for_backup(cls, rows):
+        
+        from anytree import Node, RenderTree, PreOrderIter
+        
+        # need this top node for all charts from different branch
+        nodes = {
+            'top_node': Node('top_node')
+        }
+        
+        # add all nodes and save mappings
+        mappings = {}
+        for r in rows:
+            chart_id = r.chart_id
+            parent_chart_id = r.parent_chart_id or 'top_node'
+            
+            nodes[chart_id] = Node(name=chart_id)
+            mappings[chart_id] = {
+                'chart_id': chart_id,
+                'parent_chart_id': parent_chart_id,
+                'row': r
+            }
+        
+        # 2nd iteration: add dependency
+        for chart_id, m in mappings.items():
+            parent_chart_id = m.get('parent_chart_id')
+            nodes[chart_id].parent = nodes[parent_chart_id]
+        
+        ordered = []
+        for node in PreOrderIter(nodes['top_node']):
+            if node.name == 'top_node':
+                continue
+            
+            ordered.append(mappings[node.name]['row'])
+            
+        return ordered
     
-class AcctORM(SQLModel, table=True):
+    
+class AcctORM(SQLModelWithSort, table=True):
     
     __tablename__ = "accounts"
     
@@ -185,7 +239,7 @@ class AcctORM(SQLModel, table=True):
         )
     )
     
-class BankAcctORM(SQLModel, table=True):
+class BankAcctORM(SQLModelWithSort, table=True):
     
     __tablename__ = "bank_accounts"
     
@@ -223,7 +277,7 @@ class BankAcctORM(SQLModel, table=True):
     extra_info: dict | None = Field(sa_column=Column(JSON(), nullable = True))
     
     
-class JournalORM(SQLModel, table=True):
+class JournalORM(SQLModelWithSort, table=True):
     
     __tablename__ = "journals"
     
@@ -236,7 +290,7 @@ class JournalORM(SQLModel, table=True):
     )
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
-class EntryORM(SQLModel, table=True):
+class EntryORM(SQLModelWithSort, table=True):
     __tablename__ = "entries"
     
     entry_id: str = Field(
@@ -277,7 +331,7 @@ class EntryORM(SQLModel, table=True):
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
     
-class ItemORM(SQLModel, table=True):
+class ItemORM(SQLModelWithSort, table=True):
     __tablename__ = "item"
     
     item_id: str = Field(
@@ -313,7 +367,7 @@ class ItemORM(SQLModel, table=True):
     )
 
 
-class InvoiceORM(SQLModel, table=True):
+class InvoiceORM(SQLModelWithSort, table=True):
     __tablename__ = "invoice"
     
     invoice_id: str = Field(
@@ -361,7 +415,7 @@ class InvoiceORM(SQLModel, table=True):
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 
-class InvoiceItemORM(SQLModel, table=True):
+class InvoiceItemORM(SQLModelWithSort, table=True):
     __tablename__ = "invoice_item"
     
     invoice_item_id: str = Field(
@@ -408,7 +462,7 @@ class InvoiceItemORM(SQLModel, table=True):
     discount_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
 
-class GeneralInvoiceItemORM(SQLModel, table=True):
+class GeneralInvoiceItemORM(SQLModelWithSort, table=True):
     __tablename__ = "general_invoice_item"
     
     ginv_item_id: str = Field(
@@ -448,7 +502,7 @@ class GeneralInvoiceItemORM(SQLModel, table=True):
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 
-class ExpenseORM(SQLModel, table=True):
+class ExpenseORM(SQLModelWithSort, table=True):
     __tablename__ = "expense"
     
     expense_id: str = Field(
@@ -488,7 +542,7 @@ class ExpenseORM(SQLModel, table=True):
     ) # TODO: in dao, need to add journal (auto mode) first, then add expense
     
     
-class ExpenseItemORM(SQLModel, table=True):
+class ExpenseItemORM(SQLModelWithSort, table=True):
     __tablename__ = "expense_item"
     
     expense_item_id: str = Field(
@@ -522,7 +576,7 @@ class ExpenseItemORM(SQLModel, table=True):
     tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
-class PaymentORM(SQLModel, table=True):
+class PaymentORM(SQLModelWithSort, table=True):
     __tablename__ = "payment"
     
     payment_id: str = Field(
@@ -563,7 +617,7 @@ class PaymentORM(SQLModel, table=True):
     ref_num: str | None = Field(sa_column=Column(Text(), nullable = True))
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
-class PaymentItemORM(SQLModel, table=True):
+class PaymentItemORM(SQLModelWithSort, table=True):
     __tablename__ = "payment_item"
     
     payment_item_id: str = Field(

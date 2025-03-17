@@ -11,7 +11,7 @@ from src.app.service.journal import JournalService
 from src.app.service.fx import FxService
 from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
-from src.app.model.expense import _ExpenseBrief, ExpenseItem, Expense, Merchant
+from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, Merchant
 from src.app.model.journal import Journal, Entry
 
 
@@ -396,4 +396,11 @@ class ExpenseService:
             min_amount=min_amount,
             max_amount=max_amount,
             has_receipt=has_receipt
-        ) 
+        )
+        
+    @classmethod
+    def summary_expense(cls, start_dt: date, end_dt: date) -> list[_ExpenseSummaryBrief]:
+        return expenseDao.summary_expense(
+            start_dt=start_dt,
+            end_dt=end_dt
+        )

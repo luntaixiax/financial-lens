@@ -1,6 +1,6 @@
 from functools import wraps
 import os
-from typing import Any
+from typing import Any, Tuple
 import requests
 
 from utils.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError, UnprocessableEntityError
@@ -68,15 +68,19 @@ def get_req(prefix:str, endpoint: str, params:dict=None, data:dict = None) -> di
     )
 
 @handle_error
-def post_req(prefix:str, endpoint: str, params:dict=None, data:dict = None) -> dict:
-    headers = {
-        "Content-type" : "application/json"
-    }
+def post_req(prefix:str, endpoint: str, params:dict=None, data:dict = None, files: list[Tuple[str, bytes]] | None = None) -> dict:
+    if files is None:
+        headers = {
+            "Content-type" : "application/json"
+        }
+    else:
+        headers = None
     return requests.post(
             url = assemble_url(prefix, endpoint),
             params = params,
             json = data,
-            headers = headers
+            headers = headers,
+            files = files
         )
 
 @handle_error

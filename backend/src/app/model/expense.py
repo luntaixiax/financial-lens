@@ -57,6 +57,10 @@ class _ExpenseBrief(EnhancedBaseModel):
     @computed_field
     def expense_acct_names(self) -> list[str]:
         return self.expense_acct_name_strs.split(',')
+    
+class _ExpenseSummaryBrief(EnhancedBaseModel):
+    expense_type: str
+    total_base_amount: float
 
 class Expense(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)

@@ -1,8 +1,9 @@
 from functools import partial
-from pydantic import BaseModel, Field
+import hashlib
+from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.utils.tools import id_generator
 
-class File(BaseModel):
+class FileWrapper(BaseModel):
     file_id: str = Field(
         default_factory=partial(
             id_generator,
@@ -12,7 +13,12 @@ class File(BaseModel):
         frozen=True,
     )
     filename: str
-    filehash: str
+    content: str
+    
+    @computed_field()
+    def filehash(self) -> str:
+        return hashlib.md5(self.filename.encode()).hexdigest() # TODO: find efficient way to hash content
+    
 
 class _CountryBrief(BaseModel):
     country: str

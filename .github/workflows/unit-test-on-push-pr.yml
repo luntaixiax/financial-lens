@@ -1,4 +1,4 @@
-name: Unit-Test-on-Push-and-PR
+name: Unit-Test-Build-on-Push-and-PR
 on:
   push:
     branches:
@@ -8,25 +8,38 @@ on:
       - main
 
 jobs:
-  limit-changes:
+  limit-changes-backend:
     # finds out which files to watch for unit testing
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
-        id: file_watch_list
+        id: file_watch_list_backend
         with:
           filters: |
             code:
               - 'backend/**'
-
     outputs:
-      changelist: ${{ steps.file_watch_list.outputs.code }}
+      changelist: ${{ steps.file_watch_list_backend.outputs.code }}
+
+  limit-changes-frontend:
+    # finds out which files to watch for frontend building
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: file_watch_list_frontend
+        with:
+          filters: |
+            code:
+              - 'frontend/**'
+    outputs:
+      changelist: ${{ steps.file_watch_list_frontend.outputs.code }}
 
   unit-test:
     runs-on: ubuntu-latest
-    needs: limit-changes
-    if: ${{ needs.limit-changes.outputs.changelist == 'true' }}
+    needs: limit-changes-backend
+    if: ${{ needs.limit-changes-backend.outputs.changelist == 'true' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,4 +62,45 @@ jobs:
         run: |
           python -m pytest -s .
 
+  build-backend-image:
+    runs-on: ubuntu-latest
+    needs: unit-test  # will depend on previous step `build`
+    if: ${{ needs.limit-changes-backend.outputs.changelist == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dockerhub Login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: build and push image
+        working-directory: backend
+        run: |
+          model_hub_nm=${{ secrets.DOCKERHUB_USERNAME }}/finlens-backend
+          docker build -t ${model_hub_nm}:latest .
+          docker tag ${model_hub_nm}:latest ${model_hub_nm}:latest
+          docker push ${model_hub_nm}:latest
+
+  build-frontend-image:
+    runs-on: ubuntu-latest
+    needs: limit-changes-frontend  # will depend on previous step `build`
+    if: ${{ needs.limit-changes-frontend.outputs.changelist == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dockerhub Login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: build and push image
+        working-directory: frontend
+        run: |
+          model_hub_nm=${{ secrets.DOCKERHUB_USERNAME }}/finlens-frontend
+          docker build -t ${model_hub_nm}:latest .
+          docker tag ${model_hub_nm}:latest ${model_hub_nm}:latest
+          docker push ${model_hub_nm}:latest
 

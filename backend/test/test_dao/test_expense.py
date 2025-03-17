@@ -104,6 +104,9 @@ def test_expense(mock_engine, mock_settings, settings, engine_with_sample_choa,
     assert _jrn_id == sample_journal_meal.journal_id
     assert _expense == sample_expense_rent
     
+    # test summary expense
+    expenseDao.summary_expense(date(2000, 1, 1), date(2099, 12, 31))
+    
     # test remove invoice
     expenseDao.remove(sample_expense_meal.expense_id)
     with pytest.raises(NotExistError):

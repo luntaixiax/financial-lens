@@ -1059,7 +1059,12 @@ def list_expense(
     )
 
 @message_box
-def add_expense(expense: dict):
+def add_expense(expense: dict, files: list[str]):
+    #save the files
+    if len(files) > 0:
+        file_ids = upload_file(files)
+        expense['receipts'] = file_ids
+        
     post_req(
         prefix='expense',
         endpoint='add',
@@ -1071,9 +1076,19 @@ def add_expense(expense: dict):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    summary_expense.clear()
 
 @message_box
-def update_expense(expense: dict):
+def update_expense(expense: dict, files: list[str]):
+    #save the files
+    if len(files) > 0:
+        file_ids = upload_file(files)
+        
+        existing_receipts = expense['receipts'] or []
+        existing_receipts.extend(file_ids)
+        existing_receipts = list(set(existing_receipts))
+        expense['receipts'] = existing_receipts
+        
     put_req(
         prefix='expense',
         endpoint='update',
@@ -1086,6 +1101,7 @@ def update_expense(expense: dict):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    summary_expense.clear()
     
     
 @message_box
@@ -1101,3 +1117,45 @@ def delete_expense(expense_id: str):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    summary_expense.clear()
+
+@st.cache_data
+@message_box
+def summary_expense(start_dt: date, end_dt: date) -> list[dict]:
+    return get_req(
+        prefix='expense',
+        endpoint=f"summary",
+        params={
+            'start_dt': start_dt.strftime('%Y-%m-%d'),
+            'end_dt': end_dt.strftime('%Y-%m-%d'), 
+        }
+    )
+
+@message_box
+def upload_file(files: list[Tuple[str, bytes]]) -> list[str]:
+    return post_req(
+        prefix='misc',
+        endpoint='upload_file',
+        files=files
+    )
+
+@message_box
+def delete_file(file_id: str):
+    delete_req(
+        prefix='misc',
+        endpoint=f'delete_file/{file_id}'
+    )
+
+@message_box
+def get_file(file_id: str) -> dict:
+    f = get_req(
+        prefix='misc',
+        endpoint=f"get_file/{file_id}",
+    )
+    # convert file from string to bytes
+    return {
+        'file_id': f['file_id'],
+        'filename': f['filename'],
+        'content': f['content'].encode('latin-1'),
+        'filehash': f['filehash']
+    }
