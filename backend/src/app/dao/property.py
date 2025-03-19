@@ -144,13 +144,14 @@ class PropertyTransactionDao:
     def add(cls, journal_id: str, property_trans: PropertyTransaction):
         with Session(get_engine()) as s:
             property_trans_orm = cls.fromPropertyTrans(journal_id, property_trans)
-        s.add(property_trans_orm)
-        try:
-            s.commit()
-        except IntegrityError as e:
-            s.rollback()
-            raise infer_integrity_error(e, during_creation=True)
-        logging.info(f"Added {property_trans_orm} to property transaction table")
+            
+            s.add(property_trans_orm)
+            try:
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise infer_integrity_error(e, during_creation=True)
+            logging.info(f"Added {property_trans_orm} to property transaction table")
         
     @classmethod
     def remove(cls, trans_id: str):
