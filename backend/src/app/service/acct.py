@@ -46,6 +46,14 @@ class AcctService:
             ), 
             parent = total_asset
         )
+        fixed_asset = ChartNode(
+            Chart(
+                chart_id=SystemChartOfAcctNumber.FIXED_ASSET,
+                name='1210 - Fixed Asset',
+                acct_type=AcctType.AST
+            ), 
+            parent = noncurrent_asset
+        )
         # liability chart of accounts
         total_liability = ChartNode(
             Chart(
@@ -191,6 +199,26 @@ class AcctService:
             acct_type=AcctType.EXP,
             chart=total_expense.chart
         ) # for payment entry
+        ppne = Account(
+            acct_id=SystemAcctNumber.PPNE,
+            acct_name="PP&E",
+            acct_type=AcctType.AST,
+            chart=fixed_asset.chart,
+            currency=get_base_cur(),
+        )
+        acc_amort = Account(
+            acct_id=SystemAcctNumber.ACC_ADJ,
+            acct_name="Acc. PP&E Adj.",
+            acct_type=AcctType.AST,
+            chart=fixed_asset.chart,
+            currency=get_base_cur(),
+        ) # accumulative amortization
+        amort = Account(
+            acct_id=SystemAcctNumber.DEPRECIATION,
+            acct_name="Depreciation",
+            acct_type=AcctType.EXP,
+            chart=total_expense.chart,
+        )
         
         cls.add_account(input_tax)
         cls.add_account(output_tax)
@@ -204,6 +232,9 @@ class AcctService:
         cls.add_account(disc)
         cls.add_account(fx_gain)
         cls.add_account(bank_fee)
+        cls.add_account(ppne)
+        cls.add_account(acc_amort)
+        cls.add_account(amort)
         
     @classmethod
     def create_sample(cls):
@@ -215,9 +246,6 @@ class AcctService:
         )
         bank_chart = AcctService.get_chart(
             chart_id=SystemChartOfAcctNumber.BANK_ASSET
-        )
-        noncur_chart = AcctService.get_chart(
-            chart_id=SystemChartOfAcctNumber.NONCUR_ASSET
         )
         curlib_chart = AcctService.get_chart(
             chart_id=SystemChartOfAcctNumber.CUR_LIB
@@ -277,13 +305,6 @@ class AcctService:
             currency=CurType.USD,
             chart=bank_chart
         )
-        fixed_asset = Account(
-            acct_id='acct-fass',
-            acct_name="Fixed Asset",
-            acct_type=AcctType.AST,
-            currency=get_base_cur(),
-            chart=noncur_chart
-        )
         credit = Account(
             acct_id='acct-credit',
             acct_name="Credit Acct",
@@ -308,7 +329,6 @@ class AcctService:
         AcctService.add_account(bank)
         AcctService.add_account(bank_foreign)
         AcctService.add_account(bank_foreign2)
-        AcctService.add_account(fixed_asset)
         AcctService.add_account(credit)
         AcctService.add_account(shareholder_loan)
         
