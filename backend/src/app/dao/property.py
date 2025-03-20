@@ -118,7 +118,7 @@ class propertyDao:
                 s.refresh(p) # update p to instantly have new values
                 
                 
-class PropertyTransactionDao:
+class propertyTransactionDao:
     @classmethod
     def fromPropertyTrans(cls, journal_id: str, property_trans: PropertyTransaction) -> PropertyTransactionORM:
         return PropertyTransactionORM(
