@@ -91,7 +91,7 @@ class ExpenseService:
             )
         except NotExistError as e:
             raise FKNotExistError(
-                f"Payment Account Dd {expense.payment_acct_id} does not exist",
+                f"Payment Account Id {expense.payment_acct_id} does not exist",
                 details=e.details
             )
         

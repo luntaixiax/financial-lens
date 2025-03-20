@@ -1,6 +1,8 @@
+hvac==2.3.0
 anytree==2.12.1
 mysql-connector-python==8.1.0
 CurrencyConverter==0.17.11
+uvicorn==0.34.0
 fastapi==0.115.11
 pydantic==2.10.6
 pytest==8.3.3
