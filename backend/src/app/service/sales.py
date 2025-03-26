@@ -454,7 +454,7 @@ class SalesService:
                 )
             except AlreadyExistError as e:
                 raise AlreadyExistError(
-                    f'Invoice Number already exist: , change one please',
+                    f'Invoice Number already exist, change one please',
                     details=f"payment number: {invoice.invoice_num}"
                 )
             

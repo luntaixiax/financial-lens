@@ -1,10 +1,21 @@
 from functools import lru_cache
 from typing import Literal
 import uuid
+import hvac
+import os
 import tomli
 import yaml
 from pathlib import Path
 from src.app.model.enums import CurType
+
+ENV = os.environ.get("ENV", "prod")
+VAULT_MOUNT_POINT = "finlens"
+VAULT_MOUNT_PATH = {
+    'database' : f"{ENV}/database",
+    'storage_server' : f"{ENV}/storage_server",
+    'backup_server' : f"{ENV}/backup_server",
+    'stateapi' : f"{ENV}/stateapi",
+}
 
 def id_generator(prefix: str, length: int = 8, existing_list: list = None) -> str:
     new_id = prefix + str(uuid.uuid4())[:length]
@@ -35,11 +46,51 @@ def get_company() -> dict:
     settings = get_settings()
     return settings['company_settings']
 
-@lru_cache()
-def get_secret() -> dict:
+def get_vault_resp(mount_point: str, path: str) -> dict:
     with open(Path.cwd().parent / "secrets.toml", mode="rb") as fp:
         config = tomli.load(fp)
-    return config
+        
+    vault_config = config['vault']
+    
+    client = hvac.Client(
+        url = f"{vault_config['endpoint']}:{vault_config['port']}",
+        token = vault_config['token']
+    )
+    if client.is_authenticated():
+        response = client.secrets.kv.read_secret_version(
+            mount_point=mount_point,
+            path=path,
+            raise_on_deleted_version=True
+        )['data']['data']
+        return response
+    else:
+        raise PermissionError("Vault Permission Error")
+
+@lru_cache()
+def get_secret() -> dict:
+    database = get_vault_resp(
+        mount_point = VAULT_MOUNT_POINT,
+        path = VAULT_MOUNT_PATH['database'],
+    )
+    storage_server = get_vault_resp(
+        mount_point = VAULT_MOUNT_POINT,
+        path = VAULT_MOUNT_PATH['storage_server'],
+    )
+    backup_server = get_vault_resp(
+        mount_point = VAULT_MOUNT_POINT,
+        path = VAULT_MOUNT_PATH['backup_server'],
+    )
+    stateapi = get_vault_resp(
+        mount_point = VAULT_MOUNT_POINT,
+        path = VAULT_MOUNT_PATH['stateapi'],
+    )
+    
+    return {
+        'database' : database,
+        'storage_server' : storage_server,
+        'backup_server' : backup_server,
+        'stateapi' : stateapi,
+    }
 
 def get_file_root(type_: Literal['files', 'backup'] = 'files') -> str:
     settings = get_settings().get(type_, {})

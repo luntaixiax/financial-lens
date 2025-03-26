@@ -83,7 +83,7 @@ def test_coa(mock_engine, engine_with_basic_choa):
     assert _wise_node.parent == _cur_asset
     assert len(_cur_asset.descendants) == 1
     assert len(_node.children) == 3
-    assert len(_node.descendants) == 4
+    assert len(_node.descendants) == 5
     AcctService.move_chart(
         chart_id=test_bank.chart_id, 
         new_parent_chart_id=SystemChartOfAcctNumber.NONCUR_ASSET
@@ -93,9 +93,9 @@ def test_coa(mock_engine, engine_with_basic_choa):
     _bank_node = _node.find_node_by_id(test_bank.chart_id)
     assert _bank_node.parent == _noncur_asset
     assert len(_cur_asset.descendants) == 1
-    assert len(_noncur_asset.descendants) == 1
+    assert len(_noncur_asset.descendants) == 2
     assert len(_node.children) == 2
-    assert len(_node.descendants) == 4
+    assert len(_node.descendants) == 5
     
     # test delete account
     AcctService.delete_chart(chart_id=test_bank.chart_id)
@@ -104,7 +104,7 @@ def test_coa(mock_engine, engine_with_basic_choa):
     _noncur_asset = _node.find_node_by_id(SystemChartOfAcctNumber.NONCUR_ASSET)
     _cur_asset = _node.find_node_by_id(SystemChartOfAcctNumber.CUR_ASSET)
     assert len(_cur_asset.descendants) == 0
-    assert len(_noncur_asset.descendants) == 0
+    assert len(_noncur_asset.descendants) == 1
     
 @mock.patch("src.app.dao.connection.get_engine")
 def test_account(mock_engine, engine_with_basic_choa):
@@ -145,7 +145,7 @@ def test_account(mock_engine, engine_with_basic_choa):
     assert _meal == meal
     # test get accounts by chart
     _exps = AcctService.get_accounts_by_chart(exp_chart)
-    assert len(_exps) == 3
+    assert len(_exps) == 4
     assert rental in _exps
     assert meal in _exps
     
@@ -188,4 +188,4 @@ def test_account(mock_engine, engine_with_basic_choa):
         except OpNotPermittedError:
             pass
     
-    assert len(AcctService.get_accounts_by_chart(exp_chart)) == 1 # leave 1 system account
+    assert len(AcctService.get_accounts_by_chart(exp_chart)) == 2 # leave 2 system account

@@ -1,4 +1,3 @@
-
 import logging
 from sqlmodel import Session, select
 from sqlalchemy.exc import NoResultFound, IntegrityError
