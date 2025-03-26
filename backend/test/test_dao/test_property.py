@@ -22,6 +22,7 @@ def sample_property() -> Property:
 @pytest.fixture
 def sample_depreciation() -> PropertyTransaction:
     return PropertyTransaction(
+        trans_id='test-depre',
         property_id='test-prop',
         trans_dt=date(2024, 2, 1),
         trans_type=PropertyTransactionType.DEPRECIATION,
@@ -31,10 +32,11 @@ def sample_depreciation() -> PropertyTransaction:
 @pytest.fixture
 def sample_appreciation() -> PropertyTransaction:
     return PropertyTransaction(
+        trans_id='test-appre',
         property_id='test-prop',
         trans_dt=date(2024, 2, 1),
         trans_type=PropertyTransactionType.APPRECIATION,
-        trans_amount=500
+        trans_amount=300
     )
     
 @mock.patch("src.app.dao.connection.get_engine")
