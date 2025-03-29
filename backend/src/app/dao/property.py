@@ -1,11 +1,12 @@
 
+from datetime import date
 import logging
 from typing import Tuple
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.enums import PropertyTransactionType, PropertyType
 from src.app.dao.orm import PropertyORM, PropertyTransactionORM, infer_integrity_error
-from src.app.model.property import Property, PropertyTransaction
+from src.app.model.property import Property, PropertyTransaction, _PropertyPriceBrief
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, FKNoDeleteUpdateError
 from src.app.dao.connection import get_engine
 
@@ -117,6 +118,23 @@ class propertyDao:
             else:
                 s.refresh(p) # update p to instantly have new values
                 
+    @classmethod
+    def list_properties(cls) -> list[Property]:
+        with Session(get_engine()) as s:
+
+            # get property
+            sql = select(PropertyORM)
+            try:
+                property_orms = s.exec(sql).all() # get the property
+            except NoResultFound as e:
+                return []
+            
+            properties = [cls.toProperty(
+                property_orm=property_orm,
+            ) for property_orm in property_orms]
+            
+        return properties
+                
                 
 class propertyTransactionDao:
     @classmethod
@@ -175,7 +193,7 @@ class propertyTransactionDao:
         # return both property id and journal id
         with Session(get_engine()) as s:
 
-            # get property
+            # get property transactions
             sql = select(PropertyTransactionORM).where(
                 PropertyTransactionORM.trans_id == trans_id
             )
@@ -223,3 +241,72 @@ class propertyTransactionDao:
                 )
             else:
                 s.refresh(p) # update p to instantly have new values
+                
+    @classmethod
+    def get_acc_stat(cls, property_id: str, rep_dt: date) -> _PropertyPriceBrief:
+        with Session(get_engine()) as s:
+            prop_summary = (
+                select(PropertyORM.pur_price)
+                .where(
+                    PropertyORM.pur_dt <= rep_dt,
+                    PropertyORM.property_id == property_id,   
+                )
+            )
+            try:
+                price = s.exec(prop_summary).one()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
+            
+            flow_summary = (
+                select(
+                    PropertyTransactionORM.trans_type,
+                    f.sum(PropertyTransactionORM.trans_amount).label('acc_amount')
+                )
+                .where(
+                    PropertyTransactionORM.property_id == property_id,
+                    PropertyTransactionORM.trans_dt <= rep_dt,
+                )
+                .group_by(
+                    PropertyTransactionORM.trans_type,
+                )
+            )
+
+            try:
+                result = s.exec(flow_summary).all()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
+            
+            p = _PropertyPriceBrief(pur_price=price)
+            if len(result) > 0:
+                attr_mapping = {
+                    PropertyTransactionType.APPRECIATION: 'acc_depreciation',
+                    PropertyTransactionType.DEPRECIATION: 'acc_appreciation',
+                    PropertyTransactionType.IMPAIRMENT: 'acc_impairment',
+                }
+                for r in result:
+                    setattr(p, attr_mapping.get(r.trans_type), r.acc_amount)
+                
+        return p
+                
+    
+    @classmethod
+    def list_transactions(cls, property_id: str) -> list[PropertyTransaction]:
+        with Session(get_engine()) as s:
+
+            # get property transactions
+            sql = select(PropertyTransactionORM).where(
+                PropertyTransactionORM.property_id == property_id
+            )
+            try:
+                property_trans_orms = s.exec(sql).all() # get the property
+            except NoResultFound as e:
+                return []
+            
+            property_trans = [cls.toPropertyTrans(
+                property_trans_orm=property_trans_orm,
+            ) for property_trans_orm in property_trans_orms]
+            
+        return property_trans
+    
+    
+        

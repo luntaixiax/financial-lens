@@ -9,7 +9,7 @@ from src.app.model.enums import AcctType, EntryType, JournalSrc, PropertyTransac
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError, FKNotExistError, NotMatchWithSystemError
 from src.app.service.acct import AcctService
 from src.app.model.accounts import Account
-from src.app.model.property import Property, PropertyTransaction
+from src.app.model.property import _PropertyPriceBrief, Property, PropertyTransaction
 
 
 class PropertyService:
@@ -69,6 +69,13 @@ class PropertyService:
                 f"Property {property_trans.property_id} does not exist",
                 details=e.details
             )
+        else:
+            # validate if transaction is after property purchase date
+            if property_trans.trans_dt < property.pur_dt:
+                raise NotMatchWithSystemError(
+                    message=f"Transaction happend before property purchase date",
+                    details=f"Transaction date: {property_trans.trans_dt}, Purchase date: {property.pur_dt}"
+                )
         return property_trans
             
     @classmethod
@@ -443,3 +450,26 @@ class PropertyService:
         
         # remove old journal
         JournalService.delete_journal(jrn_id)
+        
+    @classmethod
+    def list_properties(cls) -> list[Property]:
+        return propertyDao.list_properties()
+    
+    @classmethod
+    def get_acc_stat(cls, property_id: str, rep_dt: date) -> _PropertyPriceBrief:
+        try:
+            stat = propertyTransactionDao.get_acc_stat(
+                property_id=property_id,
+                rep_dt=rep_dt
+            )
+        except NotExistError as e:
+            raise NotExistError(
+                message=f"Given property {property_id} not exist or purchased after {rep_dt}",
+                details=e.details
+            )
+        return stat
+    
+    @classmethod
+    def list_transactions(cls, property_id: str) -> list[PropertyTransaction]:
+        return propertyTransactionDao.list_transactions(property_id)
+    

@@ -1,7 +1,7 @@
 from datetime import date
 from functools import partial
 from typing import Any, Literal
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 
 from src.app.utils.base import EnhancedBaseModel
 from src.app.model.enums import PropertyType, PropertyTransactionType
@@ -39,4 +39,14 @@ class PropertyTransaction(EnhancedBaseModel):
     trans_amount: float = Field(
         description="Depreciation/Impairment/Appreciation amount, expressed in purchase curreny"
     )
+
+class _PropertyPriceBrief(EnhancedBaseModel):
+    pur_price: float = 0.0
+    acc_depreciation: float = 0.0
+    acc_appreciation: float = 0.0
+    acc_impairment: float = 0.0
+    
+    @computed_field
+    def value(self) -> float:
+        return self.pur_price + self.acc_depreciation - self.acc_appreciation - self.acc_impairment
     

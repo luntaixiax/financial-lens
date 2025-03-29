@@ -536,7 +536,10 @@ class invoiceDao:
                 .limit(limit)
             )
             
-            invoices = s.exec(invoice_joined).all()
+            try:
+                invoices = s.exec(invoice_joined).all()
+            except NoResultFound as e:
+                return []
             
         return [
             _InvoiceBrief(
@@ -620,7 +623,10 @@ class invoiceDao:
                 )
             )
             
-            joined = s.exec(invoice_joined).one()
+            try:
+                joined = s.exec(invoice_joined).one()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
             
         return _InvoiceBalance(
             invoice_id=invoice_id,
@@ -715,7 +721,10 @@ class invoiceDao:
                 )
             )
             
-            joined = s.exec(invoice_joined).all()
+            try:
+                joined = s.exec(invoice_joined).all()
+            except NoResultFound as e:
+                return []
             
         return [
             _InvoiceBalance(

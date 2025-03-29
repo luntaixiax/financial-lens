@@ -66,6 +66,12 @@ def test_validate_property_trans(mock_engine, test_sample_property_engine):
     with pytest.raises(FKNotExistError):
         # account not exist
         PropertyService._validate_propertytrans(property_trans)
+        
+    # validate purchase date
+    property_trans.property_id = 'test-prop'
+    property_trans.trans_dt = date(2000, 1, 1)
+    with pytest.raises(NotMatchWithSystemError):
+        PropertyService._validate_propertytrans(property_trans)
 
 @mock.patch("src.app.dao.connection.get_engine")
 def test_property_trans(mock_engine, test_sample_property_engine, sample_depreciation):

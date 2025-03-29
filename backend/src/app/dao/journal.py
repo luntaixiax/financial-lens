@@ -266,8 +266,11 @@ class journalDao:
                 )
             )
             
-            jrns = s.exec(sql).all()
-            num_records = s.exec(count_sql).one()
+            try:
+                jrns = s.exec(sql).all()
+                num_records = s.exec(count_sql).one()
+            except NoResultFound as e:
+                return [], 0
             
         return [
             _JournalBrief(
@@ -298,7 +301,10 @@ class journalDao:
                 )
                 .group_by(JournalORM.jrn_src)
             )
-            stats = s.exec(sql).all()
+            try:
+                stats = s.exec(sql).all()
+            except NoResultFound as e:
+                return []
             
         return stats
     
@@ -446,8 +452,10 @@ class journalDao:
                 .where(*filters)
             )
             
-            
-            flows = s.exec(sql).all()
+            try:
+                flows = s.exec(sql).all()
+            except NoResultFound as e:
+                return []
         
         return {
             flow.acct_id : _AcctFlowAGG(
