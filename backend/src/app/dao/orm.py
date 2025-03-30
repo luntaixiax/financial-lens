@@ -641,7 +641,7 @@ class PaymentItemORM(SQLModelWithSort, table=True):
             ForeignKey(
                 'invoice.invoice_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE' # TODO
+                ondelete = 'RESTRICT' # TODO
             ),
             primary_key = False, 
             nullable = False

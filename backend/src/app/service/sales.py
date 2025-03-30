@@ -84,8 +84,8 @@ class SalesService:
         
     @classmethod
     def clear_sample(cls):
-        cls.delete_invoice('inv-sales')
         cls.delete_payment('pmt-sales')
+        cls.delete_invoice('inv-sales')
 
     @classmethod
     def create_journal_from_invoice(cls, invoice: Invoice) -> Journal:

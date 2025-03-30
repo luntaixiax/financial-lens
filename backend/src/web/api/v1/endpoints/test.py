@@ -60,6 +60,7 @@ def init():
     ItemService.clear_sample()
     JournalService.clear_sample()
     EntityService.clear_sample()
-    AcctService.clear_sample()
     PropertyService.clear_sample()
+    AcctService.clear_sample()
+    
     

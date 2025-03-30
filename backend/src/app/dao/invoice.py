@@ -261,7 +261,11 @@ class invoiceDao:
             s.exec(sql)
             
             # commit at same time
-            s.commit()
+            try:
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise infer_integrity_error(e, during_creation=False)
             logging.info(f"deleted invoice and items for {invoice_id}")
             
     @classmethod

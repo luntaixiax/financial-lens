@@ -78,9 +78,9 @@ class PurchaseService:
         
     @classmethod
     def clear_sample(cls):
-        cls.delete_invoice('inv-purch')
         cls.delete_payment('pmt-purchase')
-    
+        cls.delete_invoice('inv-purch')
+        
     @classmethod
     def create_journal_from_invoice(cls, invoice: Invoice) -> Journal:
         cls._validate_invoice(invoice)
