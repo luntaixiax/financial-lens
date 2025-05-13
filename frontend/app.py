@@ -20,6 +20,9 @@ pages = {
     "Expense": [
         st.Page("sections/expense_overview.py", title="Expense Overview", icon='📊'),
         st.Page("sections/expense.py", title="Manage Expense", icon='🛒'),
+    ],
+    "Property": [
+        st.Page("sections/property.py", title="Manage Property", icon='🏠'),
     ]
 }
 

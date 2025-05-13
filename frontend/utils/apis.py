@@ -1159,3 +1159,19 @@ def get_file(file_id: str) -> dict:
         'content': f['content'].encode('latin-1'),
         'filehash': f['filehash']
     }
+    
+@st.cache_data
+@message_box
+def list_property() -> list[dict]:
+    return get_req(
+        prefix='property',
+        endpoint='property/list',
+    )
+    
+@st.cache_data
+@message_box
+def get_property_journal(property_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='property',
+        endpoint=f"property/get_property_journal/{property_id}",
+    )

@@ -71,3 +71,16 @@ class JournalSrc(IntEnum):
 class EntityType(IntEnum):
     CUSTOMER = 1
     SUPPLIER = 2
+    
+    
+@unique
+class PropertyType(IntEnum):
+    EQUIP = 1
+    VEHICLE = 2
+    OFFICE = 3
+    
+@unique
+class PropertyTransactionType(IntEnum):
+    DEPRECIATION = 1
+    IMPAIRMENT = 2
+    APPRECIATION = 3

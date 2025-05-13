@@ -120,12 +120,20 @@ with tabs[1]:
             id_key='iso2',
             display_keys=['country']
         )
-        bcountry = st.selectbox(
-            label="🌎 Country", 
-            options=dds_countries.options,
-            index=0 if edit_mode == 'Add' else dds_countries.get_idx_from_option(existing_entity['address']['country']),
-            key="bcountry"
-        )
+        if edit_mode == 'Add':
+            bcountry = st.selectbox(
+                label="🌎 Country", 
+                options=dds_countries.options,
+                index=0,
+                key="bcountry"
+            )
+        elif edit_mode == 'Edit':
+            bcountry = st.selectbox(
+                label="🌎 Country", 
+                options=dds_countries.options,
+                index=dds_countries.get_idx_from_option(existing_entity['address']['country']),
+                key="bcountry2"
+            )
         # add state
         states = list_state(
             country_iso2=dds_countries.get_id(bcountry)
@@ -136,23 +144,39 @@ with tabs[1]:
             id_key='iso2',
             display_keys=['state']
         )
-        bstate = st.selectbox(
-            label="🌎 State", 
-            options=dds_states.options,
-            index=0 if edit_mode == 'Add' else dds_states.get_idx_from_option(existing_entity['address']['state']),
-            key="bstate"
-        )
+        if edit_mode == 'Add':
+            bstate = st.selectbox(
+                label="🌎 State", 
+                options=dds_states.options,
+                index=0,
+                key="bstate"
+            )
+        elif edit_mode == 'Edit':
+            bstate = st.selectbox(
+                label="🌎 State", 
+                options=dds_states.options,
+                index=dds_states.get_idx_from_option(existing_entity['address']['state']),
+                key="bstate2"
+            )
         # add city
         cities = list_city(
             country_iso2=dds_countries.get_id(bcountry),
             state_iso2=dds_states.get_id(bstate)
         )
-        bcity = st.selectbox(
-            label="🌇 City", 
-            options=cities,
-            index=0 if edit_mode == 'Add' else cities.index(existing_entity['address']['city']),
-            key="bcity"
-        )
+        if edit_mode == 'Add':
+            bcity = st.selectbox(
+                label="🌇 City", 
+                options=cities,
+                index=0,
+                key="bcity"
+            )
+        elif edit_mode == 'Edit':
+            bcity = st.selectbox(
+                label="🌇 City", 
+                options=cities,
+                index=cities.index(existing_entity['address']['city']),
+                key="bcity2"
+            )
         
         bpostal = st.text_input(
             label="📦 Postal Code", 
