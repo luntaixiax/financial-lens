@@ -95,7 +95,7 @@ class PropertyService:
             entry_type=EntryType.DEBIT, # pp&e is debit
             acct=AcctService.get_account(SystemAcctNumber.PPNE),
             cur_incexp=None, # balance sheet item should not have currency
-            amount=property.pur_price, # amount in raw currency
+            amount=amount_base, # amount in raw currency
             # amount in base currency
             amount_base=amount_base,
             description=f"Property purchased"
@@ -157,7 +157,7 @@ class PropertyService:
             entry_type=property_entry_type , 
             acct=AcctService.get_account(SystemAcctNumber.ACC_ADJ), # accumulative adjustment
             cur_incexp=None, # balance sheet item should not have currency
-            amount=property_trans.trans_amount, # amount in raw currency
+            amount=amount_base, # amount in raw currency
             # amount in base currency
             amount_base=amount_base,
             description=f"Property value {property_trans.trans_type.name}"

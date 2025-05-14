@@ -1175,3 +1175,65 @@ def get_property_journal(property_id: str) -> Tuple[dict, dict]:
         prefix='property',
         endpoint=f"property/get_property_journal/{property_id}",
     )
+    
+@message_box
+def create_journal_from_new_property(property: dict) -> dict:
+    return get_req(
+        prefix='property',
+        endpoint='property/trial_journal',
+        data=property
+    )
+    
+@message_box
+def validate_property(property: dict) -> dict:
+    return post_req(
+        prefix='property',
+        endpoint='property/validate_property',
+        data=property
+    )
+    
+@message_box
+def add_property(property: dict):
+    post_req(
+        prefix='property',
+        endpoint='property/add',
+        data=property
+    )
+    list_property.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+@message_box
+def update_property(property: dict):
+    put_req(
+        prefix='property',
+        endpoint='property/update',
+        data=property
+    )
+
+    list_property.clear()
+    get_property_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+
+@message_box
+def delete_property(property_id: str):
+    delete_req(
+        prefix='property',
+        endpoint=f'property/delete/{property_id}'
+    )
+    list_property.clear()
+    get_property_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    get_sales_invoice_balance.clear()
+    get_psales_invoices_balance_by_entity.clear()
