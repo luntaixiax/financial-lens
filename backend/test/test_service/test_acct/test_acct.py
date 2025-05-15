@@ -145,7 +145,7 @@ def test_account(mock_engine, engine_with_basic_choa):
     assert _meal == meal
     # test get accounts by chart
     _exps = AcctService.get_accounts_by_chart(exp_chart)
-    assert len(_exps) == 4
+    assert len(_exps) == 6
     assert rental in _exps
     assert meal in _exps
     
@@ -188,4 +188,4 @@ def test_account(mock_engine, engine_with_basic_choa):
         except OpNotPermittedError:
             pass
     
-    assert len(AcctService.get_accounts_by_chart(exp_chart)) == 2 # leave 2 system account
+    assert len(AcctService.get_accounts_by_chart(exp_chart)) == 4 # leave 4 system account

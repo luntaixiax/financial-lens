@@ -219,6 +219,18 @@ class AcctService:
             acct_type=AcctType.EXP,
             chart=total_expense.chart,
         )
+        appre = Account(
+            acct_id=SystemAcctNumber.APPRECIATION,
+            acct_name="Appreciation",
+            acct_type=AcctType.EXP,
+            chart=total_expense.chart,
+        )
+        impa = Account(
+            acct_id=SystemAcctNumber.IMPAIRMENT,
+            acct_name="Impairment",
+            acct_type=AcctType.EXP,
+            chart=total_expense.chart,
+        )
         
         cls.add_account(input_tax)
         cls.add_account(output_tax)
@@ -235,6 +247,8 @@ class AcctService:
         cls.add_account(ppne)
         cls.add_account(acc_amort)
         cls.add_account(amort)
+        cls.add_account(appre)
+        cls.add_account(impa)
         
     @classmethod
     def create_sample(cls):

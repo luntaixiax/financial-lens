@@ -9,7 +9,7 @@ import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
 from utils.apis import list_property, get_account, get_property_journal, get_accounts_by_type, \
     validate_property, create_journal_from_new_property, get_all_accounts, get_base_currency, \
-    add_property, update_property, delete_property
+    add_property, update_property, delete_property, get_property_stat
 from utils.enums import PropertyType, PropertyTransactionType, CurType, AcctType, EntryType
 from utils.tools import DropdownSelect
 
@@ -126,17 +126,23 @@ dds_currency = DropdownSelect.from_enum(
 
 st.subheader("Properties (Fixed Asset)")
 if len(properties) > 0:
-    property_display = pd.DataFrame.from_records([
-        {
-            'Property ID': p['property_id'],
+    
+    prop_stitch = []
+    for p in properties:
+        acct = get_account(p['pur_acct_id'])
+        stat = get_property_stat(p['property_id'], rep_dt=datetime.now().date())
+        prop = {
+            #'Property ID': p['property_id'],
             'Property': p['property_name'],
             'Type': PropertyType(p['property_type']).name,
             'Purchase Date': p['pur_dt'],
-            'Price': f"{CurType(get_account(p['pur_acct_id'])['currency']).name} {round(p['pur_price'], 2):,.2f}",
-            'Purchase Acct': get_account(p['pur_acct_id'])['acct_name']
-            
-        } for p in properties
-    ])
+            'Purchase Acct': acct['acct_name'],
+            'Cost': f"{CurType(acct['currency']).name} {round(p['pur_price'], 2):,.2f}",
+            'Book Value': f"{CurType(acct['currency']).name} {round(stat['value'], 2):,.2f}",
+        }
+        prop_stitch.append(prop)
+    
+    property_display = pd.DataFrame.from_records(prop_stitch)
 
     ui.table(property_display)
     
