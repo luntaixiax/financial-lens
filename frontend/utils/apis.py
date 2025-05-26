@@ -1,6 +1,6 @@
+from typing import Any, Tuple
 from datetime import date
 from functools import wraps
-from typing import Any, Tuple
 import uuid
 from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
     FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError, UnprocessableEntityError
