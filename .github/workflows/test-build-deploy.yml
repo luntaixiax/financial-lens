@@ -1,0 +1,183 @@
+name: Test-Build-Deploy
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "configs/**"
+      - "*gitignore"
+      - "*dockerignore"
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "configs/**"
+      - "*gitignore"
+      - "*dockerignore"
+
+jobs:
+  limit-changes-backend:
+    # finds out which files to watch for unit testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: file_watch_list_backend
+        with:
+          filters: |
+            code:
+              - 'backend/**'
+    outputs:
+      changelist: ${{ steps.file_watch_list_backend.outputs.code }}
+
+  limit-changes-frontend:
+    # finds out which files to watch for frontend building
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: file_watch_list_frontend
+        with:
+          filters: |
+            code:
+              - 'frontend/**'
+    outputs:
+      changelist: ${{ steps.file_watch_list_frontend.outputs.code }}
+
+  unit-test:
+    runs-on: ubuntu-latest
+    needs: limit-changes-backend
+    if: ${{ needs.limit-changes-backend.outputs.changelist == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: install python library
+        working-directory: backend
+        run: |
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+
+      - name: unit testing
+        working-directory: backend
+        env:
+          ENV: dev
+        run: |
+          python -m pytest -s .
+
+  build-backend-image:
+    runs-on: ubuntu-latest
+    needs: unit-test  # will depend on previous step `build`
+    if: ${{ needs.limit-changes-backend.outputs.changelist == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dockerhub Login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: build and push image
+        working-directory: backend
+        run: |
+          model_hub_nm=${{ secrets.DOCKERHUB_USERNAME }}/finlens-backend
+          docker build -t ${model_hub_nm}:latest .
+          docker tag ${model_hub_nm}:latest ${model_hub_nm}:latest
+          docker push ${model_hub_nm}:latest
+
+  build-frontend-image:
+    runs-on: ubuntu-latest
+    needs: limit-changes-frontend  # will depend on previous step `build`
+    if: ${{ needs.limit-changes-frontend.outputs.changelist == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dockerhub Login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: build and push image
+        working-directory: frontend
+        run: |
+          model_hub_nm=${{ secrets.DOCKERHUB_USERNAME }}/finlens-frontend
+          docker build -t ${model_hub_nm}:latest .
+          docker tag ${model_hub_nm}:latest ${model_hub_nm}:latest
+          docker push ${model_hub_nm}:latest
+  
+  update-backend-image:
+    runs-on: luntaixia-ubuntu # need self hosted runner as need connect to local servers
+    needs: build-backend-image  # will depend on previous step `build`
+    if: success() # runs only previous task success
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: pull backend image on prod machine
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/finlens-backend:latest
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          password: ${{ secrets.PROD_PASSWORD }}
+          username: ${{ secrets.PROD_USERNAME }}
+          port: ${{ secrets.PROD_PORT }}
+          envs: IMAGE
+          script: |
+            echo "Login to $(hostname)"
+            echo "trying to remove existing docker image: $IMAGE"
+            /Volume1/@apps/DockerEngine/dockerd/bin/docker rmi -f $IMAGE
+            echo "trying to pull docker image: $IMAGE"
+            /Volume1/@apps/DockerEngine/dockerd/bin/docker pull $IMAGE
+
+  update-frontend-image:
+    runs-on: luntaixia-ubuntu # need self hosted runner as need connect to local servers
+    needs: build-frontend-image  # will depend on previous step `build`
+    if: success() # runs runs only previous task success
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: pull frontend image on prod machine
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/finlens-frontend:latest
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          password: ${{ secrets.PROD_PASSWORD }}
+          username: ${{ secrets.PROD_USERNAME }}
+          port: ${{ secrets.PROD_PORT }}
+          envs: IMAGE
+          script: |
+            echo "Login to $(hostname)"
+            echo "trying to remove existing docker image: $IMAGE"
+            /Volume1/@apps/DockerEngine/dockerd/bin/docker rmi -f $IMAGE
+            echo "trying to pull docker image: $IMAGE"
+            /Volume1/@apps/DockerEngine/dockerd/bin/docker pull $IMAGE
+
+  deploy:
+    runs-on: luntaixia-ubuntu # need self hosted runner as need connect to local servers
+    needs: [build-frontend-image, build-backend-image] # will depend on previous step `build`
+    if: success() || cancelled() # runs whether previous step skipped or success
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: deploy latest image
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          password: ${{ secrets.PROD_PASSWORD }}
+          username: ${{ secrets.PROD_USERNAME }}
+          port: ${{ secrets.PROD_PORT }}
+          script: |
+            echo "Login to $(hostname)"
+            echo "trying to run latest docker compose command: $IMAGE"
+            /Volume1/@apps/DockerEngine/dockerd/bin/docker-compose pull && docker-compose up -d
