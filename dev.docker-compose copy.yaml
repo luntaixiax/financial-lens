@@ -16,7 +16,7 @@ services:
     secrets:
       - mysql_root_password
     ports:
-      - 3309:3306
+      - 3308:3306
     command:
       --init-file=/data/application/mysql_setup.sql
       --log-error-verbosity=1
@@ -36,7 +36,7 @@ services:
       - ./secrets.toml:/secrets.toml
       - ./backend/configs.yaml:/app/configs.yaml
     ports:
-      - 8182:8181
+      - 8181:8181
     command:
       ./start.sh
     healthcheck:
@@ -53,7 +53,7 @@ services:
       - SERVE_APP_HOST=backend
       - SERVE_APP_PORT=8181
     ports:
-      - 8502:8501
+      - 8501:8501
     command:
       streamlit run app.py
     depends_on:
@@ -66,3 +66,7 @@ secrets:
 
 volumes:
   mysql-volume:
+    driver_opts:
+      type: "nfs"
+      o: "addr=${NFS_HOST},nolock,rw,soft,nfsvers=4"
+      device: ":${NFS_VOLUME_MYSQL}"

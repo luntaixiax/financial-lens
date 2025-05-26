@@ -2,7 +2,6 @@
 from datetime import date
 from src.app.utils.tools import get_base_cur
 from src.app.model.const import SystemAcctNumber
-from src.app.model.exceptions import NotMatchWithSystemError
 from src.app.model.journal import _AcctFlowAGG
 from src.app.service.journal import JournalService
 from src.app.service.acct import AcctService
