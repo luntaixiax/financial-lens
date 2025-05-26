@@ -1333,3 +1333,25 @@ def delete_property_trans(trans_id: str):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    
+
+@message_box
+def tree_balance_sheet(rep_dt: date) -> dict[int, Any]:
+    return get_req(
+        prefix='reporting',
+        endpoint=f'balance_sheet_tree',
+        params={
+            'rep_dt': rep_dt
+        }
+    )
+    
+@message_box
+def tree_income_statement(start_dt: date, end_dt: date) -> dict[int, Any]:
+    return get_req(
+        prefix='reporting',
+        endpoint=f'income_statment_tree',
+        params={
+            'start_dt': start_dt,
+            'end_dt': end_dt
+        }
+    )

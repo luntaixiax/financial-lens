@@ -24,6 +24,10 @@ pages = {
     "Property": [
         st.Page("sections/property.py", title="Buy Property", icon='🏠'),
         st.Page("sections/property_trans.py", title="Manage Property", icon='🚧'),
+    ],
+    "Reporting": [
+        st.Page("sections/balance_sheet.py", title="Balance Sheet", icon='⚖️'),
+        st.Page("sections/income_statement.py", title="Income Statement", icon='💰'),
     ]
 }
 

@@ -161,9 +161,9 @@ class AcctService:
             currency=get_base_cur(),
             chart=total_equity.chart
         )
-        re = Account(
-            acct_id=SystemAcctNumber.RETAIN_EARN,
-            acct_name="Retained Earnings",
+        div = Account(
+            acct_id=SystemAcctNumber.ACC_DIV,
+            acct_name="Acc. Dividend",
             acct_type=AcctType.EQU,
             currency=get_base_cur(),
             chart=total_equity.chart
@@ -238,7 +238,7 @@ class AcctService:
         cls.add_account(ap)
         cls.add_account(cc)
         cls.add_account(api)
-        cls.add_account(re)
+        cls.add_account(div)
         cls.add_account(oci)
         cls.add_account(sc)
         cls.add_account(disc)

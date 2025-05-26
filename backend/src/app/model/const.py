@@ -12,7 +12,8 @@ class SystemAcctNumber(str, Enum):
     ACCT_PAYAB = "acct-ap"
     CONTR_CAP = "acct-cc"
     ADD_PAID_IN = "acct-api"
-    RETAIN_EARN = "acct-re"
+    RETAIN_EARN = "acct-re" # special, created by balance sheet
+    ACC_DIV = "acct-accdiv" # cumulative dividend
     OTH_COMP_INC = "acct-oci"
     SHIP_CHARGE = "acct-spc"
     DISCOUNT = "acct-disc"

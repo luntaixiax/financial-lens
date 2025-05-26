@@ -9,7 +9,8 @@ from src.web.api.v1.endpoints import (
     sales,
     purchase,
     expense,
-    property
+    property,
+    reporting
 )
 
 api_router = APIRouter()
@@ -23,3 +24,4 @@ api_router.include_router(sales.router)
 api_router.include_router(purchase.router)
 api_router.include_router(expense.router)
 api_router.include_router(property.router)
+api_router.include_router(reporting.router)
