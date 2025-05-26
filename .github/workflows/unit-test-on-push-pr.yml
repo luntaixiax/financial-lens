@@ -1,12 +1,5 @@
 name: Unit-Test-Build-on-Push-and-PR
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - "configs/**"
-      - "*gitignore"
-      - "*dockerignore"
   pull_request:
     types: [opened, reopened]
     branches:
