@@ -10,7 +10,7 @@ from src.app.utils.tools import get_secret
 def get_engine() -> Engine:
     config = get_secret()['database']
 
-    db_url = f"{config['driver']}://{config['username']}:{config['password']}@{config['ip']}:{config['port']}/{config['db']}"
+    db_url = f"{config['driver']}://{config['username']}:{config['password']}@{config['hostname']}:{config['port']}/{config['db']}"
     engine = create_engine(db_url, pool_size=10)
     return engine
 

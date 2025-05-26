@@ -125,31 +125,56 @@ with tabs[1]:
     item_cols = st.columns(2)
     with item_cols[0]:
         # item type
-        sales_item_type = st.radio(
-            label = '📦 Item Type',
-            options=item_types.options,
-            index=0 if edit_mode == 'Add' else item_types.get_idx_from_option(ItemType(existing_sales_item['item_type']).name),
-            horizontal=True,
-            key='radio2',
-        )
+        if edit_mode == 'Add':
+            sales_item_type = st.radio(
+                label = '📦 Item Type',
+                options=item_types.options,
+                index=0,
+                horizontal=True,
+                key='radio2',
+            )
+        elif edit_mode == 'Edit':
+            sales_item_type = st.radio(
+                label = '📦 Item Type',
+                options=item_types.options,
+                index=item_types.get_idx_from_option(ItemType(existing_sales_item['item_type']).name),
+                horizontal=True,
+                key='radio3',
+            )
     
     with item_cols[1]:
         # unit type
-        sales_unit_type = st.selectbox(
-            label = '⏱️ Unit Type',
-            options=unit_types.options,
-            index=0 if edit_mode == 'Add' else unit_types.get_idx_from_option(UnitType(existing_sales_item['unit']).name),
-            key='sales-unit'
-        )
+        if edit_mode == 'Add':
+            sales_unit_type = st.selectbox(
+                label = '⏱️ Unit Type',
+                options=unit_types.options,
+                index=0,
+                key='sales-unit'
+            )
+        elif edit_mode == 'Edit':
+            sales_unit_type = st.selectbox(
+                label = '⏱️ Unit Type',
+                options=unit_types.options,
+                index=unit_types.get_idx_from_option(UnitType(existing_sales_item['unit']).name),
+                key='sales-unit2'
+            )
         
     with item_cols[0]:
         # currency type
-        sales_cur = st.selectbox(
-            label = '💲 Currency',
-            options=cur_types.options,
-            index=0 if edit_mode == 'Add' else cur_types.get_idx_from_option(CurType(existing_sales_item['currency']).name),
-            key='sales-cur'
-        )
+        if edit_mode == 'Add':
+            sales_cur = st.selectbox(
+                label = '💲 Currency',
+                options=cur_types.options,
+                index=0,
+                key='sales-cur'
+            )
+        elif edit_mode == 'Edit':
+            sales_cur = st.selectbox(
+                label = '💲 Currency',
+                options=cur_types.options,
+                index=cur_types.get_idx_from_option(CurType(existing_sales_item['currency']).name),
+                key='sales-cur2'
+            )
         
     with item_cols[1]:
         # unit price
@@ -167,12 +192,20 @@ with tabs[1]:
         id_key='acct_id',
         display_keys=['acct_id', 'acct_name']
     )
-    default_acct = st.selectbox(
-        label = '📝 Default Account to record Sales',
-        options=dds_sales_accts.options,
-        index=0 if edit_mode == 'Add' else dds_sales_accts.get_idx_from_id(existing_sales_item['default_acct_id']),
-        key='sales-acct'
-    )
+    if edit_mode == 'Add':
+        default_acct = st.selectbox(
+            label = '📝 Default Account to record Sales',
+            options=dds_sales_accts.options,
+            index=0,
+            key='sales-acct'
+        )
+    elif edit_mode == 'Edit':
+        default_acct = st.selectbox(
+            label = '📝 Default Account to record Sales',
+            options=dds_sales_accts.options,
+            index=dds_sales_accts.get_idx_from_id(existing_sales_item['default_acct_id']),
+            key='sales-acct2'
+        )
         
         
     if edit_mode == 'Add':
@@ -273,31 +306,55 @@ with tabs[2]:
     item_cols = st.columns(2)
     with item_cols[0]:
         # item type
-        purch_item_type = st.radio(
-            label = '📦 Item Type',
-            options=item_types.options,
-            index=0 if edit_mode == 'Add' else item_types.get_idx_from_option(ItemType(existing_purch_item['item_type']).name),
-            horizontal=True,
-            key='purch-radio'
-        )
+        if edit_mode == 'Add':
+            purch_item_type = st.radio(
+                label = '📦 Item Type',
+                options=item_types.options,
+                index=0,
+                horizontal=True,
+                key='purch-radio'
+            )
+        elif edit_mode == 'Edit':
+            purch_item_type = st.radio(
+                label = '📦 Item Type',
+                options=item_types.options,
+                index=item_types.get_idx_from_option(ItemType(existing_purch_item['item_type']).name),
+                horizontal=True,
+                key='purch-radio2'
+            )
     
     with item_cols[1]:
         # unit type
-        purch_unit_type = st.selectbox(
-            label = '⏱️ Unit Type',
-            options=unit_types.options,
-            index=0 if edit_mode == 'Add' else unit_types.get_idx_from_option(UnitType(existing_purch_item['unit']).name),
-            key='purch-unit'
-        )
-        
+        if edit_mode == 'Add':
+            purch_unit_type = st.selectbox(
+                label = '⏱️ Unit Type',
+                options=unit_types.options,
+                index=0,
+                key='purch-unit'
+            )
+        elif edit_mode == 'Edit':
+            purch_unit_type = st.selectbox(
+                label = '⏱️ Unit Type',
+                options=unit_types.options,
+                index=unit_types.get_idx_from_option(UnitType(existing_purch_item['unit']).name),
+                key='purch-unit2'
+            )
     with item_cols[0]:
         # currency type
-        purch_cur = st.selectbox(
-            label = '💲 Currency',
-            options=cur_types.options,
-            index=0 if edit_mode == 'Add' else cur_types.get_idx_from_option(CurType(existing_purch_item['currency']).name),
-            key='purch-cur'
-        )
+        if edit_mode == 'Add':
+            purch_cur = st.selectbox(
+                label = '💲 Currency',
+                options=cur_types.options,
+                index=0,
+                key='purch-cur'
+            )
+        elif edit_mode == 'Edit':
+            purch_cur = st.selectbox(
+                label = '💲 Currency',
+                options=cur_types.options,
+                index=cur_types.get_idx_from_option(CurType(existing_purch_item['currency']).name),
+                key='purch-cur2'
+            )
         
     with item_cols[1]:
         # unit price
@@ -315,12 +372,20 @@ with tabs[2]:
         id_key='acct_id',
         display_keys=['acct_id', 'acct_name']
     )
-    default_acct = st.selectbox(
-        label = '📝 Default Account to record Purchase',
-        options=dds_purch_accts.options,
-        index=0 if edit_mode == 'Add' else dds_purch_accts.get_idx_from_id(existing_purch_item['default_acct_id']),
-        key='purch-acct'
-    )
+    if edit_mode == 'Add':
+        default_acct = st.selectbox(
+            label = '📝 Default Account to record Purchase',
+            options=dds_purch_accts.options,
+            index=0,
+            key='purch-acct'
+        )
+    elif edit_mode == 'Edit':
+        default_acct = st.selectbox(
+            label = '📝 Default Account to record Purchase',
+            options=dds_purch_accts.options,
+            index=dds_purch_accts.get_idx_from_id(existing_purch_item['default_acct_id']),
+            key='purch-acct2'
+        )
         
         
     if edit_mode == 'Add':

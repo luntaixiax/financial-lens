@@ -498,14 +498,24 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
             disabled=False,
             on_change=reset_validate
         )
-        pmt_acct = st.selectbox(
-            label='💳 Payment Account',
-            options=dds_balsh_accts.options,
-            key='acct_select',
-            index=0 if edit_mode == 'Add' else dds_balsh_accts.get_idx_from_id(exp_sel['payment_acct_id']),
-            disabled=False,
-            on_change=reset_validate
-        )
+        if edit_mode == 'Add':
+            pmt_acct = st.selectbox(
+                label='💳 Payment Account',
+                options=dds_balsh_accts.options,
+                key='acct_select',
+                index=0,
+                disabled=False,
+                on_change=reset_validate
+            )
+        elif edit_mode == 'Edit':
+            pmt_acct = st.selectbox(
+                label='💳 Payment Account',
+                options=dds_balsh_accts.options,
+                key='acct_select2',
+                index=dds_balsh_accts.get_idx_from_id(exp_sel['payment_acct_id']),
+                disabled=False,
+                on_change=reset_validate
+            )
         # get payment acct details
         pmt_acct_id = dds_balsh_accts.get_id(pmt_acct)
         pmt_acct = get_account(pmt_acct_id)

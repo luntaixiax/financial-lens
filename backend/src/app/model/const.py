@@ -12,12 +12,18 @@ class SystemAcctNumber(str, Enum):
     ACCT_PAYAB = "acct-ap"
     CONTR_CAP = "acct-cc"
     ADD_PAID_IN = "acct-api"
-    RETAIN_EARN = "acct-re"
+    RETAIN_EARN = "acct-re" # special, created by balance sheet
+    ACC_DIV = "acct-accdiv" # cumulative dividend
     OTH_COMP_INC = "acct-oci"
     SHIP_CHARGE = "acct-spc"
     DISCOUNT = "acct-disc"
     FX_GAIN = "acct-fxgain"
     BANK_FEE = "acct-bnkfee"
+    DEPRECIATION = "acct-depr"
+    APPRECIATION = "acct-appr"
+    IMPAIRMENT = "acct-impair"
+    PPNE = "acct-ppne"
+    ACC_ADJ = "acct-accadj" # record accumulative adjustment of appreciation/depreciation/impairment
     
     @classmethod
     @lru_cache
@@ -33,6 +39,7 @@ class SystemChartOfAcctNumber(str, Enum):
     CUR_ASSET = 'choa-curass'
     BANK_ASSET = 'choa-bnkass'
     NONCUR_ASSET = 'choa-ncurass'
+    FIXED_ASSET = 'choa-fixed'
     TOTAL_LIB = 'choa-totlib'
     CUR_LIB = 'choa-curlib'
     BANK_LIB = 'choa-bnklib'

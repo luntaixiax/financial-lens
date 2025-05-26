@@ -45,13 +45,13 @@ class Entry(EnhancedBaseModel):
 
 class _AcctFlowAGG(EnhancedBaseModel):
     acct_type: AcctType
-    num_journal: int
-    num_debit_entry: int
-    num_credit_entry: int
-    debit_amount_raw: float
-    credit_amount_raw: float
-    debit_amount_base: float
-    credit_amount_base: float
+    num_journal: int = 0
+    num_debit_entry: int = 0
+    num_credit_entry: int = 0
+    debit_amount_raw: float = 0
+    credit_amount_raw: float = 0
+    debit_amount_base: float = 0
+    credit_amount_base: float = 0
     
     @computed_field
     def num_entry(self) -> int:

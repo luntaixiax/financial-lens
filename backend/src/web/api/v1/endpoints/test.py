@@ -19,6 +19,7 @@ def init():
     from src.app.service.sales import SalesService
     from src.app.service.purchase import PurchaseService
     from src.app.service.expense import ExpenseService
+    from src.app.service.property import PropertyService
     
     SQLModelWithSort.metadata.create_all(get_engine())
     # create basic account structure *standard
@@ -37,6 +38,8 @@ def init():
     PurchaseService.create_sample()
     # create sample expense
     ExpenseService.create_sample()
+    # create property sample
+    PropertyService.create_sample()
     
 
 @router.delete("/clear_sample")
@@ -49,6 +52,7 @@ def init():
     from src.app.service.sales import SalesService
     from src.app.service.purchase import PurchaseService
     from src.app.service.expense import ExpenseService
+    from src.app.service.property import PropertyService
     
     ExpenseService.clear_sample()
     SalesService.clear_sample()
@@ -56,5 +60,7 @@ def init():
     ItemService.clear_sample()
     JournalService.clear_sample()
     EntityService.clear_sample()
+    PropertyService.clear_sample()
     AcctService.clear_sample()
+    
     

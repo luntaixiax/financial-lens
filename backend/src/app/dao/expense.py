@@ -367,8 +367,11 @@ class expenseDao:
                 .where(*exp_filters)
             )
             
-            expenses = s.exec(expense_joined).all()
-            num_records = s.exec(count_sql).one()
+            try:
+                expenses = s.exec(expense_joined).all()
+                num_records = s.exec(count_sql).one()
+            except NoResultFound as e:
+                return [], 0
             
         return [
             _ExpenseBrief(
@@ -458,7 +461,10 @@ class expenseDao:
                 .order_by(column('total_base_amount').desc())
             )
             
-            expenses = s.exec(expense_summary).all()
+            try:
+                expenses = s.exec(expense_summary).all()
+            except NoResultFound as e:
+                return []
             
         return [
             _ExpenseSummaryBrief(

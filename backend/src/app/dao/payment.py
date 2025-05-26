@@ -339,7 +339,10 @@ class paymentDao:
                 .limit(limit)
             )
             
-            payments = s.exec(joined).all()
+            try:
+                payments = s.exec(joined).all()
+            except NoResultFound as e:
+                return []
             
         return [
             _PaymentBrief(

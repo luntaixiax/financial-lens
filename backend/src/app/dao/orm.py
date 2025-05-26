@@ -6,7 +6,7 @@ from sqlalchemy.exc import NoResultFound, IntegrityError
 from datetime import date, datetime
 
 from src.app.model.exceptions import FKNoDeleteUpdateError, FKNotExistError, AlreadyExistError
-from src.app.model.enums import AcctType, BankAcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
+from src.app.model.enums import AcctType, BankAcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, PropertyTransactionType, PropertyType, UnitType
 
 def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  FKNoDeleteUpdateError | FKNotExistError | AlreadyExistError | IntegrityError:
     # TODO: enhance this when use other backend engine
@@ -641,7 +641,7 @@ class PaymentItemORM(SQLModelWithSort, table=True):
             ForeignKey(
                 'invoice.invoice_id', 
                 onupdate = 'CASCADE', 
-                ondelete = 'CASCADE' # TODO
+                ondelete = 'RESTRICT' # TODO
             ),
             primary_key = False, 
             nullable = False
@@ -649,3 +649,79 @@ class PaymentItemORM(SQLModelWithSort, table=True):
     )
     payment_amount: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     payment_amount_raw: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    
+    
+class PropertyORM(SQLModelWithSort, table=True):
+    __tablename__ = "property"
+    
+    property_id: str = Field(
+        sa_column=Column(String(length = 14), primary_key = True, nullable = False)
+    )
+    property_name: str = Field(
+        sa_column=Column(String(length = 50), nullable = False, unique = False)
+    )
+    property_type: PropertyType = Field(
+        sa_column=Column(ChoiceType(PropertyType, impl = Integer()), nullable = False, primary_key = False)
+    )
+    pur_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    pur_price: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    pur_acct_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'accounts.acct_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    journal_id: str = Field(
+        sa_column=Column(
+            String(length = 20),
+            ForeignKey(
+                'journals.journal_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT' # TODO: review this
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    
+class PropertyTransactionORM(SQLModelWithSort, table=True):
+    __tablename__ = "property_trans"
+    
+    trans_id: str = Field(
+        sa_column=Column(String(length = 18), primary_key = True, nullable = False)
+    )
+    property_id: str = Field(
+        sa_column=Column(
+            String(length = 14), 
+            ForeignKey(
+                'property.property_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    trans_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    trans_type: PropertyTransactionType = Field(
+        sa_column=Column(ChoiceType(PropertyTransactionType, impl = Integer()), nullable = False, primary_key = False)
+    )
+    trans_amount: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    journal_id: str = Field(
+        sa_column=Column(
+            String(length = 20),
+            ForeignKey(
+                'journals.journal_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT' # TODO: review this
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )

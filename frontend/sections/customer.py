@@ -136,13 +136,22 @@ with tabs[1]:
     
     if not ship_same_as_bill:
         with cust_cols[1]:
-            ship_contact_option = st.selectbox(
-                label='📧 Shipping Contact',
-                options=dds_contacts.options,
-                index=0 if edit_mode == 'Add' else dds_contacts.get_idx_from_id(
-                    existing_entity['ship_contact']['contact_id']
+            if edit_mode == 'Add':
+                ship_contact_option = st.selectbox(
+                    label='📧 Shipping Contact',
+                    options=dds_contacts.options,
+                    index=0,
+                    key='sel1'
                 )
-            )
+            elif edit_mode == 'Edit':
+                ship_contact_option = st.selectbox(
+                    label='📧 Shipping Contact',
+                    options=dds_contacts.options,
+                    index=dds_contacts.get_idx_from_id(
+                        existing_entity['ship_contact']['contact_id']
+                    ),
+                    key='sel2'
+                )
             with st.popover(label='Expand to See Shipping Contact'):
                 ship_contact_id = dds_contacts.get_id(ship_contact_option)
                 st.json(get_contact(ship_contact_id))

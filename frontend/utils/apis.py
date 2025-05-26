@@ -1159,3 +1159,199 @@ def get_file(file_id: str) -> dict:
         'content': f['content'].encode('latin-1'),
         'filehash': f['filehash']
     }
+    
+@st.cache_data
+@message_box
+def list_property() -> list[dict]:
+    return get_req(
+        prefix='property',
+        endpoint='property/list',
+    )
+    
+@st.cache_data
+@message_box
+def get_property_journal(property_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='property',
+        endpoint=f"property/get_property_journal/{property_id}",
+    )
+    
+@st.cache_data
+@message_box
+def get_property_stat(property_id: str, rep_dt: date) -> dict:
+    return get_req(
+        prefix='property',
+        endpoint=f"property/get_stat",
+        params={
+            'property_id': property_id,
+            'rep_dt': rep_dt.strftime('%Y-%m-%d')
+        }
+    )
+    
+@message_box
+def create_journal_from_new_property(property: dict) -> dict:
+    return get_req(
+        prefix='property',
+        endpoint='property/trial_journal',
+        data=property
+    )
+    
+@message_box
+def validate_property(property: dict) -> dict:
+    return post_req(
+        prefix='property',
+        endpoint='property/validate_property',
+        data=property
+    )
+    
+@message_box
+def add_property(property: dict):
+    post_req(
+        prefix='property',
+        endpoint='property/add',
+        data=property
+    )
+    list_property.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+@message_box
+def update_property(property: dict):
+    put_req(
+        prefix='property',
+        endpoint='property/update',
+        data=property
+    )
+
+    list_property.clear()
+    get_property_journal.clear()
+    get_property_stat.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+
+@message_box
+def delete_property(property_id: str):
+    delete_req(
+        prefix='property',
+        endpoint=f'property/delete/{property_id}'
+    )
+    list_property.clear()
+    get_property_journal.clear()
+    get_property_stat.clear()
+    list_property_trans.clear()
+    get_propertytrans_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+@st.cache_data
+@message_box
+def list_property_trans(property_id: str) -> list[dict]:
+    return get_req(
+        prefix='property',
+        endpoint=f'transaction/list',
+        params={
+            'property_id': property_id
+        }
+    )
+
+@st.cache_data
+@message_box
+def get_propertytrans_journal(trans_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='property',
+        endpoint=f"transaction/get_property_trans_journal/{trans_id}",
+    )
+    
+@message_box
+def create_journal_from_new_property_trans(property_trans: dict) -> dict:
+    return get_req(
+        prefix='property',
+        endpoint='transaction/trial_journal',
+        data=property_trans
+    )
+    
+@message_box
+def validate_property_trans(property_trans: dict) -> dict:
+    return post_req(
+        prefix='property',
+        endpoint='transaction/validate',
+        data=property_trans
+    )
+    
+@message_box
+def add_property_trans(property_trans: dict):
+    post_req(
+        prefix='property',
+        endpoint='transaction/add',
+        data=property_trans
+    )
+    list_property_trans.clear()
+    get_propertytrans_journal.clear()
+    get_property_stat.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+@message_box
+def update_property_trans(property_trans: dict):
+    put_req(
+        prefix='property',
+        endpoint='transaction/update',
+        data=property_trans
+    )
+    list_property_trans.clear()
+    get_propertytrans_journal.clear()
+    get_property_stat.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+@message_box
+def delete_property_trans(trans_id: str):
+    delete_req(
+        prefix='property',
+        endpoint=f'transaction/delete/{trans_id}'
+    )
+    list_property_trans.clear()
+    get_propertytrans_journal.clear()
+    get_property_stat.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+
+@message_box
+def tree_balance_sheet(rep_dt: date) -> dict[int, Any]:
+    return get_req(
+        prefix='reporting',
+        endpoint=f'balance_sheet_tree',
+        params={
+            'rep_dt': rep_dt
+        }
+    )
+    
+@message_box
+def tree_income_statement(start_dt: date, end_dt: date) -> dict[int, Any]:
+    return get_req(
+        prefix='reporting',
+        endpoint=f'income_statment_tree',
+        params={
+            'start_dt': start_dt,
+            'end_dt': end_dt
+        }
+    )

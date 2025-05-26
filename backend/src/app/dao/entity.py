@@ -1,4 +1,3 @@
-
 import logging
 from sqlmodel import Session, select
 from sqlalchemy.exc import NoResultFound, IntegrityError
@@ -231,7 +230,10 @@ class customerDao:
                 select(EntityORM.entity_id, EntityORM.entity_name, EntityORM.is_business)
                 .where(EntityORM.entity_type == EntityType.CUSTOMER)
             )
-            customers = s.exec(sql).all()
+            try:
+                customers = s.exec(sql).all()
+            except NoResultFound as e:
+                return []
 
         return [
             _CustomerBrief(
@@ -360,7 +362,10 @@ class supplierDao:
                 select(EntityORM.entity_id, EntityORM.entity_name, EntityORM.is_business)
                 .where(EntityORM.entity_type == EntityType.SUPPLIER)
             )
-            suppliers = s.exec(sql).all()
+            try:
+                suppliers = s.exec(sql).all()
+            except NoResultFound as e:
+                return []
 
         return [
             _SupplierBrief(
