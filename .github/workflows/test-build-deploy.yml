@@ -115,7 +115,7 @@ jobs:
           docker push ${model_hub_nm}:latest
   
   update-backend-image:
-    runs-on: luntaixia-ubuntu # need self hosted runner as need connect to local servers
+    runs-on: runner-finlens # need self hosted runner as need connect to local servers
     needs: build-backend-image  # will depend on previous step `build`
     if: success() # runs only previous task success
 
@@ -140,7 +140,7 @@ jobs:
             /Volume1/@apps/DockerEngine/dockerd/bin/docker pull $IMAGE
 
   update-frontend-image:
-    runs-on: luntaixia-ubuntu # need self hosted runner as need connect to local servers
+    runs-on: runner-finlens # need self hosted runner as need connect to local servers
     needs: build-frontend-image  # will depend on previous step `build`
     if: success() # runs runs only previous task success
 
@@ -165,7 +165,7 @@ jobs:
             /Volume1/@apps/DockerEngine/dockerd/bin/docker pull $IMAGE
 
   deploy:
-    runs-on: luntaixia-ubuntu # need self hosted runner as need connect to local servers
+    runs-on: runner-finlens # need self hosted runner as need connect to local servers
     needs: [update-backend-image, update-frontend-image] # will depend on previous step `build`
     if: success() || cancelled() # runs whether previous step skipped or success
 
