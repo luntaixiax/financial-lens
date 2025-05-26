@@ -1,6 +1,6 @@
 from functools import wraps
 import os
-from typing import Any, Tuple
+from typing import Tuple
 import requests
 
 from utils.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError, UnprocessableEntityError

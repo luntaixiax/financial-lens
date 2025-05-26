@@ -1,6 +1,5 @@
 
 from src.app.model.exceptions import NotExistError, OpNotPermittedError
-from src.app.model.const import SystemChartOfAcctNumber
 from src.app.service.acct import AcctService
 from src.app.model.accounts import Account, Chart
 from src.app.model.bank import BankAcct
