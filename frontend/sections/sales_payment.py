@@ -295,11 +295,6 @@ if edit_mode == 'Edit':
                 options=dds_currency.options,
                 #required=True
             ),
-            # 'num_invoices': st.column_config.NumberColumn(
-            #     label='# Invoices',
-            #     width=None,
-            #     format='%d'
-            # ),
             'gross_payment_base': st.column_config.NumberColumn(
                 label='$Gross Base',
                 width=None,
