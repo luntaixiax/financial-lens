@@ -17,6 +17,7 @@ on:
 
 jobs:
   limit-changes-backend:
+    if: ${{ (github.event_name == 'push') && (!contains(github.ref, 'refs/tags/')) }}
     # finds out which files to watch for unit testing
     runs-on: ubuntu-latest
     steps:
