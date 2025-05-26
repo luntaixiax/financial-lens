@@ -166,7 +166,7 @@ jobs:
 
   deploy:
     runs-on: luntaixia-ubuntu # need self hosted runner as need connect to local servers
-    needs: [build-frontend-image, build-backend-image] # will depend on previous step `build`
+    needs: [update-backend-image, update-frontend-image] # will depend on previous step `build`
     if: success() || cancelled() # runs whether previous step skipped or success
 
     steps:

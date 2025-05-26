@@ -37,7 +37,6 @@ with tabs[0]:
     )
 
 with tabs[1]:
-    
     dds_entities = DropdownSelect(
         briefs=customers,
         include_null=False,
