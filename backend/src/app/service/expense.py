@@ -14,7 +14,6 @@ from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
 from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, Merchant
 from src.app.model.journal import Journal, Entry
 
-
 class ExpenseService:
     
     @classmethod

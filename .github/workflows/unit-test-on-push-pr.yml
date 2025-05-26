@@ -1,14 +1,6 @@
 name: Unit-Test-Build-on-Push-and-PR
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - "configs/**"
-      - "*gitignore"
-      - "*dockerignore"
   pull_request:
-    types: [opened, reopened]
     branches:
       - main
     paths-ignore:
@@ -34,7 +26,7 @@ jobs:
   unit-test:
     runs-on: ubuntu-latest
     needs: limit-changes-backend
-    if: ${{ needs.limit-changes-backend.outputs.changelist == 'true' }}
+    if: ${{ (needs.limit-changes-backend.outputs.changelist == 'true') && !contains(github.ref, 'refs/tags/')}}
     steps:
       - uses: actions/checkout@v4
 
