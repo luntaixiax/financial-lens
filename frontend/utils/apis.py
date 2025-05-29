@@ -848,7 +848,7 @@ def delete_sales_invoice(invoice_id: str):
     preview_sales_invoice.clear()
     get_sales_invoice_balance.clear()
 
-@st.cache_data
+
 @message_box
 def preview_sales_invoice(invoice_id: str) -> str:
     return plain_get_req(
@@ -1355,3 +1355,23 @@ def tree_income_statement(start_dt: date, end_dt: date) -> dict[int, Any]:
             'end_dt': end_dt
         }
     )
+    
+@message_box
+def set_logo(logo: bytes):
+    post_req(
+        prefix='settings',
+        endpoint='set_logo',
+        files=[('logo', logo)]
+    )
+    
+@message_box
+def get_logo() -> bytes | str:
+    try:
+        f = get_req(
+            prefix='settings',
+            endpoint=f"get_logo",
+        )
+    except NotExistError:
+        return 'https://static.vecteezy.com/system/resources/previews/036/744/532/non_2x/user-profile-icon-symbol-template-free-vector.jpg'
+    # convert file from string to bytes
+    return f['content'].encode('latin-1')

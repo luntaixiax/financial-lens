@@ -11,17 +11,7 @@ from src.app.model.misc import _CountryBrief, _StateBrief, FileWrapper
 
 router = APIRouter(prefix="/misc", tags=["misc"])
 
-@router.get("/list_backup_ids")
-def list_backup_ids() -> list[str]:
-    return BackupService.list_backup_ids()
 
-@router.post("/backup")
-def backup(backup_id: str | None = None) -> str:
-    return BackupService.backup(backup_id)
-
-@router.post("/restore")
-def restore(backup_id: str):
-    BackupService.restore(backup_id)
 
 @router.get("/geo/countries/list")
 def list_countries() -> list[_CountryBrief]:

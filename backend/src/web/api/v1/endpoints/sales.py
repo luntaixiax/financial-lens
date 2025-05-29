@@ -1,9 +1,11 @@
+import base64
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Tuple
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from src.app.service.misc import SettingService
 from src.app.model.payment import Payment, _PaymentBrief
 from src.app.utils.tools import get_company
 from src.app.model.entity import Address, Contact, Customer, Supplier
@@ -100,7 +102,7 @@ def preview_sales_invoice(request: Request, invoice_id: str):
     )
     
     data = {
-        'logo': bill_from_company['logo'],
+        'logo': base64.b64encode(bytes(SettingService.get_logo().content, encoding='latin-1')).decode("latin-1"),
         'bill_from': bill_from.model_dump(mode='python'),
         'bill_to': bill_to.model_dump(mode='python'),
         'invoice': invoice.model_dump(mode='python')

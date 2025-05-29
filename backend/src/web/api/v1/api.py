@@ -10,11 +10,15 @@ from src.web.api.v1.endpoints import (
     purchase,
     expense,
     property,
-    reporting
+    reporting,
+    management,
+    settings
 )
 
 api_router = APIRouter()
 api_router.include_router(test.router)
+api_router.include_router(settings.router)
+api_router.include_router(management.router)
 api_router.include_router(misc.router)
 api_router.include_router(entity.router)
 api_router.include_router(acct.router)

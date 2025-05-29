@@ -68,7 +68,7 @@ class fileDao:
                         content = obj.read().decode(encoding='latin-1')
                         file = cls.toFile(content, p)
                 else:
-                    raise NotExistError(f"File ({file}) not exist @ {filepath}")
+                    raise NotExistError(f"File ({file_id}) not exist @ {filepath}")
             
         return file
     

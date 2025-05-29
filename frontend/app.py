@@ -1,6 +1,10 @@
 import streamlit as st
 
 pages = {
+    "Settings": [
+        st.Page("sections/settings.py", title="Manage Your Company", icon='⚙️'),
+        st.Page("sections/db_management.py", title="Manage Data", icon='⛅'),
+    ],
     "Accountant": [
         st.Page("sections/chart_of_accounts.py", title="Chart of Accounts", icon='📚'),
         st.Page("sections/journal.py", title="Journal Entry", icon='✍🏼'),
