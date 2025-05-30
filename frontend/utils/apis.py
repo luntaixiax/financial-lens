@@ -658,14 +658,6 @@ def update_journal(jrn_id: str, jrn_date: date, jrn_src: int, entries: list[dict
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
-    
-@st.cache_data
-@message_box
-def get_base_currency() -> int:
-    return get_req(
-        prefix='misc',
-        endpoint='fx/get_base_cur'
-    )
 
 @st.cache_data
 @message_box
@@ -724,13 +716,6 @@ def list_entry_by_acct(acct_id: str) -> list[dict]:
         endpoint=f'entry/list/{acct_id}',
     )
 
-@st.cache_data
-@message_box
-def get_default_tax_rate() -> float:
-    return get_req(
-        prefix='misc',
-        endpoint='settings/get_default_tax_rate',
-    )
 
 @st.cache_data
 @message_box
@@ -1413,3 +1398,78 @@ def get_comp_contact() -> Tuple[str | None, dict | None]:
     except NotExistError:
         return None, None
     return c # a tuple
+
+@message_box
+def is_setup() -> bool:
+    return get_req(
+        prefix='settings',
+        endpoint='is_setup'
+    )
+
+@message_box
+def init_coa():
+    post_req(
+        prefix='settings',
+        endpoint='init_coa'
+    )
+
+@message_box
+def initiate(base_cur: int, default_tax_rate: float):
+    set_base_currency(base_cur)
+    set_default_tax_rate(default_tax_rate)
+    init_coa()
+    
+@st.cache_data # TODO
+@message_box
+def get_base_currency(ignore_error: bool = False) -> int | None:
+    try:
+        base_cur = get_req(
+            prefix='settings',
+            endpoint='get_base_currency'
+        )
+    except NotExistError as e:
+        if ignore_error:
+            return None
+        else:
+            raise e
+    return base_cur
+
+@st.cache_data
+@message_box
+def get_default_tax_rate(ignore_error: bool = False) -> float:
+    try:
+        default_tax_rate =  get_req(
+            prefix='settings',
+            endpoint='get_default_tax_rate',
+        )
+    except NotExistError as e:
+        if ignore_error:
+            return None
+        else:
+            raise e
+    return default_tax_rate
+    
+@message_box
+def set_base_currency(base_currency: int):
+    # backend will try get and raise error if already set
+    post_req(
+        prefix='settings',
+        endpoint='set_base_currency',
+        params={
+            'base_currency': base_currency
+        }
+    )
+    
+    get_base_currency.clear()
+    
+@message_box
+def set_default_tax_rate(default_tax_rate: float):
+    post_req(
+        prefix='settings',
+        endpoint='set_default_tax_rate',
+        params={
+            'default_tax_rate': default_tax_rate
+        }
+    )
+    
+    get_default_tax_rate.clear()

@@ -26,10 +26,6 @@ def list_states(country_iso2: str) -> list[_StateBrief]:
 def list_cities(country_iso2: str, state_iso2: str) -> list[str]:
     return GeoService.list_cities(country_iso2, state_iso2)
 
-@router.get("/fx/get_base_cur")
-def get_base_currency() -> CurType:
-    return FxService.BASE_CUR
-
 @router.get("/fx/get_rate")
 def get_fx_rate(src_currency: CurType, tgt_currency: CurType, cur_dt: date) -> float:
     return FxService.convert(1.0, src_currency, tgt_currency, cur_dt)
@@ -42,9 +38,6 @@ def convert_to_base(amount: float, src_currency: CurType, cur_dt: date) -> float
 def convert_from_base(amount: float, tgt_currency: CurType, cur_dt: date) -> float:
     return FxService.convert_from_base(amount, tgt_currency, cur_dt)
 
-@router.get("/settings/get_default_tax_rate")
-def get_default_tax_rate() -> float:
-    return SettingService.get_default_tax_rate()
 
 @router.post("/upload_file")
 def upload_file(files: list[UploadFile] = File(...)) -> list[str]:

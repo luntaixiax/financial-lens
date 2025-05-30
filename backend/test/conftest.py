@@ -5,19 +5,21 @@ import sqlalchemy
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlite3 import Connection as SQLite3Connection
-from src.app.dao.orm import SQLModelWithSort
 
 @pytest.fixture(scope='session')
 def settings():
+    from src.app.model.enums import CurType
+    
     return {
         'preferences': {
-            'base_cur': 'CAD',
+            'base_cur': CurType.CAD,
             'default_sales_tax_rate': 0.13
         }
     }
 
 @pytest.fixture(scope='session')
 def engine():
+    from src.app.dao.orm import SQLModelWithSort
     
     @event.listens_for(Engine, "connect")
     def _set_sqlite_pragma(dbapi_connection, connection_record):

@@ -3,7 +3,7 @@ from functools import partial
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.enums import CurType, EntityType
-from src.app.utils.tools import get_default_tax_rate, id_generator
+from src.app.utils.tools import id_generator
 from src.app.utils.base import EnhancedBaseModel
 
 class PaymentItem(EnhancedBaseModel):
