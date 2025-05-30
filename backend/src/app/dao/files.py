@@ -1,12 +1,56 @@
+from functools import lru_cache
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Tuple
+import json
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from sqlmodel import Session, select, delete, case, func as f
-from src.app.utils.tools import get_file_root
+from src.app.utils.tools import get_file_root, get_config_root
 from src.app.model.misc import FileWrapper
 from src.app.dao.orm import FileORM, infer_integrity_error
 from src.app.dao.connection import get_engine, get_storage_fs
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
+
+class configDao:
+    # json config file, can be replaced by nosql db
+    CONFIG_FILENAME = 'config.json'
+    
+    @classmethod
+    def getConfigPath(cls) -> str:
+        return (Path(get_config_root()) / cls.CONFIG_FILENAME).as_posix()
+    
+    @classmethod
+    @lru_cache
+    def get_config(cls) -> dict[str, Any]:
+        filepath = cls.getConfigPath()
+        fs = get_storage_fs()
+        try:
+            with fs.open(filepath, 'r') as obj:
+                config = json.load(obj)
+        except FileNotFoundError as e:
+            return {}
+        
+        # TODO: add error handling when config is not exist
+        return config
+    
+    @classmethod
+    def get_config_value(cls, key: str) -> Any:
+        return cls.get_config().get(key)
+    
+    @classmethod
+    def set_config_value(cls, key: str, value: Any):
+        config = cls.get_config()
+        config[key] = value
+        
+        # write config back
+        filepath = cls.getConfigPath()
+        fs = get_storage_fs()
+        with fs.open(filepath, 'w') as obj:
+            json.dump(config, obj, indent=4)
+        
+        # clear cache
+        cls.get_config.cache_clear()
+    
+    
 
 class fileDao:
     

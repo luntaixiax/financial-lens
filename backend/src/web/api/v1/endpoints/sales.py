@@ -7,7 +7,6 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from src.app.service.misc import SettingService
 from src.app.model.payment import Payment, _PaymentBrief
-from src.app.utils.tools import get_company
 from src.app.model.entity import Address, Contact, Customer, Supplier
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.model.journal import Journal
@@ -93,11 +92,11 @@ def preview_sales_invoice(request: Request, invoice_id: str):
     
     # bill_from company
     # bill from will always be supplier
-    bill_from_company = get_company()
+    bill_from_name, bill_from_contact = SettingService.get_company()
     bill_from = Supplier(
-        supplier_name = bill_from_company['name'],
+        supplier_name = bill_from_name,
         is_business=True,
-        bill_contact=Contact.model_validate(bill_from_company['contact']),
+        bill_contact=bill_from_contact,
         ship_same_as_bill=True
     )
     

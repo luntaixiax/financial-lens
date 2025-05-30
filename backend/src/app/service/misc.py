@@ -1,5 +1,8 @@
 from functools import lru_cache
+from typing import Any, Tuple
 import requests
+from src.app.model.entity import Contact
+from src.app.dao.files import configDao
 from src.app.model.exceptions import NotExistError
 from src.app.service.files import FileService
 from src.app.utils.tools import get_default_tax_rate, get_secret
@@ -76,3 +79,33 @@ class SettingService:
         except NotExistError as e:
             raise NotExistError(message="Logo not set yet! " + e.message, details=e.details)
         return logo
+    
+    @classmethod
+    def get_config(cls) -> dict[str, Any]:
+        return configDao.get_config()
+    
+    @classmethod
+    def get_config_value(cls, key: str) -> Any:
+        return configDao.get_config_value(key)
+    
+    @classmethod
+    def set_config_value(cls, key: str, value: Any):
+        configDao.set_config_value(key, value)
+        
+    @classmethod
+    def get_company(cls) -> Tuple[str, Contact]:
+        company = cls.get_config_value('company')
+        if company is None:
+            raise NotExistError(message="Your Company profile not set yet")
+        
+        name = company['name']
+        contact = Contact.model_validate(company['contact'])
+        return name, contact
+    
+    @classmethod
+    def set_company(cls, name: str, contact: Contact):
+        conf = {
+            'name' : name,
+            'contact': contact.model_dump()
+        }
+        cls.set_config_value('company', conf)

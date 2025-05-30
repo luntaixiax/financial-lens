@@ -1375,3 +1375,41 @@ def get_logo() -> bytes | str:
         return 'https://static.vecteezy.com/system/resources/previews/036/744/532/non_2x/user-profile-icon-symbol-template-free-vector.jpg'
     # convert file from string to bytes
     return f['content'].encode('latin-1')
+
+@message_box
+def upsert_comp_contact(
+    company_name: str, name: str, email: str, phone: str, 
+    address1: str, address2: str, suite_no: str, 
+    city: str, state: str, country: str, postal_code: str
+):
+    post_req(
+        prefix='settings',
+        endpoint='set_company',
+        params={'name': company_name},
+        data={
+            "contact_id": "xyz",
+            "name": name,
+            "email": email,
+            "phone": phone,
+            "address": {
+                "address1": address1,
+                "address2": address2,
+                "suite_no": suite_no,
+                "city": city,
+                "state": state,
+                "country": country,
+                "postal_code": postal_code
+            }
+        }
+    )
+    
+@message_box  
+def get_comp_contact() -> Tuple[str | None, dict | None]:
+    try:
+        c = get_req(
+            prefix='settings',
+            endpoint=f'get_company'
+        )
+    except NotExistError:
+        return None, None
+    return c # a tuple
