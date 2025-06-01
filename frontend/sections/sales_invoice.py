@@ -306,236 +306,275 @@ def validate_invoice(invoice_: dict):
     
 
 customers = list_customer()
-dds_customers = DropdownSelect(
-    briefs=customers,
-    include_null=False,
-    id_key='cust_id',
-    display_keys=['cust_id', 'customer_name']
-)
-dds_currency = DropdownSelect.from_enum(
-    CurType,
-    include_null=False
-)
-inc_accts = get_accounts_by_type(acct_type=AcctType.INC.value)
-exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
-dds_inc_accts = DropdownSelect(
-    briefs=inc_accts,
-    include_null=False,
-    id_key='acct_id',
-    display_keys=['acct_name']
-)
-dds_incexp_accts = DropdownSelect(
-    briefs=inc_accts + exp_accts,
-    include_null=False,
-    id_key='acct_id',
-    display_keys=['acct_name']
-)
-all_accts = get_all_accounts()
-dds_accts = DropdownSelect(
-    briefs=all_accts,
-    include_null=False,
-    id_key='acct_id',
-    display_keys=['acct_name']
-)
-
-widget_cols = st.columns([1, 4])
-with widget_cols[0]:
-    edit_mode = st.radio(
-        label='Edit Mode',
-        options=['Add', 'Edit'],
-        format_func=lambda o: 'Search/Edit' if o == 'Edit' else 'Add',
-        # when user is in edit mode, the data will be kept in st.session_state['debit_entries]
-        # when user navigate to other pages, the data will still be kepted
-        # but when user navigate back to journal page, need to make sure the Edit tab is selected
-        # otherwise the Add page will contain edit mode cache
-        index=1,
-        horizontal=True,
-        on_change=clear_entries_and_reset_page, # clear cache
-    )
-
-with widget_cols[1]:
-    edit_customer = st.selectbox(
-        label='👇 Select Customer',
-        options=dds_customers.options,
-        index=0
-    )
-    cust_id = dds_customers.get_id(edit_customer)
-    
-# either add mode or selected edit/view mode
-if edit_mode == 'Edit':
-    
-    invoices = list_sales_invoice(customer_ids=[cust_id])
-    
-    inv_displays = map(display_invoice, invoices)
-    selected: dict = st.dataframe(
-        data=inv_displays,
-        use_container_width=True,
-        hide_index=True,
-        column_order=[
-            'invoice_num',
-            'invoice_dt',
-            #'entity_name',
-            'subject',
-            'currency',
-            'num_invoice_items',
-            'total_raw_amount',
-            'total_base_amount'
-        ],
-        column_config={
-            'invoice_num': st.column_config.TextColumn(
-                label='Invoice Num',
-                width=None,
-                pinned=True
-            ),
-            'invoice_dt': st.column_config.DateColumn(
-                label='Date',
-                width=None,
-                pinned=True,
-            ),
-            'subject': st.column_config.TextColumn(
-                label='Subject',
-                width=None,
-                pinned=True,
-            ),
-            'currency': st.column_config.SelectboxColumn(
-                label='Currency',
-                width=None,
-                options=dds_currency.options,
-                #required=True
-            ),
-            'num_invoice_items': st.column_config.NumberColumn(
-                label='# Items',
-                width=None,
-                format='%d'
-            ),
-            'total_raw_amount': st.column_config.NumberColumn(
-                label='$Raw Amount',
-                width=None,
-                format='$ %.2f'
-            ),
-            'total_base_amount': st.column_config.NumberColumn(
-                label='$Base Amount',
-                width=None,
-                format='$ %.2f'
-            ),
-        },
-        on_select=clear_entries_from_cache,
-        selection_mode=(
-            'single-row',
-        )
-    )
-
-    st.divider()
-
-    if  _row_list := selected['selection']['rows']:
-        inv_id_sel = invoices[_row_list[0]]['invoice_id']
-        inv_sel, jrn_sel = get_sales_invoice_journal(inv_id_sel)
-
-        ui.badges(
-            badge_list=[("Invoice ID", "default"), (inv_id_sel, "secondary")], 
-            class_name="flex gap-2", 
-            key="badges1"
-        )
-        
-# either add mode or selected edit/view mode
-if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
-    
-    inv_cols = st.columns(2)
-    with inv_cols[0]:
-        inv_num = st.text_input(
-            label='#️⃣ Invoice Number',
-            value="" if edit_mode == 'Add' else inv_sel['invoice_num'],
-            type='default', 
-            placeholder="invoice number here", 
-        )
-        inv_date = st.date_input(
-            label='📅 Invoice Date',
-            value=date.today() if edit_mode == 'Add' else inv_sel['invoice_dt'],
-            key=f'date_input',
-            disabled=False,
-            on_change=reset_validate
-        )
-        inv_cur_type_option = st.selectbox(
-            label='💲 Currency',
-            options=dds_currency.options,
-            key='cur_type_select',
-            index=0 if edit_mode == 'Add' else dds_currency.get_idx_from_id(CurType(inv_sel['currency']).value),
-            disabled=(edit_mode == 'Edit'), # avoid error, changing currency means items all become invalid,
-            on_change=reset_validate
-        )
-        inv_cur = CurType[inv_cur_type_option].name
-        
-        
-    with inv_cols[1]:
-        inv_subject = st.text_input(
-            label='📕 Subject',
-            value="" if edit_mode == 'Add' else inv_sel['subject'],
-            type='default', 
-            placeholder="invoice subject here", 
-        )
-        inv_due_date = st.date_input(
-            label='⏰ Due Date',
-            value=date.today() + timedelta(days=5) if edit_mode == 'Add' else inv_sel['due_dt'],
-            key=f'due_date_input',
-            disabled=False
-        )
-        inv_shipping = st.number_input(
-            label='🚚 Shipping Charge',
-            value=0.0 if edit_mode == 'Add' else inv_sel['shipping'],
-            step=0.01,
-            key='ship_charge_num',
-            on_change=reset_validate
-        )
-    
-    inv_note = st.text_input(
-        label='📝 Note',
-        value="" if edit_mode == 'Add' else inv_sel['note'],
-        type='default', 
-        placeholder="invoice note here", 
-    )
-    
-    # get item list (filter by currency)
-    items = list_item(entity_type=EntityType.CUSTOMER.value)
-    items = list(map(
-        display_item, filter(
-            lambda e: e['currency'] == CurType[inv_cur_type_option].value, 
-            items
-        )
-    ))
-    dds_citems = DropdownSelect(
-        briefs=items,
+if len(customers) > 0:
+    dds_customers = DropdownSelect(
+        briefs=customers,
         include_null=False,
-        id_key='item_id',
-        display_keys=['name', 'unit_price']
+        id_key='cust_id',
+        display_keys=['cust_id', 'customer_name']
     )
-    
-    # prepare data editor
+    dds_currency = DropdownSelect.from_enum(
+        CurType,
+        include_null=False
+    )
+    inc_accts = get_accounts_by_type(acct_type=AcctType.INC.value)
+    exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
+    dds_inc_accts = DropdownSelect(
+        briefs=inc_accts,
+        include_null=False,
+        id_key='acct_id',
+        display_keys=['acct_name']
+    )
+    dds_incexp_accts = DropdownSelect(
+        briefs=inc_accts + exp_accts,
+        include_null=False,
+        id_key='acct_id',
+        display_keys=['acct_name']
+    )
+    all_accts = get_all_accounts()
+    dds_accts = DropdownSelect(
+        briefs=all_accts,
+        include_null=False,
+        id_key='acct_id',
+        display_keys=['acct_name']
+    )
+
+    widget_cols = st.columns([1, 4])
+    with widget_cols[0]:
+        edit_mode = st.radio(
+            label='Edit Mode',
+            options=['Add', 'Edit'],
+            format_func=lambda o: 'Search/Edit' if o == 'Edit' else 'Add',
+            # when user is in edit mode, the data will be kept in st.session_state['debit_entries]
+            # when user navigate to other pages, the data will still be kepted
+            # but when user navigate back to journal page, need to make sure the Edit tab is selected
+            # otherwise the Add page will contain edit mode cache
+            index=1,
+            horizontal=True,
+            on_change=clear_entries_and_reset_page, # clear cache
+        )
+
+    with widget_cols[1]:
+        edit_customer = st.selectbox(
+            label='👇 Select Customer',
+            options=dds_customers.options,
+            index=0
+        )
+        cust_id = dds_customers.get_id(edit_customer)
+        
+    # either add mode or selected edit/view mode
     if edit_mode == 'Edit':
-        invoice_items = [
-            {
-                'item_id': dds_citems._mappings.get(it['item']['item_id']),
-                'unit_price': it['item']['unit_price'],
-                'quantity': it['quantity'],
-                'tax_rate': it['tax_rate'] * 100,
-                'discount_rate': it['discount_rate'] * 100,
-                'amount_pre_tax': it['amount_pre_tax'],
-                'acct_name': dds_inc_accts._mappings.get(it['acct_id']),
-                'description': it['description'],
-            } for it in inv_sel['invoice_items']
-        ]
-        general_invoice_items = [
-            {
-                'incur_dt': datetime.strptime(git['incur_dt'], '%Y-%m-%d'),
-                'acct_name': dds_incexp_accts._mappings.get(git['acct_id']),
-                'currency': CurType(git['currency']).name, # TODO
-                'amount_pre_tax_raw': git['amount_pre_tax_raw'],
-                'amount_pre_tax': git['amount_pre_tax'],
-                'tax_rate': git['tax_rate'] * 100,
-                'description': git['description'],
-            } for git in inv_sel['ginvoice_items']
-        ]
-        # a bug that if existing invoice does not have general term, UI will not allow add new line
-        if len(general_invoice_items) == 0:
+        
+        invoices = list_sales_invoice(customer_ids=[cust_id])
+        
+        inv_displays = map(display_invoice, invoices)
+        selected: dict = st.dataframe(
+            data=inv_displays,
+            use_container_width=True,
+            hide_index=True,
+            column_order=[
+                'invoice_num',
+                'invoice_dt',
+                #'entity_name',
+                'subject',
+                'currency',
+                'num_invoice_items',
+                'total_raw_amount',
+                'total_base_amount'
+            ],
+            column_config={
+                'invoice_num': st.column_config.TextColumn(
+                    label='Invoice Num',
+                    width=None,
+                    pinned=True
+                ),
+                'invoice_dt': st.column_config.DateColumn(
+                    label='Date',
+                    width=None,
+                    pinned=True,
+                ),
+                'subject': st.column_config.TextColumn(
+                    label='Subject',
+                    width=None,
+                    pinned=True,
+                ),
+                'currency': st.column_config.SelectboxColumn(
+                    label='Currency',
+                    width=None,
+                    options=dds_currency.options,
+                    #required=True
+                ),
+                'num_invoice_items': st.column_config.NumberColumn(
+                    label='# Items',
+                    width=None,
+                    format='%d'
+                ),
+                'total_raw_amount': st.column_config.NumberColumn(
+                    label='$Raw Amount',
+                    width=None,
+                    format='$ %.2f'
+                ),
+                'total_base_amount': st.column_config.NumberColumn(
+                    label='$Base Amount',
+                    width=None,
+                    format='$ %.2f'
+                ),
+            },
+            on_select=clear_entries_from_cache,
+            selection_mode=(
+                'single-row',
+            )
+        )
+
+        st.divider()
+
+        if  _row_list := selected['selection']['rows']:
+            inv_id_sel = invoices[_row_list[0]]['invoice_id']
+            inv_sel, jrn_sel = get_sales_invoice_journal(inv_id_sel)
+
+            ui.badges(
+                badge_list=[("Invoice ID", "default"), (inv_id_sel, "secondary")], 
+                class_name="flex gap-2", 
+                key="badges1"
+            )
+            
+    # either add mode or selected edit/view mode
+    if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
+        
+        inv_cols = st.columns(2)
+        with inv_cols[0]:
+            inv_num = st.text_input(
+                label='#️⃣ Invoice Number',
+                value="" if edit_mode == 'Add' else inv_sel['invoice_num'],
+                type='default', 
+                placeholder="invoice number here", 
+            )
+            inv_date = st.date_input(
+                label='📅 Invoice Date',
+                value=date.today() if edit_mode == 'Add' else inv_sel['invoice_dt'],
+                key=f'date_input',
+                disabled=False,
+                on_change=reset_validate
+            )
+            inv_cur_type_option = st.selectbox(
+                label='💲 Currency',
+                options=dds_currency.options,
+                key='cur_type_select',
+                index=0 if edit_mode == 'Add' else dds_currency.get_idx_from_id(CurType(inv_sel['currency']).value),
+                disabled=(edit_mode == 'Edit'), # avoid error, changing currency means items all become invalid,
+                on_change=reset_validate
+            )
+            inv_cur = CurType[inv_cur_type_option].name
+            
+            
+        with inv_cols[1]:
+            inv_subject = st.text_input(
+                label='📕 Subject',
+                value="" if edit_mode == 'Add' else inv_sel['subject'],
+                type='default', 
+                placeholder="invoice subject here", 
+            )
+            inv_due_date = st.date_input(
+                label='⏰ Due Date',
+                value=date.today() + timedelta(days=5) if edit_mode == 'Add' else inv_sel['due_dt'],
+                key=f'due_date_input',
+                disabled=False
+            )
+            inv_shipping = st.number_input(
+                label='🚚 Shipping Charge',
+                value=0.0 if edit_mode == 'Add' else inv_sel['shipping'],
+                step=0.01,
+                key='ship_charge_num',
+                on_change=reset_validate
+            )
+        
+        inv_note = st.text_input(
+            label='📝 Note',
+            value="" if edit_mode == 'Add' else inv_sel['note'],
+            type='default', 
+            placeholder="invoice note here", 
+        )
+        
+        # get item list (filter by currency)
+        items = list_item(entity_type=EntityType.CUSTOMER.value)
+        items = list(map(
+            display_item, filter(
+                lambda e: e['currency'] == CurType[inv_cur_type_option].value, 
+                items
+            )
+        ))
+        dds_citems = DropdownSelect(
+            briefs=items,
+            include_null=False,
+            id_key='item_id',
+            display_keys=['name', 'unit_price']
+        )
+        
+        # prepare data editor
+        if edit_mode == 'Edit':
+            invoice_items = [
+                {
+                    'item_id': dds_citems._mappings.get(it['item']['item_id']),
+                    'unit_price': it['item']['unit_price'],
+                    'quantity': it['quantity'],
+                    'tax_rate': it['tax_rate'] * 100,
+                    'discount_rate': it['discount_rate'] * 100,
+                    'amount_pre_tax': it['amount_pre_tax'],
+                    'acct_name': dds_inc_accts._mappings.get(it['acct_id']),
+                    'description': it['description'],
+                } for it in inv_sel['invoice_items']
+            ]
+            general_invoice_items = [
+                {
+                    'incur_dt': datetime.strptime(git['incur_dt'], '%Y-%m-%d'),
+                    'acct_name': dds_incexp_accts._mappings.get(git['acct_id']),
+                    'currency': CurType(git['currency']).name, # TODO
+                    'amount_pre_tax_raw': git['amount_pre_tax_raw'],
+                    'amount_pre_tax': git['amount_pre_tax'],
+                    'tax_rate': git['tax_rate'] * 100,
+                    'description': git['description'],
+                } for git in inv_sel['ginvoice_items']
+            ]
+            # a bug that if existing invoice does not have general term, UI will not allow add new line
+            if len(general_invoice_items) == 0:
+                general_invoice_items = [{c: None for c in [
+                    'incur_dt',
+                    'acct_name',
+                    'currency',
+                    'amount_pre_tax_raw',
+                    'amount_pre_tax',
+                    'tax_rate',
+                    'description'
+                ]}]
+            
+            
+            if not 'subtotal_invitems' in st.session_state:
+                st.session_state['subtotal_invitems'] = inv_sel['subtotal_invitems']
+            if not 'subtotal_ginvitems' in st.session_state:
+                st.session_state['subtotal_ginvitems'] = inv_sel['subtotal_ginvitems']
+            if not 'subtotal' in st.session_state:
+                st.session_state['subtotal'] = inv_sel['subtotal']
+            if not 'tax_amount' in st.session_state:
+                st.session_state['tax_amount'] = inv_sel['tax_amount']
+            if not 'total' in st.session_state:
+                st.session_state['total'] = inv_sel['total']
+                
+            if not 'journal' in st.session_state:
+                st.session_state['journal'] = jrn_sel
+        else:
+            invoice_items = [{c: None for c in [
+                'item_id',
+                'unit_price',
+                'quantity',
+                'tax_rate',
+                'discount_rate',
+                'amount_pre_tax',
+                'acct_name',
+                'description'
+            ]}]
+            invoice_items[0]['discount_rate'] = 0
+            invoice_items[0]['tax_rate'] = get_default_tax_rate() * 100
+            
             general_invoice_items = [{c: None for c in [
                 'incur_dt',
                 'acct_name',
@@ -545,423 +584,388 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and _row_list):
                 'tax_rate',
                 'description'
             ]}]
+            
+        if 'invoice_item_entries' not in st.session_state:
+            st.session_state['invoice_item_entries'] = invoice_items
+        if 'general_invoice_item_entries' not in st.session_state:
+            st.session_state['general_invoice_item_entries'] = general_invoice_items
         
-        
-        if not 'subtotal_invitems' in st.session_state:
-            st.session_state['subtotal_invitems'] = inv_sel['subtotal_invitems']
-        if not 'subtotal_ginvitems' in st.session_state:
-            st.session_state['subtotal_ginvitems'] = inv_sel['subtotal_ginvitems']
-        if not 'subtotal' in st.session_state:
-            st.session_state['subtotal'] = inv_sel['subtotal']
-        if not 'tax_amount' in st.session_state:
-            st.session_state['tax_amount'] = inv_sel['tax_amount']
-        if not 'total' in st.session_state:
-            st.session_state['total'] = inv_sel['total']
-            
-        if not 'journal' in st.session_state:
-            st.session_state['journal'] = jrn_sel
-    else:
-        invoice_items = [{c: None for c in [
-            'item_id',
-            'unit_price',
-            'quantity',
-            'tax_rate',
-            'discount_rate',
-            'amount_pre_tax',
-            'acct_name',
-            'description'
-        ]}]
-        invoice_items[0]['discount_rate'] = 0
-        invoice_items[0]['tax_rate'] = get_default_tax_rate() * 100
-        
-        general_invoice_items = [{c: None for c in [
-            'incur_dt',
-            'acct_name',
-            'currency',
-            'amount_pre_tax_raw',
-            'amount_pre_tax',
-            'tax_rate',
-            'description'
-        ]}]
-        
-    if 'invoice_item_entries' not in st.session_state:
-        st.session_state['invoice_item_entries'] = invoice_items
-    if 'general_invoice_item_entries' not in st.session_state:
-        st.session_state['general_invoice_item_entries'] = general_invoice_items
-    
-    # invoice items
-    inv_item_container = st.container(border=True)
-    inv_item_container.subheader('Invoice Items')
-    inv_item_container.caption('put predefined invoice items here')
-    inv_item_entries = inv_item_container.data_editor(
-        data=st.session_state['invoice_item_entries'],
-        #data=st.session_state['debit_entries'],
-        num_rows='dynamic',
-        use_container_width=True,
-        column_order=[
-            'item_id',
-            'unit_price',
-            'quantity',
-            'discount_rate',
-            'amount_pre_tax',
-            'tax_rate',
-            'acct_name',
-            'description'
-        ],
-        column_config={
-            'item_id': st.column_config.SelectboxColumn(
-                label='Item',
-                width=None,
-                options=dds_citems.options,
-                #required=True
-            ),
-            'unit_price': st.column_config.NumberColumn(
-                label='Unit Price',
-                width=None,
-                format='$ %.2f',
-                step=0.01,
-                disabled=True
-                #required=True
-            ),
-            'quantity': st.column_config.NumberColumn(
-                label='Quantity',
-                width=None,
-                format='%.2f',
-                step=0.001,
-                #required=True
-            ),
-            'tax_rate': st.column_config.NumberColumn(
-                label='Tax Rate',
-                width=None,
-                format='%.1f%%',
-                step=0.1,
-                min_value=0.0,
-                max_value=100.0,
-                default=get_default_tax_rate() * 100,
-                #required=True
-            ),
-            'discount_rate': st.column_config.NumberColumn(
-                label='Discount Rate',
-                width=None,
-                format='%.1f%%',
-                step=0.1,
-                min_value=0.0,
-                max_value=100.0,
-                default=0
-                #required=True
-            ),
-            'amount_pre_tax': st.column_config.NumberColumn(
-                label='Pre Tax',
-                width=None,
-                format='$ %.2f',
-                step=0.01,
-                disabled=True
-                #required=True
-            ),
-            'acct_name': st.column_config.SelectboxColumn(
-                label='Income Acct',
-                width=None,
-                options=dds_inc_accts.options,
-                #required=True
-            ),
-            'description': st.column_config.TextColumn(
-                label='Description',
-                width=None,
-                #required=True,
-                default="" # need set this otherwise will be wrong dtype
-            ),
-        },
-        hide_index=True,
-        key='key_editor_inv_items',
-        disabled=False,
-        on_change=on_change_inv_items,
-    )
-    
-    total_inv_items = st.session_state.get('subtotal_invitems', '-')
-    inv_item_container.markdown(f"📐 **Total Invoice Items {inv_cur}**: {total_inv_items if total_inv_items != '-' else '-'}")
-    
-    # general invoice items
-    general_inv_item_container = st.container(border=True)
-    general_inv_item_container.subheader('General Items')
-    general_inv_item_container.caption('for example, put billable expense here')
-    general_inv_item_entries = general_inv_item_container.data_editor(
-        data=st.session_state['general_invoice_item_entries'],
-        #data=st.session_state['debit_entries'],
-        num_rows='dynamic',
-        use_container_width=True,
-        column_order=[
-            'incur_dt',
-            'acct_name',
-            'currency',
-            'amount_pre_tax_raw',
-            'amount_pre_tax',
-            'tax_rate',
-            'description'
-        ],
-        column_config={
-            'incur_dt': st.column_config.DateColumn(
-                label='Incur Date',
-                width=None,
-                default=datetime.today(), 
-                #required=True
-            ),
-            'acct_name': st.column_config.SelectboxColumn(
-                label='Offset Acct',
-                width=None,
-                options=dds_incexp_accts.options,
-                #required=True
-            ),
-            'currency': st.column_config.SelectboxColumn(
-                label='Currency',
-                width=None,
-                options=dds_currency.options,
-                #required=True
-            ),
-            'amount_pre_tax_raw': st.column_config.NumberColumn(
-                label='Raw Amount',
-                width=None,
-                format='$ %.2f',
-                step=0.01,
-                #required=True
-            ),
-            'amount_pre_tax': st.column_config.NumberColumn(
-                label=f'Invoice Amount ({inv_cur})',
-                width=None,
-                format='$ %.2f',
-                step=0.01,
-                #required=True
-            ),
-            'tax_rate': st.column_config.NumberColumn(
-                label='Tax Rate',
-                width=None,
-                format='%.1f%%',
-                step=0.1,
-                min_value=0.0,
-                max_value=100.0,
-                default=get_default_tax_rate() * 100,
-                #required=True
-            ),
-            'description': st.column_config.TextColumn(
-                label='Description',
-                width=None,
-                #required=True,
-                default="" # need set this otherwise will be wrong dtype
-            ),
-        },
-        hide_index=True,
-        key='key_editor_general_inv_items',
-        disabled=False,
-        on_change=on_change_general_inv_items,
-    )
-    total_ginvitems = st.session_state.get('subtotal_ginvitems', '-')
-    general_inv_item_container.markdown(f"🍥 **Total General Items {inv_cur}**: {total_ginvitems if total_ginvitems != '-' else '-'}")
-    
-    # total amount and tax
-    subtotal = st.session_state.get('subtotal', '-')
-    st.markdown(f"🛒 **SubTotal {inv_cur}**: {subtotal if subtotal != '-' else '-'}")
-    
-    tax_amount = st.session_state.get('tax_amount', '-')
-    st.markdown(f"🧾 **Tax Amount {inv_cur}**: {tax_amount if tax_amount != '-' else '-'}")
-    
-    total = st.session_state.get('total', '-')
-    st.markdown(f"💵 **Total {inv_cur}**: {total if total != '-' else '-'}")
-    
-    invoice_ = {
-        #"invoice_id": "string",
-        "entity_type": 1, # customer
-        "entity_id": cust_id,
-        "invoice_num": inv_num,
-        "invoice_dt": inv_date.strftime('%Y-%m-%d'), # convert to string
-        "due_dt": inv_due_date.strftime('%Y-%m-%d'),
-        "subject": inv_subject,
-        "currency": CurType[inv_cur_type_option].value,
-        "invoice_items": convert_inv_items_to_db(inv_item_entries),
-        "ginvoice_items": convert_general_inv_items_to_db(general_inv_item_entries),
-        "shipping": inv_shipping,
-        "note": inv_note
-    }
-    
-    # TODO: only validate if in add mode or if in edit mode and actually changed something
-    validate_btn = st.button(
-        label='Validate and Update Journal Entry Preview',
-        on_click=validate_invoice,
-        args=(invoice_, )
-    )
-    
-    
-    if (edit_mode == 'Add' and st.session_state.get('validated', False)) or edit_mode == 'Edit':
-        # display only in 2 scenarios:
-        # 1. if add mode, but be validated (otherwise will be void)
-        # 2. if edit mode, must display whether been updated or not
-        with st.expander(label='Journal Entries', expanded=True, icon='📔'):
-            #jrn_container = st.container(border=True)
-            st.subheader("Journal Entries")
-            
-            if st.session_state.get('validated', False):
-                # if validated (clicked validate button), display ad-hoc calculated journal
-                # regardless of whether it is in add or edit mode
-                jrn_to_show = st.session_state['journal']
-            else:
-                # display original one from db (must be edit mode)
-                jrn_to_show = jrn_sel
-                # display journal ID from DB:
-                st.markdown(f"Journal ID: :violet[**{jrn_sel['journal_id']}**] ")
-            
-            # display journal and entries
-            jrn_helper = JournalEntryHelper(jrn_to_show)
-            
-            st.caption('Debit Entries')
-            debit_entries = st.data_editor(
-                data=jrn_helper.debit_entries,
-                num_rows='fixed',
-                use_container_width=True,
-                column_order=[
-                    'acct_name',
-                    'currency',
-                    'amount',
-                    'amount_base',
-                    'description'
-                ],
-                column_config={
-                    'acct_name': st.column_config.SelectboxColumn(
-                        label='Account',
-                        width=None,
-                        options=dds_accts.options,
-                        #required=True
-                    ),
-                    'currency': st.column_config.SelectboxColumn(
-                        label='Currency',
-                        width=None,
-                        options=dds_currency.options,
-                        #required=True
-                    ),
-                    'amount': st.column_config.NumberColumn(
-                        label='Raw Amt',
-                        width=None,
-                        format='$ %.2f',
-                        step=0.01,
-                        #required=True
-                    ),
-                    'amount_base': st.column_config.NumberColumn(
-                        label='Base Amt',
-                        width=None,
-                        format='$ %.2f',
-                        step=0.01,
-                        #required=True
-                    ),
-                    'description': st.column_config.TextColumn(
-                        label='Description',
-                        width=None,
-                        #required=True,
-                        default="" # need set this otherwise will be wrong dtype
-                    ),
-                },
-                hide_index=True,
-                key='key_editor_debit',
-                disabled=True,
-            )
-            total_debit = sum(
-                e['amount_base'] 
-                for e in debit_entries
-                if pd.notnull(e['amount_base'])
-            )
-            st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{total_debit:.2f}]')
-            
-            st.caption('Credit Entries')
-            credit_entries = st.data_editor(
-                #data=st.session_state.get('credit_entries', jhelper.credit_entries),
-                data=jrn_helper.credit_entries,
-                num_rows='fixed',
-                use_container_width=True,
-                column_order=[
-                    'acct_name',
-                    'currency',
-                    'amount',
-                    'amount_base',
-                    'description'
-                ],
-                column_config={
-                    'acct_name': st.column_config.SelectboxColumn(
-                        label='Account',
-                        width=None,
-                        options=dds_accts.options,
-                        #required=True
-                    ),
-                    'currency': st.column_config.SelectboxColumn(
-                        label='Currency',
-                        width=None,
-                        options=dds_currency.options,
-                        #required=True
-                    ),
-                    'amount': st.column_config.NumberColumn(
-                        label='Raw Amt',
-                        width=None,
-                        format='$ %.2f',
-                        step=0.01
-                        #required=True
-                    ),
-                    'amount_base': st.column_config.NumberColumn(
-                        label='Base Amt',
-                        width=None,
-                        format='$ %.2f',
-                        step=0.01
-                        #required=True
-                    ),
-                    'description': st.column_config.TextColumn(
-                        label='Description',
-                        width=None,
-                        #required=True,
-                        default="" # need set this otherwise will be wrong dtype
-                    ),
-                },
-                hide_index=True,
-                key='key_editor_credit',
-                disabled=True
-            )
-            total_credit = sum(
-                e['amount_base'] 
-                for e in credit_entries
-                if pd.notnull(e['amount_base'])
-            )
-            st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{total_credit:.2f}]')
-
-    
-    if edit_mode == 'Add' and st.session_state.get('validated', False):
-        # add button
-        st.button(
-            label='Add Invoice',
-            on_click=add_sales_invoice,
-            args=(invoice_,)
+        # invoice items
+        inv_item_container = st.container(border=True)
+        inv_item_container.subheader('Invoice Items')
+        inv_item_container.caption('put predefined invoice items here')
+        inv_item_entries = inv_item_container.data_editor(
+            data=st.session_state['invoice_item_entries'],
+            #data=st.session_state['debit_entries'],
+            num_rows='dynamic',
+            use_container_width=True,
+            column_order=[
+                'item_id',
+                'unit_price',
+                'quantity',
+                'discount_rate',
+                'amount_pre_tax',
+                'tax_rate',
+                'acct_name',
+                'description'
+            ],
+            column_config={
+                'item_id': st.column_config.SelectboxColumn(
+                    label='Item',
+                    width=None,
+                    options=dds_citems.options,
+                    #required=True
+                ),
+                'unit_price': st.column_config.NumberColumn(
+                    label='Unit Price',
+                    width=None,
+                    format='$ %.2f',
+                    step=0.01,
+                    disabled=True
+                    #required=True
+                ),
+                'quantity': st.column_config.NumberColumn(
+                    label='Quantity',
+                    width=None,
+                    format='%.2f',
+                    step=0.001,
+                    #required=True
+                ),
+                'tax_rate': st.column_config.NumberColumn(
+                    label='Tax Rate',
+                    width=None,
+                    format='%.1f%%',
+                    step=0.1,
+                    min_value=0.0,
+                    max_value=100.0,
+                    default=get_default_tax_rate() * 100,
+                    #required=True
+                ),
+                'discount_rate': st.column_config.NumberColumn(
+                    label='Discount Rate',
+                    width=None,
+                    format='%.1f%%',
+                    step=0.1,
+                    min_value=0.0,
+                    max_value=100.0,
+                    default=0
+                    #required=True
+                ),
+                'amount_pre_tax': st.column_config.NumberColumn(
+                    label='Pre Tax',
+                    width=None,
+                    format='$ %.2f',
+                    step=0.01,
+                    disabled=True
+                    #required=True
+                ),
+                'acct_name': st.column_config.SelectboxColumn(
+                    label='Income Acct',
+                    width=None,
+                    options=dds_inc_accts.options,
+                    #required=True
+                ),
+                'description': st.column_config.TextColumn(
+                    label='Description',
+                    width=None,
+                    #required=True,
+                    default="" # need set this otherwise will be wrong dtype
+                ),
+            },
+            hide_index=True,
+            key='key_editor_inv_items',
+            disabled=False,
+            on_change=on_change_inv_items,
         )
         
-    elif edit_mode == 'Edit':
-        btn_cols = st.columns([1, 1, 5])
-        with btn_cols[1]:
-            if st.session_state.get('validated', False):
-                # add invoice id to update
-                invoice_.update({'invoice_id': inv_id_sel})
-                st.button(
-                    label='Update',
-                    type='secondary',
-                    on_click=update_sales_invoice,
-                    args=(invoice_,)
+        total_inv_items = st.session_state.get('subtotal_invitems', '-')
+        inv_item_container.markdown(f"📐 **Total Invoice Items {inv_cur}**: {total_inv_items if total_inv_items != '-' else '-'}")
+        
+        # general invoice items
+        general_inv_item_container = st.container(border=True)
+        general_inv_item_container.subheader('General Items')
+        general_inv_item_container.caption('for example, put billable expense here')
+        general_inv_item_entries = general_inv_item_container.data_editor(
+            data=st.session_state['general_invoice_item_entries'],
+            #data=st.session_state['debit_entries'],
+            num_rows='dynamic',
+            use_container_width=True,
+            column_order=[
+                'incur_dt',
+                'acct_name',
+                'currency',
+                'amount_pre_tax_raw',
+                'amount_pre_tax',
+                'tax_rate',
+                'description'
+            ],
+            column_config={
+                'incur_dt': st.column_config.DateColumn(
+                    label='Incur Date',
+                    width=None,
+                    default=datetime.today(), 
+                    #required=True
+                ),
+                'acct_name': st.column_config.SelectboxColumn(
+                    label='Offset Acct',
+                    width=None,
+                    options=dds_incexp_accts.options,
+                    #required=True
+                ),
+                'currency': st.column_config.SelectboxColumn(
+                    label='Currency',
+                    width=None,
+                    options=dds_currency.options,
+                    #required=True
+                ),
+                'amount_pre_tax_raw': st.column_config.NumberColumn(
+                    label='Raw Amount',
+                    width=None,
+                    format='$ %.2f',
+                    step=0.01,
+                    #required=True
+                ),
+                'amount_pre_tax': st.column_config.NumberColumn(
+                    label=f'Invoice Amount ({inv_cur})',
+                    width=None,
+                    format='$ %.2f',
+                    step=0.01,
+                    #required=True
+                ),
+                'tax_rate': st.column_config.NumberColumn(
+                    label='Tax Rate',
+                    width=None,
+                    format='%.1f%%',
+                    step=0.1,
+                    min_value=0.0,
+                    max_value=100.0,
+                    default=get_default_tax_rate() * 100,
+                    #required=True
+                ),
+                'description': st.column_config.TextColumn(
+                    label='Description',
+                    width=None,
+                    #required=True,
+                    default="" # need set this otherwise will be wrong dtype
+                ),
+            },
+            hide_index=True,
+            key='key_editor_general_inv_items',
+            disabled=False,
+            on_change=on_change_general_inv_items,
+        )
+        total_ginvitems = st.session_state.get('subtotal_ginvitems', '-')
+        general_inv_item_container.markdown(f"🍥 **Total General Items {inv_cur}**: {total_ginvitems if total_ginvitems != '-' else '-'}")
+        
+        # total amount and tax
+        subtotal = st.session_state.get('subtotal', '-')
+        st.markdown(f"🛒 **SubTotal {inv_cur}**: {subtotal if subtotal != '-' else '-'}")
+        
+        tax_amount = st.session_state.get('tax_amount', '-')
+        st.markdown(f"🧾 **Tax Amount {inv_cur}**: {tax_amount if tax_amount != '-' else '-'}")
+        
+        total = st.session_state.get('total', '-')
+        st.markdown(f"💵 **Total {inv_cur}**: {total if total != '-' else '-'}")
+        
+        invoice_ = {
+            #"invoice_id": "string",
+            "entity_type": 1, # customer
+            "entity_id": cust_id,
+            "invoice_num": inv_num,
+            "invoice_dt": inv_date.strftime('%Y-%m-%d'), # convert to string
+            "due_dt": inv_due_date.strftime('%Y-%m-%d'),
+            "subject": inv_subject,
+            "currency": CurType[inv_cur_type_option].value,
+            "invoice_items": convert_inv_items_to_db(inv_item_entries),
+            "ginvoice_items": convert_general_inv_items_to_db(general_inv_item_entries),
+            "shipping": inv_shipping,
+            "note": inv_note
+        }
+        
+        # TODO: only validate if in add mode or if in edit mode and actually changed something
+        validate_btn = st.button(
+            label='Validate and Update Journal Entry Preview',
+            on_click=validate_invoice,
+            args=(invoice_, )
+        )
+        
+        
+        if (edit_mode == 'Add' and st.session_state.get('validated', False)) or edit_mode == 'Edit':
+            # display only in 2 scenarios:
+            # 1. if add mode, but be validated (otherwise will be void)
+            # 2. if edit mode, must display whether been updated or not
+            with st.expander(label='Journal Entries', expanded=True, icon='📔'):
+                #jrn_container = st.container(border=True)
+                st.subheader("Journal Entries")
+                
+                if st.session_state.get('validated', False):
+                    # if validated (clicked validate button), display ad-hoc calculated journal
+                    # regardless of whether it is in add or edit mode
+                    jrn_to_show = st.session_state['journal']
+                else:
+                    # display original one from db (must be edit mode)
+                    jrn_to_show = jrn_sel
+                    # display journal ID from DB:
+                    st.markdown(f"Journal ID: :violet[**{jrn_sel['journal_id']}**] ")
+                
+                # display journal and entries
+                jrn_helper = JournalEntryHelper(jrn_to_show)
+                
+                st.caption('Debit Entries')
+                debit_entries = st.data_editor(
+                    data=jrn_helper.debit_entries,
+                    num_rows='fixed',
+                    use_container_width=True,
+                    column_order=[
+                        'acct_name',
+                        'currency',
+                        'amount',
+                        'amount_base',
+                        'description'
+                    ],
+                    column_config={
+                        'acct_name': st.column_config.SelectboxColumn(
+                            label='Account',
+                            width=None,
+                            options=dds_accts.options,
+                            #required=True
+                        ),
+                        'currency': st.column_config.SelectboxColumn(
+                            label='Currency',
+                            width=None,
+                            options=dds_currency.options,
+                            #required=True
+                        ),
+                        'amount': st.column_config.NumberColumn(
+                            label='Raw Amt',
+                            width=None,
+                            format='$ %.2f',
+                            step=0.01,
+                            #required=True
+                        ),
+                        'amount_base': st.column_config.NumberColumn(
+                            label='Base Amt',
+                            width=None,
+                            format='$ %.2f',
+                            step=0.01,
+                            #required=True
+                        ),
+                        'description': st.column_config.TextColumn(
+                            label='Description',
+                            width=None,
+                            #required=True,
+                            default="" # need set this otherwise will be wrong dtype
+                        ),
+                    },
+                    hide_index=True,
+                    key='key_editor_debit',
+                    disabled=True,
                 )
-        with btn_cols[0]:
+                total_debit = sum(
+                    e['amount_base'] 
+                    for e in debit_entries
+                    if pd.notnull(e['amount_base'])
+                )
+                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{total_debit:.2f}]')
+                
+                st.caption('Credit Entries')
+                credit_entries = st.data_editor(
+                    #data=st.session_state.get('credit_entries', jhelper.credit_entries),
+                    data=jrn_helper.credit_entries,
+                    num_rows='fixed',
+                    use_container_width=True,
+                    column_order=[
+                        'acct_name',
+                        'currency',
+                        'amount',
+                        'amount_base',
+                        'description'
+                    ],
+                    column_config={
+                        'acct_name': st.column_config.SelectboxColumn(
+                            label='Account',
+                            width=None,
+                            options=dds_accts.options,
+                            #required=True
+                        ),
+                        'currency': st.column_config.SelectboxColumn(
+                            label='Currency',
+                            width=None,
+                            options=dds_currency.options,
+                            #required=True
+                        ),
+                        'amount': st.column_config.NumberColumn(
+                            label='Raw Amt',
+                            width=None,
+                            format='$ %.2f',
+                            step=0.01
+                            #required=True
+                        ),
+                        'amount_base': st.column_config.NumberColumn(
+                            label='Base Amt',
+                            width=None,
+                            format='$ %.2f',
+                            step=0.01
+                            #required=True
+                        ),
+                        'description': st.column_config.TextColumn(
+                            label='Description',
+                            width=None,
+                            #required=True,
+                            default="" # need set this otherwise will be wrong dtype
+                        ),
+                    },
+                    hide_index=True,
+                    key='key_editor_credit',
+                    disabled=True
+                )
+                total_credit = sum(
+                    e['amount_base'] 
+                    for e in credit_entries
+                    if pd.notnull(e['amount_base'])
+                )
+                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{total_credit:.2f}]')
+
+        
+        if edit_mode == 'Add' and st.session_state.get('validated', False):
+            # add button
             st.button(
-                label='Delete',
-                type='primary',
-                on_click=delete_sales_invoice,
-                kwargs=dict(
-                    invoice_id=inv_id_sel
-                )
+                label='Add Invoice',
+                on_click=add_sales_invoice,
+                args=(invoice_,)
             )
             
-    if edit_mode == 'Edit':
-        with st.container(border=True):
-            st.subheader("Invoice Preview")
-            # show sales invoice HTML preview
-            components.html(
-                preview_sales_invoice(inv_id_sel), 
-                height = 1250, 
-                scrolling=True
-            )
+        elif edit_mode == 'Edit':
+            btn_cols = st.columns([1, 1, 5])
+            with btn_cols[1]:
+                if st.session_state.get('validated', False):
+                    # add invoice id to update
+                    invoice_.update({'invoice_id': inv_id_sel})
+                    st.button(
+                        label='Update',
+                        type='secondary',
+                        on_click=update_sales_invoice,
+                        args=(invoice_,)
+                    )
+            with btn_cols[0]:
+                st.button(
+                    label='Delete',
+                    type='primary',
+                    on_click=delete_sales_invoice,
+                    kwargs=dict(
+                        invoice_id=inv_id_sel
+                    )
+                )
+                
+        if edit_mode == 'Edit':
+            with st.container(border=True):
+                st.subheader("Invoice Preview")
+                # show sales invoice HTML preview
+                components.html(
+                    preview_sales_invoice(inv_id_sel), 
+                    height = 1250, 
+                    scrolling=True
+                )
+                
+else:
+    st.warning("No Customer found, must create customer to add/edit sales", icon='🥵')

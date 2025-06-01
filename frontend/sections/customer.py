@@ -29,12 +29,15 @@ with tabs[0]:
             key="card2"
         )
     
-    st.data_editor(
-        data=customers, 
-        use_container_width=True,
-        hide_index=True,
-        disabled=True
-    )
+    if len(customers) > 0:
+        st.data_editor(
+            data=customers, 
+            use_container_width=True,
+            hide_index=True,
+            disabled=True
+        )
+    else:
+        st.warning("No Customer found", icon='🥵')
 
 with tabs[1]:
     dds_entities = DropdownSelect(
@@ -52,6 +55,8 @@ with tabs[1]:
             #default='Add',
             #selection_mode ='single',
             horizontal=True,
+            index=1 if len(customers) > 0 else 0,
+            disabled=not(len(customers) > 0)
         )
     
     if edit_mode == 'Edit':
@@ -113,10 +118,14 @@ with tabs[1]:
             index=0 if edit_mode == 'Add' else dds_contacts.get_idx_from_id(
                 existing_entity['bill_contact']['contact_id']
             ),
+            disabled=not(len(contacts) > 0)
         )
-        with st.popover(label='Expand to See Billing Contact'):
-            bill_contact_id = dds_contacts.get_id(bill_contact_option)
-            st.json(get_contact(bill_contact_id))
+        if len(contacts) > 0:
+            with st.popover(label='Expand to See Billing Contact'):
+                bill_contact_id = dds_contacts.get_id(bill_contact_option)
+                st.json(get_contact(bill_contact_id))
+        else:
+            st.warning("No Contact setup yet, please go to Contact page to set it up first", icon='🥵')
     
     with cust_cols[1]:
         if edit_mode == 'Add':
@@ -151,25 +160,30 @@ with tabs[1]:
                     ),
                     key='sel2'
                 )
-            with st.popover(label='Expand to See Shipping Contact'):
-                ship_contact_id = dds_contacts.get_id(ship_contact_option)
-                st.json(get_contact(ship_contact_id))
+                
+            if len(contacts) > 0:
+                with st.popover(label='Expand to See Shipping Contact'):
+                    ship_contact_id = dds_contacts.get_id(ship_contact_option)
+                    st.json(get_contact(ship_contact_id))
+            else:
+                st.warning("No Contact setup yet, please go to Contact page to set it up first", icon='🥵')
     else:
         ship_contact_id = None
         
     
     if edit_mode == 'Add':
         # add button
-        st.button(
-            label='Add Customer',
-            on_click=add_customer,
-            kwargs=dict(
-                customer_name=cname, is_business=is_business, 
-                bill_contact_id=bill_contact_id, 
-                ship_same_as_bill=ship_same_as_bill, 
-                ship_contact_id=ship_contact_id
+        if len(contacts) > 0:
+            st.button(
+                label='Add Customer',
+                on_click=add_customer,
+                kwargs=dict(
+                    customer_name=cname, is_business=is_business, 
+                    bill_contact_id=bill_contact_id, 
+                    ship_same_as_bill=ship_same_as_bill, 
+                    ship_contact_id=ship_contact_id
+                )
             )
-        )
     else:
         # update and remove button
         btn_cols = st.columns([1, 1, 5])
