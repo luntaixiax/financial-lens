@@ -22,6 +22,11 @@ pages = {
         st.Page("sections/sales_invoice.py", title="Manage Invoice", icon='💶'),
         st.Page("sections/sales_payment.py", title="Manage Payment", icon='💸'),
     ],
+    "Purchase": [
+        st.Page("sections/purchase_overview.py", title="Purchase Overview", icon='📊'),
+        st.Page("sections/purchase_invoice.py", title="Manage Invoice", icon='💶'),
+        st.Page("sections/purchase_payment.py", title="Manage Payment", icon='💸'),
+    ],
     "Expense": [
         st.Page("sections/expense_overview.py", title="Expense Overview", icon='📊'),
         st.Page("sections/expense.py", title="Manage Expense", icon='🛒'),
