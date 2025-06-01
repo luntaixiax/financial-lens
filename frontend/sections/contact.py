@@ -18,12 +18,15 @@ with tabs[0]:
         description="registered in system", 
         key="card1"
     )
-    st.data_editor(
-        data=entities, 
-        use_container_width=True,
-        hide_index=True,
-        disabled=True
-    )
+    if len(entities) > 0:
+        st.data_editor(
+            data=entities, 
+            use_container_width=True,
+            hide_index=True,
+            disabled=True
+        )
+    else:
+        st.warning("No Contact found", icon='🥵')
 
 with tabs[1]:
     dds_entities = DropdownSelect(
@@ -41,6 +44,8 @@ with tabs[1]:
             #default='Add',
             #selection_mode ='single',
             horizontal=True,
+            index=1 if len(entities) > 0 else 0,
+            disabled=not(len(entities) > 0)
         )
     
     if edit_mode == 'Edit':

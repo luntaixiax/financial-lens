@@ -25,26 +25,30 @@ def id_generator(prefix: str, length: int = 8, existing_list: list = None) -> st
     return new_id
 
 @lru_cache()
-def get_settings() -> dict:
+def get_obj_settings() -> dict:
     with open(Path.cwd() / 'configs.yaml') as obj:
         return yaml.safe_load(obj)
+
+
+def get_settings() -> dict:
+    from src.app.service.misc import SettingService
     
-def get_abs_img_path(img_name: str, sector: str) -> str:
-    settings = get_settings()
-    img_root = settings.get('paths').get('static').get('images')
-    return str(Path(img_root) / sector / img_name)
+    return {
+        'preferences': {
+            'base_cur': SettingService.get_base_currency(),
+            'default_sales_tax_rate': SettingService.get_default_tax_rate()
+        }
+    }
+
 
 def get_base_cur() -> CurType:
     settings = get_settings()
-    return CurType[settings['preferences']['base_cur']]
+    return settings['preferences']['base_cur']
 
 def get_default_tax_rate() -> float:
     settings = get_settings()
     return settings['preferences']['default_sales_tax_rate']
 
-def get_company() -> dict:
-    settings = get_settings()
-    return settings['company_settings']
 
 def get_vault_resp(mount_point: str, path: str) -> dict:
     with open(Path.cwd().parent / "secrets.toml", mode="rb") as fp:
@@ -93,7 +97,7 @@ def get_secret() -> dict:
     }
 
 def get_file_root(type_: Literal['files', 'backup'] = 'files') -> str:
-    settings = get_settings().get(type_, {})
+    settings = get_obj_settings().get(type_, {})
     
     if settings.get('fs', 'obj') == 'obj':
         # object file system
@@ -103,4 +107,17 @@ def get_file_root(type_: Literal['files', 'backup'] = 'files') -> str:
     else:
         # file system
         file_root = settings.get('file_root')
+        return  (Path(settings.get('root')) / file_root).as_posix()
+    
+def get_config_root(type_: Literal['files', 'backup'] = 'files') -> str:
+    settings = get_obj_settings().get(type_, {})
+    
+    if settings.get('fs', 'obj') == 'obj':
+        # object file system
+        bucket = settings.get('bucket')
+        file_root = 'config'
+        return (Path(bucket) / file_root).as_posix()
+    else:
+        # file system
+        file_root = 'config'
         return  (Path(settings.get('root')) / file_root).as_posix()

@@ -9,7 +9,6 @@ from src.app.model.enums import CurType
 
 class FxService:
     GLOBAL_BASE_CUR = CurType.EUR
-    BASE_CUR = get_base_cur()
     FALL_BACK_CUR = {
         CurType.MOP : CurType.HKD
     }
@@ -102,7 +101,7 @@ class FxService:
     @classmethod
     def get(cls, currency: CurType, cur_dt: date) -> float:
         # convert using user defined base currency
-        base_fx = cls._get(cls.BASE_CUR, cur_dt=cur_dt)
+        base_fx = cls._get(get_base_cur(), cur_dt=cur_dt)
         target_fx = cls._get(currency, cur_dt=cur_dt)
         return base_fx / target_fx
     

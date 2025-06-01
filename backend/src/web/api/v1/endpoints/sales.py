@@ -1,11 +1,12 @@
+import base64
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Tuple
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from src.app.service.misc import SettingService
 from src.app.model.payment import Payment, _PaymentBrief
-from src.app.utils.tools import get_company
 from src.app.model.entity import Address, Contact, Customer, Supplier
 from src.app.model.enums import CurType, ItemType, UnitType
 from src.app.model.journal import Journal
@@ -91,16 +92,16 @@ def preview_sales_invoice(request: Request, invoice_id: str):
     
     # bill_from company
     # bill from will always be supplier
-    bill_from_company = get_company()
+    bill_from_name, bill_from_contact = SettingService.get_company()
     bill_from = Supplier(
-        supplier_name = bill_from_company['name'],
+        supplier_name = bill_from_name,
         is_business=True,
-        bill_contact=Contact.model_validate(bill_from_company['contact']),
+        bill_contact=bill_from_contact,
         ship_same_as_bill=True
     )
     
     data = {
-        'logo': bill_from_company['logo'],
+        'logo': base64.b64encode(bytes(SettingService.get_logo().content, encoding='latin-1')).decode("latin-1"),
         'bill_from': bill_from.model_dump(mode='python'),
         'bill_to': bill_to.model_dump(mode='python'),
         'invoice': invoice.model_dump(mode='python')

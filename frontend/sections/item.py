@@ -45,20 +45,28 @@ with tabs[0]:
         )
         
     st.caption('Sales Items')
-    st.data_editor(
-        data=sales_item_display, 
-        use_container_width=True,
-        hide_index=True,
-        disabled=True
-    )
+    if len(sales_items) > 0:
+        st.data_editor(
+            data=sales_item_display, 
+            use_container_width=True,
+            hide_index=True,
+            disabled=True,
+            key='editor_sales'
+        )
+    else:
+        st.warning("No Sales Item found", icon='🥵')
     
     st.caption('Purchase Items')
-    st.data_editor(
-        data=purch_item_display, 
-        use_container_width=True,
-        hide_index=True,
-        disabled=True
-    )
+    if len(purch_items) > 0:
+        st.data_editor(
+            data=purch_item_display, 
+            use_container_width=True,
+            hide_index=True,
+            disabled=True,
+            key='editor_purchase'
+        )
+    else:
+        st.warning("No Purchase Item found", icon='🥵')
 
 item_types = DropdownSelect.from_enum(
     ItemType,
@@ -91,6 +99,8 @@ with tabs[1]:
             #selection_mode ='single',
             key='radio1',
             horizontal=True,
+            index=1 if len(sales_items) > 0 else 0,
+            disabled=not(len(sales_items) > 0)
         )
         
     if edit_mode == 'Edit':
@@ -272,6 +282,8 @@ with tabs[2]:
             #default='Add',
             #selection_mode ='single',
             horizontal=True,
+            index=1 if len(purch_items) > 0 else 0,
+            disabled=not(len(purch_items) > 0)
         )
         
     if edit_mode == 'Edit':

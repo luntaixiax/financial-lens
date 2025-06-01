@@ -1,5 +1,5 @@
 from typing import Any, Tuple
-from datetime import date
+from datetime import date, datetime, timezone
 from functools import wraps
 import uuid
 from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
@@ -658,14 +658,6 @@ def update_journal(jrn_id: str, jrn_date: date, jrn_src: int, entries: list[dict
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
-    
-@st.cache_data
-@message_box
-def get_base_currency() -> int:
-    return get_req(
-        prefix='misc',
-        endpoint='fx/get_base_cur'
-    )
 
 @st.cache_data
 @message_box
@@ -724,13 +716,6 @@ def list_entry_by_acct(acct_id: str) -> list[dict]:
         endpoint=f'entry/list/{acct_id}',
     )
 
-@st.cache_data
-@message_box
-def get_default_tax_rate() -> float:
-    return get_req(
-        prefix='misc',
-        endpoint='settings/get_default_tax_rate',
-    )
 
 @st.cache_data
 @message_box
@@ -848,7 +833,7 @@ def delete_sales_invoice(invoice_id: str):
     preview_sales_invoice.clear()
     get_sales_invoice_balance.clear()
 
-@st.cache_data
+
 @message_box
 def preview_sales_invoice(invoice_id: str) -> str:
     return plain_get_req(
@@ -1354,4 +1339,165 @@ def tree_income_statement(start_dt: date, end_dt: date) -> dict[int, Any]:
             'start_dt': start_dt,
             'end_dt': end_dt
         }
+    )
+    
+@message_box
+def set_logo(logo: bytes):
+    post_req(
+        prefix='settings',
+        endpoint='set_logo',
+        files=[('logo', logo)]
+    )
+    
+@message_box
+def get_logo() -> bytes | str:
+    try:
+        f = get_req(
+            prefix='settings',
+            endpoint=f"get_logo",
+        )
+    except NotExistError:
+        return 'https://static.vecteezy.com/system/resources/previews/036/744/532/non_2x/user-profile-icon-symbol-template-free-vector.jpg'
+    # convert file from string to bytes
+    return f['content'].encode('latin-1')
+
+@message_box
+def upsert_comp_contact(
+    company_name: str, name: str, email: str, phone: str, 
+    address1: str, address2: str, suite_no: str, 
+    city: str, state: str, country: str, postal_code: str
+):
+    post_req(
+        prefix='settings',
+        endpoint='set_company',
+        params={'name': company_name},
+        data={
+            "contact_id": "xyz",
+            "name": name,
+            "email": email,
+            "phone": phone,
+            "address": {
+                "address1": address1,
+                "address2": address2,
+                "suite_no": suite_no,
+                "city": city,
+                "state": state,
+                "country": country,
+                "postal_code": postal_code
+            }
+        }
+    )
+    
+@message_box  
+def get_comp_contact() -> Tuple[str | None, dict | None]:
+    try:
+        c = get_req(
+            prefix='settings',
+            endpoint=f'get_company'
+        )
+    except NotExistError:
+        return None, None
+    return c # a tuple
+
+@message_box
+def is_setup() -> bool:
+    return get_req(
+        prefix='settings',
+        endpoint='is_setup'
+    )
+
+@message_box
+def init_coa():
+    post_req(
+        prefix='settings',
+        endpoint='init_coa'
+    )
+
+@message_box
+def initiate(base_cur: int, default_tax_rate: float):
+    set_base_currency(base_cur)
+    set_default_tax_rate(default_tax_rate)
+    init_coa()
+    
+@st.cache_data # TODO
+@message_box
+def get_base_currency(ignore_error: bool = False) -> int | None:
+    try:
+        base_cur = get_req(
+            prefix='settings',
+            endpoint='get_base_currency'
+        )
+    except NotExistError as e:
+        if ignore_error:
+            return None
+        else:
+            raise e
+    return base_cur
+
+@st.cache_data
+@message_box
+def get_default_tax_rate(ignore_error: bool = False) -> float:
+    try:
+        default_tax_rate =  get_req(
+            prefix='settings',
+            endpoint='get_default_tax_rate',
+        )
+    except NotExistError as e:
+        if ignore_error:
+            return None
+        else:
+            raise e
+    return default_tax_rate
+    
+@message_box
+def set_base_currency(base_currency: int):
+    # backend will try get and raise error if already set
+    post_req(
+        prefix='settings',
+        endpoint='set_base_currency',
+        params={
+            'base_currency': base_currency
+        }
+    )
+    
+    get_base_currency.clear()
+    
+@message_box
+def set_default_tax_rate(default_tax_rate: float):
+    post_req(
+        prefix='settings',
+        endpoint='set_default_tax_rate',
+        params={
+            'default_tax_rate': default_tax_rate
+        }
+    )
+    
+    get_default_tax_rate.clear()
+    
+@message_box
+def backup():
+    now = datetime.now(tz=timezone.utc)
+    post_req(
+        prefix='management',
+        endpoint='backup',
+        params={
+            'backup_id': now.strftime('%Y%m%dT%H%M%S')
+        }
+    )
+    
+@message_box
+def restore(backup_id: str):
+    post_req(
+        prefix='management',
+        endpoint='restore',
+        params={
+            'backup_id': backup_id
+        }
+    )
+    
+@message_box
+def list_backup_ids() -> list[str]:
+    return get_req(
+        prefix='management',
+        endpoint=f'list_backup_ids',
     )
