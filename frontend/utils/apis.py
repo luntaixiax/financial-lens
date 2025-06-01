@@ -1,5 +1,5 @@
 from typing import Any, Tuple
-from datetime import date
+from datetime import date, datetime, timezone
 from functools import wraps
 import uuid
 from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
@@ -1473,3 +1473,31 @@ def set_default_tax_rate(default_tax_rate: float):
     )
     
     get_default_tax_rate.clear()
+    
+@message_box
+def backup():
+    now = datetime.now(tz=timezone.utc)
+    post_req(
+        prefix='management',
+        endpoint='backup',
+        params={
+            'backup_id': now.strftime('%Y%m%dT%H%M%S')
+        }
+    )
+    
+@message_box
+def restore(backup_id: str):
+    post_req(
+        prefix='management',
+        endpoint='restore',
+        params={
+            'backup_id': backup_id
+        }
+    )
+    
+@message_box
+def list_backup_ids() -> list[str]:
+    return get_req(
+        prefix='management',
+        endpoint=f'list_backup_ids',
+    )
