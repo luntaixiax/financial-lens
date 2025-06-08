@@ -3,10 +3,16 @@ import streamlit as st
 import streamlit_shadcn_ui as ui
 from utils.tools import DropdownSelect
 from utils.apis import list_contacts, get_contact, list_supplier, add_supplier, \
-    update_supplier, get_supplier, delete_supplier
+    update_supplier, get_supplier, delete_supplier, get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 st.subheader('Manage Supplier')
 
 tabs = st.tabs(['Suppliers', 'Add/Edit Supplier'])

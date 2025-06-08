@@ -10,11 +10,17 @@ from utils.tools import DropdownSelect
 from utils.enums import CurType, EntryType, JournalSrc
 from utils.apis import convert_to_base, get_base_currency, list_journal, get_journal, \
     get_all_accounts, get_account, add_journal, delete_journal, update_journal, \
-    stat_journal_by_src
+    stat_journal_by_src, get_comp_contact, get_logo
 from utils.exceptions import OpNotPermittedError
 
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def display_journal(jrn: dict) -> dict:
     return {
         'journal_id': jrn['journal_id'],

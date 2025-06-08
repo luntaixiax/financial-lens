@@ -12,10 +12,17 @@ from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, Jour
 from utils.apis import get_fx, list_supplier, list_item, list_purchase_invoice, get_purchase_invoice_journal, \
     get_item, get_default_tax_rate, get_accounts_by_type, validate_purchase, \
     create_journal_from_new_purchase_invoice, get_all_accounts, add_purchase_invoice, \
-    update_purchase_invoice, delete_purchase_invoice, get_base_currency, preview_purchase_invoice
+    update_purchase_invoice, delete_purchase_invoice, get_base_currency, preview_purchase_invoice, \
+    get_comp_contact, get_logo
 
 st.set_page_config(layout="wide")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def display_invoice(invoice: dict) -> dict:
     return {
         'invoice_id': invoice['invoice_id'],
@@ -107,6 +114,9 @@ def update_inv_item(entry: dict) -> dict:
         and (discount_rate := entry.get('discount_rate')) is not None
     ):
         entry['amount_pre_tax'] = unit_pirce * quantity * (1 - discount_rate / 100)
+        
+    # set default account to record this
+    entry['acct_name'] = dds_exp_accts._mappings.get(item['default_acct_id'])
         
     return entry
 
@@ -204,7 +214,7 @@ def convert_inv_items_to_db(inv_item_entries: list[dict]) -> list[dict]:
         r = {}
         r['item'] = get_item(dds_citems.get_id(e['item_id']))
         r['quantity'] = e['quantity']
-        r['acct_id'] = dds_inc_accts.get_id(e['acct_name'])
+        r['acct_id'] = dds_exp_accts.get_id(e['acct_name'])
         r['tax_rate'] = e['tax_rate'] / 100
         r['discount_rate'] = e['discount_rate'] / 100
         r['description'] = e['description']
@@ -298,7 +308,7 @@ def validate_invoice(invoice_: dict):
     ui.alert_dialog(
         show=True, # TODO
         title="Unknown Error, can not be validated",
-        description=e.details,
+        description="",
         confirm_label="OK",
         cancel_label="Cancel",
         key=str(uuid.uuid1())
@@ -319,8 +329,8 @@ if len(suppliers) > 0:
     )
     inc_accts = get_accounts_by_type(acct_type=AcctType.INC.value)
     exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
-    dds_inc_accts = DropdownSelect(
-        briefs=inc_accts,
+    dds_exp_accts = DropdownSelect(
+        briefs=exp_accts,
         include_null=False,
         id_key='acct_id',
         display_keys=['acct_name']
@@ -496,7 +506,7 @@ if len(suppliers) > 0:
         )
         
         # get item list (filter by currency)
-        items = list_item(entity_type=EntityType.CUSTOMER.value)
+        items = list_item(entity_type=EntityType.SUPPLIER.value)
         items = list(map(
             display_item, filter(
                 lambda e: e['currency'] == CurType[inv_cur_type_option].value, 
@@ -520,7 +530,7 @@ if len(suppliers) > 0:
                     'tax_rate': it['tax_rate'] * 100,
                     'discount_rate': it['discount_rate'] * 100,
                     'amount_pre_tax': it['amount_pre_tax'],
-                    'acct_name': dds_inc_accts._mappings.get(it['acct_id']),
+                    'acct_name': dds_exp_accts._mappings.get(it['acct_id']),
                     'description': it['description'],
                 } for it in inv_sel['invoice_items']
             ]
@@ -662,7 +672,7 @@ if len(suppliers) > 0:
                 'acct_name': st.column_config.SelectboxColumn(
                     label='Income Acct',
                     width=None,
-                    options=dds_inc_accts.options,
+                    options=dds_exp_accts.options,
                     #required=True
                 ),
                 'description': st.column_config.TextColumn(
@@ -707,7 +717,7 @@ if len(suppliers) > 0:
                     #required=True
                 ),
                 'acct_name': st.column_config.SelectboxColumn(
-                    label='Offset Acct',
+                    label='Bill Acct',
                     width=None,
                     options=dds_incexp_accts.options,
                     #required=True
@@ -769,7 +779,7 @@ if len(suppliers) > 0:
         
         invoice_ = {
             #"invoice_id": "string",
-            "entity_type": 1, # supplier
+            "entity_type": 2, # supplier
             "entity_id": supplier_id,
             "invoice_num": inv_num,
             "invoice_dt": inv_date.strftime('%Y-%m-%d'), # convert to string

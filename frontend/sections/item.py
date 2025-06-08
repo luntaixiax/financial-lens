@@ -2,10 +2,17 @@ import streamlit as st
 import streamlit_shadcn_ui as ui
 from utils.enums import EntityType, ItemType, UnitType, CurType, AcctType
 from utils.tools import DropdownSelect
-from utils.apis import list_item, get_item, delete_item, update_item, add_item, get_accounts_by_type
+from utils.apis import list_item, get_item, delete_item, update_item, add_item, \
+    get_accounts_by_type, get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def show_item(item: dict) -> dict:
     # convert enums
     r = {}

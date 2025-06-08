@@ -11,10 +11,16 @@ from utils.tools import DropdownSelect
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from utils.apis import get_account, get_fx, get_sales_payment_journal, list_customer, list_sales_invoice, list_sales_payment, \
     get_accounts_by_type, get_sales_invoice_balance, validate_sales_payment, create_journal_from_new_sales_payment, \
-    get_base_currency, get_all_accounts, add_sales_payment, update_sales_payment, delete_sales_payment
+    get_base_currency, get_all_accounts, add_sales_payment, update_sales_payment, delete_sales_payment, get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def display_payment(payment: dict) -> dict:
     return {
         'payment_id': payment['payment_id'],

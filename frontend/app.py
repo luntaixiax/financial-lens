@@ -1,5 +1,4 @@
 import streamlit as st
-from utils.apis import get_logo
     
 pages = {
     "Settings": [
@@ -40,8 +39,6 @@ pages = {
         st.Page("sections/income_statement.py", title="Income Statement", icon='💰'),
     ]
 }
-
-st.logo(get_logo(), size='large')
 
 pg = st.navigation(pages)
 pg.run()

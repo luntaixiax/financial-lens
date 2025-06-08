@@ -3,9 +3,14 @@ import streamlit as st
 import streamlit_shadcn_ui as ui
 from utils.tools import DropdownSelect
 from utils.apis import list_contacts, get_contact, list_customer, add_customer, \
-    update_customer, get_customer, delete_customer
+    update_customer, get_customer, delete_customer, get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
 
 st.subheader('Manage Customer')
 

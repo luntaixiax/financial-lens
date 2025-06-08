@@ -12,10 +12,17 @@ from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, Jour
 from utils.apis import get_fx, list_customer, list_item, list_sales_invoice, get_sales_invoice_journal, \
     get_item, get_default_tax_rate, get_accounts_by_type, validate_sales, \
     create_journal_from_new_sales_invoice, get_all_accounts, add_sales_invoice, \
-    update_sales_invoice, delete_sales_invoice, get_base_currency, preview_sales_invoice
+    update_sales_invoice, delete_sales_invoice, get_base_currency, preview_sales_invoice, \
+    get_comp_contact, get_logo
 
 st.set_page_config(layout="wide")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def display_invoice(invoice: dict) -> dict:
     return {
         'invoice_id': invoice['invoice_id'],
@@ -107,6 +114,9 @@ def update_inv_item(entry: dict) -> dict:
         and (discount_rate := entry.get('discount_rate')) is not None
     ):
         entry['amount_pre_tax'] = unit_pirce * quantity * (1 - discount_rate / 100)
+        
+    # set default account to record this
+    entry['acct_name'] = dds_inc_accts._mappings.get(item['default_acct_id'])
         
     return entry
 
@@ -298,7 +308,7 @@ def validate_invoice(invoice_: dict):
     ui.alert_dialog(
         show=True, # TODO
         title="Unknown Error, can not be validated",
-        description=e.details,
+        description="",
         confirm_label="OK",
         cancel_label="Cancel",
         key=str(uuid.uuid1())

@@ -12,10 +12,16 @@ from utils.enums import AcctType, CurType, EntryType, JournalSrc
 from utils.apis import convert_to_base, get_base_currency, list_expense, get_expense_journal, \
     create_journal_from_new_expense, validate_expense, add_expense, update_expense, delete_expense, \
     get_default_tax_rate, get_accounts_by_type, get_all_accounts, get_account, \
-    upload_file, delete_file, get_file
+    upload_file, delete_file, get_file, get_comp_contact, get_logo
     
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def display_exp(exp: dict) -> dict:
     return {
         'expense_id': exp['expense_id'],

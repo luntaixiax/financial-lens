@@ -9,10 +9,16 @@ import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
 from utils.tools import DropdownSelect
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
-from utils.apis import get_base_currency, list_customer, list_sales_invoice, list_sales_payment, get_psales_invoices_balance_by_entity
+from utils.apis import get_base_currency, list_customer, list_sales_invoice, list_sales_payment, \
+    get_psales_invoices_balance_by_entity, get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
 def get_sales_payment_hist() -> list[dict]:
     invoices = list_sales_invoice(customer_ids=[cust_id])
     payments = list_sales_payment(invoice_ids=[i['invoice_id'] for i in invoices])
@@ -78,6 +84,7 @@ if len(customers) > 0:
         ])
         balances_display = balances_display[balances_display['Balance'] != 0]
 
+        st.markdown(f"As of :blue[{date.today().strftime('%b %d, %Y')}]")
         ui.table(balances_display)
         
     else:
@@ -120,21 +127,26 @@ if len(customers) > 0:
     for history in historys:
         dt_display = datetime.strptime(history['trans_dt'], '%Y-%m-%d').strftime('%b %d, %Y')
         if history['direction'] == 'invoice':
-            label = f"{dt_display} | **:red-background[invoice]**"
+            label = f"**{dt_display}** | **:red-background[invoice]**"
             disp = {
                 'Invoice #': history['trans_num'],
                 'Currency': CurType(history['currency']).name,
                 'Amount': round(history['raw_amount'], 2)
             }
         else:
-            label = f"{dt_display} | **:green-background[payment]**"
+            label = f"**{dt_display}** | **:green-background[payment]**"
             disp = {
                 'Payment #': history['trans_num'],
                 'Currency': CurType(history['currency']).name,
                 'Amount': round(history['raw_amount'], 2)
             }
+            
+        if datetime.strptime(history['trans_dt'], '%Y-%m-%d').date() > date.today():
+            icon = '⌛'
+        else:
+            icon = '☑️'
         
-        with st.expander(label=label, expanded=True):
+        with st.expander(label=label, expanded=True, icon=icon):
             
             ui.table(pd.DataFrame.from_records([disp]))
             

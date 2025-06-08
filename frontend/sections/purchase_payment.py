@@ -11,10 +11,16 @@ from utils.tools import DropdownSelect
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from utils.apis import get_account, get_fx, get_purchase_payment_journal, list_supplier, list_purchase_invoice, list_purchase_payment, \
     get_accounts_by_type, get_purchase_invoice_balance, validate_purchase_payment, create_journal_from_new_purchase_payment, \
-    get_base_currency, get_all_accounts, add_purchase_payment, update_purchase_payment, delete_purchase_payment
+    get_base_currency, get_all_accounts, add_purchase_payment, update_purchase_payment, delete_purchase_payment, get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def display_payment(payment: dict) -> dict:
     return {
         'payment_id': payment['payment_id'],
@@ -475,7 +481,7 @@ if len(suppliers) > 0:
             #"payment_id": "string",
             "payment_num": pmt_num,
             "payment_dt": pmt_date.strftime('%Y-%m-%d'), # convert to string
-            "entity_type": 1, # supplier
+            "entity_type": 2, # supplier
             "payment_items": convert_pmt_items_to_db(pmt_item_entries),
             "payment_acct_id": pmt_acct_id,
             "payment_fee": pmt_fee,

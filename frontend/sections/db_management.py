@@ -3,9 +3,15 @@ from datetime import datetime
 import streamlit as st
 import streamlit_shadcn_ui as ui
 from utils.tools import DropdownSelect
-from utils.apis import backup, restore, list_backup_ids
+from utils.apis import backup, restore, list_backup_ids, get_comp_contact, get_logo
 
-
+st.set_page_config(layout="centered")
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
 st.button(
     label='Backup Data',
     key='backup',
@@ -25,7 +31,7 @@ if len(backup_ids) > 0:
     )
 
     st.button(
-        label='Backup Data',
+        label='Restore Data',
         key='restore',
         type='secondary',
         icon='📩',

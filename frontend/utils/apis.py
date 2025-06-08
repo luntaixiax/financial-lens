@@ -833,7 +833,7 @@ def delete_sales_invoice(invoice_id: str):
     preview_sales_invoice.clear()
     get_sales_invoice_balance.clear()
 
-
+@st.cache_data
 @message_box
 def preview_sales_invoice(invoice_id: str) -> str:
     return plain_get_req(
@@ -1097,7 +1097,7 @@ def delete_purchase_invoice(invoice_id: str):
     preview_purchase_invoice.clear()
     get_purchase_invoice_balance.clear()
 
-
+@st.cache_data
 @message_box
 def preview_purchase_invoice(invoice_id: str) -> str:
     return plain_get_req(
@@ -1613,7 +1613,9 @@ def set_logo(logo: bytes):
         endpoint='set_logo',
         files=[('logo', logo)]
     )
-    
+    get_logo.clear()
+
+@st.cache_data
 @message_box
 def get_logo() -> bytes | str:
     try:
@@ -1652,7 +1654,9 @@ def upsert_comp_contact(
             }
         }
     )
-    
+    get_comp_contact.clear()
+
+@st.cache_data
 @message_box  
 def get_comp_contact() -> Tuple[str | None, dict | None]:
     try:
@@ -1759,6 +1763,7 @@ def restore(backup_id: str):
             'backup_id': backup_id
         }
     )
+    st.cache_data.clear() # clear everything
     
 @message_box
 def list_backup_ids() -> list[str]:

@@ -9,12 +9,18 @@ import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
 from utils.apis import list_property, get_account, get_property_journal, get_accounts_by_type, \
     validate_property, create_journal_from_new_property, get_all_accounts, get_base_currency, \
-    add_property, update_property, delete_property, get_property_stat
+    add_property, update_property, delete_property, get_property_stat, get_comp_contact, get_logo
 from utils.enums import PropertyType, PropertyTransactionType, CurType, AcctType, EntryType
 from utils.tools import DropdownSelect
 
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def reset_validate():
     st.session_state['validated'] = False
     

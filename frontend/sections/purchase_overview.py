@@ -9,10 +9,17 @@ import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
 from utils.tools import DropdownSelect
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
-from utils.apis import get_base_currency, list_supplier, list_purchase_invoice, list_purchase_payment, get_ppurchase_invoices_balance_by_entity
+from utils.apis import get_base_currency, list_supplier, list_purchase_invoice, \
+    list_purchase_payment, get_ppurchase_invoices_balance_by_entity, get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def get_purchase_payment_hist() -> list[dict]:
     invoices = list_purchase_invoice(supplier_ids=[supplier_id])
     payments = list_purchase_payment(invoice_ids=[i['invoice_id'] for i in invoices])

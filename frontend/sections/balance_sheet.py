@@ -3,11 +3,16 @@ import streamlit_shadcn_ui as ui
 import streamlit_nested_layout # need it for nested structure
 import pandas as pd
 from utils.enums import CurType, AcctType
-from utils.apis import tree_balance_sheet, get_base_currency
+from utils.apis import tree_balance_sheet, get_base_currency, get_comp_contact, get_logo
 from utils.tools import DropdownSelect
 
 st.set_page_config(layout="wide")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
 st.subheader('Balance Sheet')
 
 base_cur = get_base_currency()

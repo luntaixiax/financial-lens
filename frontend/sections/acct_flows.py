@@ -5,11 +5,16 @@ import uuid
 import streamlit as st
 import streamlit_shadcn_ui as ui
 from utils.apis import get_account, get_all_accounts, get_blsh_balance, get_incexp_flow, \
-    get_base_currency, list_entry_by_acct
+    get_base_currency, list_entry_by_acct, get_logo, get_comp_contact
 from utils.tools import DropdownSelect
 from utils.enums import CurType, EntryType, AcctType
 
 st.set_page_config(layout="centered")
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
 
 def group_entries_by_dates(entries: list[dict], year: int) -> dict[int, dict[int, list[dict]]]:
     # group entries by month and day

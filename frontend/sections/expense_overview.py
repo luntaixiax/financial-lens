@@ -4,10 +4,16 @@ from itertools import cycle
 import streamlit as st
 import streamlit_shadcn_ui as ui
 from utils.enums import CurType
-from utils.apis import summary_expense, get_base_currency
+from utils.apis import summary_expense, get_base_currency, get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def process_exp_for_barchart(exps: list[dict]) -> list[dict]:
     colors = cycle(['#f77189', '#e68332', '#bb9832', '#97a431', '#50b131', '#34af84', '#36ada4', '#38aabf', '#3ba3ec', '#a48cf4', '#e866f4', '#f668c2'])
     #total = sum(e['total_base_amount'] for e in exps)

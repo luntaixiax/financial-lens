@@ -5,10 +5,15 @@ import pandas as pd
 from utils.enums import CurType, AcctType
 from utils.apis import tree_charts, list_charts, get_chart, get_parent_chart, list_accounts_by_chart, \
     add_chart, update_move_chart, delete_chart, list_accounts_by_chart, get_account, \
-    add_account, update_account, delete_account
+    add_account, update_account, delete_account, get_comp_contact, get_logo
 from utils.tools import DropdownSelect
 
 st.set_page_config(layout="centered")
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
 
 st.subheader('Manage Chart of Accounts')
 
