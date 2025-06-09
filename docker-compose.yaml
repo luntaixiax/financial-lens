@@ -21,7 +21,7 @@ services:
       --init-file=/data/application/mysql_setup.sql
     restart: always
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", '-u', 'root', '-p$$MYSQL_ROOT_PASSWORD']
+      test: ["CMD", "mariadb-admin" ,"ping", "-h", "localhost", '-u', 'root', '-p$$MARIADB_ROOT_PASSWORD']
       #test: ["CMD", "whoami"]
       interval: 10s
       retries: 5
@@ -44,6 +44,11 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     image: luntaixia/finlens-frontend:latest
@@ -55,7 +60,8 @@ services:
     command:
       streamlit run app.py
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 
 secrets:

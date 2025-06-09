@@ -45,6 +45,11 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    depends_on:
+      mysql:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     image: luntaixia/finlens-frontend:latest
@@ -56,7 +61,8 @@ services:
     command:
       streamlit run app.py
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 
 secrets:
