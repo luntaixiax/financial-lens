@@ -2,24 +2,23 @@ version: '3.8'
 
 services:
 
-  mysql:
-    image: mysql:latest
+  mariadb:
+    image: mariadb:latest
     volumes:
       - ./configs/setups/mysql_setup.sql:/data/application/mysql_setup.sql
-      - mysql-volume:/var/lib/mysql
+      - mariadb-volume:/var/lib/mysql
     environment:
-      MYSQL_ROOT_USER: "root"
-      MYSQL_ROOT_PASSWORD_FILE: "/run/secrets/mysql_root_password"
-      MYSQL_USER: "luntaixia"
-      MYSQL_PASSWORD: "luntaixia"
-      MYSQL_DATABASE: "finlens"
+      MARIADB_ROOT_USER: "root"
+      MARIADB_ROOT_PASSWORD_FILE: "/run/secrets/mariadb_root_password"
+      MARIADB_USER: "luntaixia"
+      MARIADB_PASSWORD: "luntaixia"
+      MARIADB_DATABASE: "finlens"
     secrets:
-      - mysql_root_password
+      - mariadb_root_password
     ports:
       - 3309:3306
     command:
       --init-file=/data/application/mysql_setup.sql
-      --log-error-verbosity=1
     restart: always
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", '-u', 'root', '-p$$MYSQL_ROOT_PASSWORD']
@@ -34,7 +33,6 @@ services:
       - ENV=prod
     volumes:
       - ./secrets.toml:/secrets.toml
-      - ./backend/configs.yaml:/app/configs.yaml
     ports:
       - 8182:8181
     command:
@@ -61,8 +59,8 @@ services:
 
 
 secrets:
-   mysql_root_password:
-     file: ./configs/secrets/mysql_root_password.txt
+   mariadb_root_password:
+     file: configs/secrets/mysql_root_password.txt
 
 volumes:
-  mysql-volume:
+  mariadb-volume:

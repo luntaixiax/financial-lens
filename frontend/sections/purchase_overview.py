@@ -18,8 +18,7 @@ with st.sidebar:
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
     st.logo(get_logo(), size='large')
-    
-    
+       
 def get_purchase_payment_hist() -> list[dict]:
     invoices = list_purchase_invoice(supplier_ids=[supplier_id])
     payments = list_purchase_payment(invoice_ids=[i['invoice_id'] for i in invoices])
@@ -85,6 +84,7 @@ if len(suppliers) > 0:
         ])
         balances_display = balances_display[balances_display['Balance'] != 0]
 
+        st.markdown(f"As of :blue[{date.today().strftime('%b %d, %Y')}]")
         ui.table(balances_display)
         
     else:
@@ -140,8 +140,13 @@ if len(suppliers) > 0:
                 'Currency': CurType(history['currency']).name,
                 'Amount': round(history['raw_amount'], 2)
             }
+            
+        if datetime.strptime(history['trans_dt'], '%Y-%m-%d').date() > date.today():
+            icon = '⌛'
+        else:
+            icon = '☑️'
         
-        with st.expander(label=label, expanded=True):
+        with st.expander(label=label, expanded=True, icon=icon):
             
             ui.table(pd.DataFrame.from_records([disp]))
             
