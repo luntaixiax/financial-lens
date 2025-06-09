@@ -180,6 +180,7 @@ jobs:
           username: ${{ secrets.PROD_USERNAME }}
           port: ${{ secrets.PROD_PORT }}
           script: |
-            echo "Login to $(hostname)"
-            echo "trying to run latest docker compose command: $IMAGE"
-            /Volume1/@apps/DockerEngine/dockerd/bin/docker-compose pull && docker-compose up -d
+            echo "Login to $(hostname)";
+            echo "trying to run latest docker compose command: $IMAGE";
+            cd /home/luntaixia/appconfig/apps/finlens;
+            /Volume1/@apps/DockerEngine/dockerd/bin/docker-compose pull && /Volume1/@apps/DockerEngine/dockerd/bin/docker-compose up -d
