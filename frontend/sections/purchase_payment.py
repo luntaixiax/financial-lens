@@ -9,9 +9,9 @@ import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
 from utils.tools import DropdownSelect
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
-from utils.apis import get_account, get_fx, get_sales_payment_journal, list_customer, list_sales_invoice, list_sales_payment, \
-    get_accounts_by_type, get_sales_invoice_balance, validate_sales_payment, create_journal_from_new_sales_payment, \
-    get_base_currency, get_all_accounts, add_sales_payment, update_sales_payment, delete_sales_payment, get_comp_contact, get_logo
+from utils.apis import get_account, get_fx, get_purchase_payment_journal, list_supplier, list_purchase_invoice, list_purchase_payment, \
+    get_accounts_by_type, get_purchase_invoice_balance, validate_purchase_payment, create_journal_from_new_purchase_payment, \
+    get_base_currency, get_all_accounts, add_purchase_payment, update_purchase_payment, delete_purchase_payment, get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
 with st.sidebar:
@@ -78,7 +78,7 @@ def on_change_pmt_items():
 def update_pmt_item(entry: dict) -> dict:
     if (inv_num := entry.get('invoice_num')) is not None:
         inv_id = dds_invs.get_id(inv_num)
-        balance = get_sales_invoice_balance(inv_id, pmt_date)
+        balance = get_purchase_invoice_balance(inv_id, pmt_date)
         entry['balance'] = balance['balance']
         
         # add paid amount in payment currency
@@ -157,13 +157,13 @@ def validate_payment(payment_: dict):
         )
         return
     
-    payment_ = validate_sales_payment(payment_)
+    payment_ = validate_purchase_payment(payment_)
     if isinstance(payment_, dict):
         if payment_.get('payment_items') is not None:
             st.session_state['validated'] = True
             
             # calculate and journal to session state
-            jrn_ = create_journal_from_new_sales_payment(payment_)
+            jrn_ = create_journal_from_new_purchase_payment(payment_)
             st.session_state['journal'] = jrn_
 
 
@@ -190,14 +190,14 @@ class JournalEntryHelper:
         ]
         
         
-customers = list_customer()
+suppliers = list_supplier()
 
-if len(customers) > 0:
-    dds_customers = DropdownSelect(
-        briefs=customers,
+if len(suppliers) > 0:
+    dds_suppliers = DropdownSelect(
+        briefs=suppliers,
         include_null=False,
-        id_key='cust_id',
-        display_keys=['cust_id', 'customer_name']
+        id_key='supplier_id',
+        display_keys=['supplier_id', 'supplier_name']
     )
     dds_currency = DropdownSelect.from_enum(
         CurType,
@@ -239,14 +239,14 @@ if len(customers) > 0:
         )
 
     with widget_cols[1]:
-        edit_customer = st.selectbox(
+        edit_supplier = st.selectbox(
             label='👇 Select Customer',
-            options=dds_customers.options,
+            options=dds_suppliers.options,
             index=0
         )
-        cust_id = dds_customers.get_id(edit_customer)
+        supplier_id = dds_suppliers.get_id(edit_supplier)
         
-    invoices = list_sales_invoice(customer_ids=[cust_id])
+    invoices = list_purchase_invoice(supplier_ids=[supplier_id])
     invs_options = [
         {
             'invoice_id': i['invoice_id'],
@@ -263,7 +263,7 @@ if len(customers) > 0:
     )
 
     if edit_mode == 'Edit':
-        payments = list_sales_payment(invoice_ids=[i['invoice_id'] for i in invoices])
+        payments = list_purchase_payment(invoice_ids=[i['invoice_id'] for i in invoices])
         #st.json(payments)
         
         pmt_displays = map(display_payment, payments)
@@ -323,7 +323,7 @@ if len(customers) > 0:
         
         if _row_list := selected['selection']['rows']:
             pmt_id_sel = payments[_row_list[0]]['payment_id']
-            pmt_sel, jrn_sel = get_sales_payment_journal(pmt_id_sel)
+            pmt_sel, jrn_sel = get_purchase_payment_journal(pmt_id_sel)
 
             ui.badges(
                 badge_list=[("Payment ID", "default"), (pmt_id_sel, "secondary")], 
@@ -375,7 +375,7 @@ if len(customers) > 0:
             pmt_items = [
                 {
                     'invoice_num': dds_invs._mappings.get(pi['invoice_id']),
-                    'balance': get_sales_invoice_balance(pi['invoice_id'], pmt_date)['balance'],
+                    'balance': get_purchase_invoice_balance(pi['invoice_id'], pmt_date)['balance'],
                     'payment_amount': pi['payment_amount'],
                     'payment_amount_raw': pi['payment_amount_raw']
                     
@@ -481,7 +481,7 @@ if len(customers) > 0:
             #"payment_id": "string",
             "payment_num": pmt_num,
             "payment_dt": pmt_date.strftime('%Y-%m-%d'), # convert to string
-            "entity_type": 1, # customer
+            "entity_type": 2, # supplier
             "payment_items": convert_pmt_items_to_db(pmt_item_entries),
             "payment_acct_id": pmt_acct_id,
             "payment_fee": pmt_fee,
@@ -636,7 +636,7 @@ if len(customers) > 0:
             # add button
             st.button(
                 label='Add Payment',
-                on_click=add_sales_payment,
+                on_click=add_purchase_payment,
                 args=(payment_,)
             )
             
@@ -649,18 +649,18 @@ if len(customers) > 0:
                     st.button(
                         label='Update',
                         type='secondary',
-                        on_click=update_sales_payment,
+                        on_click=update_purchase_payment,
                         args=(payment_,)
                     )
             with btn_cols[0]:
                 st.button(
                     label='Delete',
                     type='primary',
-                    on_click=delete_sales_payment,
+                    on_click=delete_purchase_payment,
                     kwargs=dict(
                         invoice_id=pmt_id_sel
                     )
                 )
                 
 else:
-    st.warning("No Customer found, must create customer to add/edit payments", icon='🥵')
+    st.warning("No Customer found, must create supplier to add/edit payments", icon='🥵')

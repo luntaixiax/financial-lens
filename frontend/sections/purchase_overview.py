@@ -9,8 +9,8 @@ import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
 from utils.tools import DropdownSelect
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
-from utils.apis import get_base_currency, list_customer, list_sales_invoice, list_sales_payment, \
-    get_psales_invoices_balance_by_entity, get_comp_contact, get_logo
+from utils.apis import get_base_currency, list_supplier, list_purchase_invoice, \
+    list_purchase_payment, get_ppurchase_invoices_balance_by_entity, get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
 with st.sidebar:
@@ -18,10 +18,10 @@ with st.sidebar:
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
     st.logo(get_logo(), size='large')
-    
-def get_sales_payment_hist() -> list[dict]:
-    invoices = list_sales_invoice(customer_ids=[cust_id])
-    payments = list_sales_payment(invoice_ids=[i['invoice_id'] for i in invoices])
+       
+def get_purchase_payment_hist() -> list[dict]:
+    invoices = list_purchase_invoice(supplier_ids=[supplier_id])
+    payments = list_purchase_payment(invoice_ids=[i['invoice_id'] for i in invoices])
     
     chain = []
     for invoice in invoices:    
@@ -48,25 +48,25 @@ def get_sales_payment_hist() -> list[dict]:
         
 
 
-customers = list_customer()
-if len(customers) > 0:
+suppliers = list_supplier()
+if len(suppliers) > 0:
 
-    dds_customers = DropdownSelect(
-        briefs=customers,
+    dds_suppliers = DropdownSelect(
+        briefs=suppliers,
         include_null=False,
-        id_key='cust_id',
-        display_keys=['cust_id', 'customer_name']
+        id_key='supplier_id',
+        display_keys=['supplier_id', 'supplier_name']
     )
 
-    edit_customer = st.selectbox(
+    edit_supplier = st.selectbox(
         label='👇 Select Customer',
-        options=dds_customers.options,
+        options=dds_suppliers.options,
         index=0
     )
-    cust_id = dds_customers.get_id(edit_customer)
+    supplier_id = dds_suppliers.get_id(edit_supplier)
 
-    balances = get_psales_invoices_balance_by_entity(
-        entity_id=cust_id,
+    balances = get_ppurchase_invoices_balance_by_entity(
+        entity_id=supplier_id,
         bal_dt=date.today()
     )
 
@@ -92,7 +92,7 @@ if len(customers) > 0:
 
     st.subheader("Transactions")
 
-    historys = get_sales_payment_hist()
+    historys = get_purchase_payment_hist()
 
     total_billed = sum(h['base_amount'] for h in historys if h['direction'] == 'invoice')
     num_billed = sum(1 for h in historys if h['direction'] == 'invoice')
@@ -127,14 +127,14 @@ if len(customers) > 0:
     for history in historys:
         dt_display = datetime.strptime(history['trans_dt'], '%Y-%m-%d').strftime('%b %d, %Y')
         if history['direction'] == 'invoice':
-            label = f"**{dt_display}** | **:red-background[invoice]**"
+            label = f"{dt_display} | **:red-background[invoice]**"
             disp = {
                 'Invoice #': history['trans_num'],
                 'Currency': CurType(history['currency']).name,
                 'Amount': round(history['raw_amount'], 2)
             }
         else:
-            label = f"**{dt_display}** | **:green-background[payment]**"
+            label = f"{dt_display} | **:green-background[payment]**"
             disp = {
                 'Payment #': history['trans_num'],
                 'Currency': CurType(history['currency']).name,
@@ -151,4 +151,4 @@ if len(customers) > 0:
             ui.table(pd.DataFrame.from_records([disp]))
             
 else:
-    st.warning("No Customer found, must create customer to show sales", icon='🥵')
+    st.warning("No Customer found, must create supplier to show purchase", icon='🥵')

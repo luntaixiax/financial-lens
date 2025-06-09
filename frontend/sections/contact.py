@@ -2,9 +2,15 @@ import streamlit as st
 import streamlit_shadcn_ui as ui
 from utils.tools import DropdownSelect
 from utils.apis import list_country, list_state, list_city, \
-    list_contacts, get_contact, add_contact, update_contact, delete_contact
+    list_contacts, get_contact, add_contact, update_contact, delete_contact, \
+    get_comp_contact, get_logo
 
 st.set_page_config(layout="centered")
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
 
 st.subheader('Manage Contact')
 

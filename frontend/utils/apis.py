@@ -833,7 +833,7 @@ def delete_sales_invoice(invoice_id: str):
     preview_sales_invoice.clear()
     get_sales_invoice_balance.clear()
 
-
+@st.cache_data
 @message_box
 def preview_sales_invoice(invoice_id: str) -> str:
     return plain_get_req(
@@ -980,6 +980,271 @@ def delete_sales_payment(payment_id: str):
     get_sales_invoice_balance.clear()
     get_psales_invoices_balance_by_entity.clear()
 
+
+@st.cache_data
+@message_box
+def list_purchase_invoice(
+    limit: int = 9999,
+    offset: int = 0,
+    invoice_ids: list[str] | None = None,
+    invoice_nums: list[str] | None = None,
+    supplier_ids: list[str] | None = None,
+    supplier_names: list[str] | None = None,
+    is_business: bool | None = None,
+    min_dt: date = date(1970, 1, 1), 
+    max_dt: date = date(2099, 12, 31), 
+    subject_keyword: str = '',
+    currency: int | None = None,
+    min_amount: float = -999999999,
+    max_amount: float = 999999999,
+    num_invoice_items: int | None = None
+) -> list[dict]:
+    return post_req(
+        prefix='purchase',
+        endpoint='invoice/list',
+        params={
+            'limit': limit,
+            'offset': offset, 
+            'is_business': is_business, 
+            'min_dt': min_dt.strftime('%Y-%m-%d'), 
+            'max_dt': max_dt.strftime('%Y-%m-%d'), 
+            'subject_keyword': subject_keyword, 
+            'currency': currency,
+            'min_amount': min_amount,
+            'max_amount': max_amount,
+            'num_invoice_items': num_invoice_items
+        },
+        data={
+            'invoice_ids': invoice_ids,
+            'invoice_nums': invoice_nums,
+            'supplier_ids': supplier_ids,
+            'supplier_names': supplier_names,
+            
+        }
+    )
+
+@st.cache_data
+@message_box
+def get_purchase_invoice_journal(invoice_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='purchase',
+        endpoint=f'invoice/get/{invoice_id}',
+    )
+
+@message_box
+def validate_purchase(invoice: dict) -> dict:
+    return post_req(
+        prefix='purchase',
+        endpoint='invoice/validate',
+        data=invoice
+    )
+
+@message_box
+def create_journal_from_new_purchase_invoice(invoice: dict) -> dict:
+    return get_req(
+        prefix='purchase',
+        endpoint='invoice/trial_journal',
+        data=invoice
+    )
+
+@message_box
+def add_purchase_invoice(invoice: dict):
+    post_req(
+        prefix='purchase',
+        endpoint='invoice/add',
+        data=invoice
+    )
+    
+
+    list_purchase_invoice.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+
+@message_box
+def update_purchase_invoice(invoice: dict):
+    put_req(
+        prefix='purchase',
+        endpoint='invoice/update',
+        data=invoice
+    )
+
+    list_purchase_invoice.clear()
+    get_purchase_invoice_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    preview_purchase_invoice.clear()
+    get_purchase_invoice_balance.clear()
+
+@message_box
+def delete_purchase_invoice(invoice_id: str):
+    delete_req(
+        prefix='purchase',
+        endpoint=f'invoice/delete/{invoice_id}'
+    )
+    list_purchase_invoice.clear()
+    get_purchase_invoice_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    preview_purchase_invoice.clear()
+    get_purchase_invoice_balance.clear()
+
+@st.cache_data
+@message_box
+def preview_purchase_invoice(invoice_id: str) -> str:
+    return plain_get_req(
+        prefix='purchase',
+        endpoint='invoice/preview',
+        params={'invoice_id': invoice_id}
+    )
+
+@st.cache_data
+@message_box
+def list_purchase_payment(
+    limit: int = 9999,
+    offset: int = 0,
+    payment_ids: list[str] | None = None,
+    payment_nums: list[str] | None = None,
+    payment_acct_id: str | None = None,
+    payment_acct_name: str | None = None,
+    invoice_ids: list[str] | None = None,
+    invoice_nums: list[str] | None = None,
+    currency: int | None = None,
+    min_dt: date = date(1970, 1, 1), 
+    max_dt: date = date(2099, 12, 31),
+    min_amount: float = -999999999,
+    max_amount: float = 999999999,
+    num_invoices: int | None = None
+) -> list[dict]:
+    return post_req(
+        prefix='purchase',
+        endpoint='payment/list',
+        params={
+            'limit': limit,
+            'offset': offset, 
+            'payment_acct_id': payment_acct_id, 
+            'payment_acct_name': payment_acct_name,
+            'min_dt': min_dt.strftime('%Y-%m-%d'), 
+            'max_dt': max_dt.strftime('%Y-%m-%d'), 
+            'currency': currency,
+            'min_amount': min_amount,
+            'max_amount': max_amount,
+            'num_invoices': num_invoices
+        },
+        data={
+            'payment_ids': payment_ids,
+            'payment_nums': payment_nums,
+            'invoice_ids': invoice_ids,
+            'invoice_nums': invoice_nums,            
+        }
+    )
+    
+@st.cache_data
+@message_box
+def get_purchase_payment_journal(payment_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='purchase',
+        endpoint=f'payment/get/{payment_id}',
+    )
+
+@st.cache_data
+@message_box
+def get_purchase_invoice_balance(invoice_id: str, bal_dt: date) -> dict:
+    return get_req(
+        prefix='purchase',
+        endpoint=f'invoice/{invoice_id}/get_balance',
+        params={
+            'bal_dt': bal_dt.strftime('%Y-%m-%d')
+        }
+    )
+    
+@st.cache_data
+@message_box
+def get_ppurchase_invoices_balance_by_entity(entity_id: str, bal_dt: date) -> dict:
+    return get_req(
+        prefix='purchase',
+        endpoint=f'invoice/get_balance_by_entity/{entity_id}',
+        params={
+            'bal_dt': bal_dt.strftime('%Y-%m-%d')
+        }
+    )
+
+@message_box
+def validate_purchase_payment(payment: dict) -> dict:
+    return post_req(
+        prefix='purchase',
+        endpoint='payment/validate',
+        data=payment
+    )
+
+@message_box
+def create_journal_from_new_purchase_payment(payment: dict) -> dict:
+    return get_req(
+        prefix='purchase',
+        endpoint='payment/trial_journal',
+        data=payment
+    )
+    
+@message_box
+def add_purchase_payment(payment: dict):
+    post_req(
+        prefix='purchase',
+        endpoint='payment/add',
+        data=payment
+    )
+
+    list_purchase_payment.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    get_purchase_invoice_balance.clear()
+    get_ppurchase_invoices_balance_by_entity.clear()
+    
+@message_box
+def update_purchase_payment(payment: dict):
+    put_req(
+        prefix='purchase',
+        endpoint='payment/update',
+        data=payment
+    )
+
+    list_purchase_payment.clear()
+    get_purchase_payment_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    get_purchase_invoice_balance.clear()
+    get_ppurchase_invoices_balance_by_entity.clear()
+
+@message_box
+def delete_purchase_payment(payment_id: str):
+    delete_req(
+        prefix='purchase',
+        endpoint=f'payment/delete/{payment_id}'
+    )
+    list_purchase_payment.clear()
+    get_purchase_payment_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    get_purchase_invoice_balance.clear()
+    get_ppurchase_invoices_balance_by_entity.clear()
+    
+    
 @message_box
 def validate_expense(expense: dict) -> dict:
     return post_req(
@@ -1348,7 +1613,9 @@ def set_logo(logo: bytes):
         endpoint='set_logo',
         files=[('logo', logo)]
     )
-    
+    get_logo.clear()
+
+@st.cache_data
 @message_box
 def get_logo() -> bytes | str:
     try:
@@ -1387,7 +1654,9 @@ def upsert_comp_contact(
             }
         }
     )
-    
+    get_comp_contact.clear()
+
+@st.cache_data
 @message_box  
 def get_comp_contact() -> Tuple[str | None, dict | None]:
     try:
@@ -1494,6 +1763,7 @@ def restore(backup_id: str):
             'backup_id': backup_id
         }
     )
+    st.cache_data.clear() # clear everything
     
 @message_box
 def list_backup_ids() -> list[str]:

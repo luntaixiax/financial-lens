@@ -4,7 +4,6 @@ import uuid
 import hvac
 import os
 import tomli
-import yaml
 from pathlib import Path
 from src.app.model.enums import CurType
 
@@ -23,11 +22,6 @@ def id_generator(prefix: str, length: int = 8, existing_list: list = None) -> st
         if new_id in existing_list:
             new_id = id_generator(prefix, length, existing_list)
     return new_id
-
-@lru_cache()
-def get_obj_settings() -> dict:
-    with open(Path.cwd() / 'configs.yaml') as obj:
-        return yaml.safe_load(obj)
 
 
 def get_settings() -> dict:
@@ -97,27 +91,17 @@ def get_secret() -> dict:
     }
 
 def get_file_root(type_: Literal['files', 'backup'] = 'files') -> str:
-    settings = get_obj_settings().get(type_, {})
-    
-    if settings.get('fs', 'obj') == 'obj':
-        # object file system
-        bucket = settings.get('bucket')
-        file_root = settings.get('file_root')
-        return (Path(bucket) / file_root).as_posix()
+    if type_ == 'files':
+        path_config = get_secret()['storage_server']['path']
     else:
-        # file system
-        file_root = settings.get('file_root')
-        return  (Path(settings.get('root')) / file_root).as_posix()
+        path_config = get_secret()['backup_server']['path']
+    
+    return (Path(path_config['bucket']) / path_config['file_root']).as_posix()
     
 def get_config_root(type_: Literal['files', 'backup'] = 'files') -> str:
-    settings = get_obj_settings().get(type_, {})
-    
-    if settings.get('fs', 'obj') == 'obj':
-        # object file system
-        bucket = settings.get('bucket')
-        file_root = 'config'
-        return (Path(bucket) / file_root).as_posix()
+    if type_ == 'files':
+        path_config = get_secret()['storage_server']['path']
     else:
-        # file system
-        file_root = 'config'
-        return  (Path(settings.get('root')) / file_root).as_posix()
+        path_config = get_secret()['backup_server']['path']
+        
+    return (Path(path_config['bucket']) / 'config').as_posix()

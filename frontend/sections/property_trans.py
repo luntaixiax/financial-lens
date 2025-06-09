@@ -10,12 +10,18 @@ from datetime import datetime, date, timedelta
 from utils.apis import list_property, get_account, get_property_journal, \
     get_all_accounts, get_base_currency, get_property_stat, list_property_trans, \
     get_propertytrans_journal, validate_property_trans, create_journal_from_new_property_trans, \
-    add_property_trans, update_property_trans, delete_property_trans
+    add_property_trans, update_property_trans, delete_property_trans, get_comp_contact, get_logo
 from utils.enums import PropertyType, PropertyTransactionType, CurType, AcctType, EntryType
 from utils.tools import DropdownSelect
 
 st.set_page_config(layout="centered")
-
+with st.sidebar:
+    comp_name, _ = get_comp_contact()
+    
+    st.markdown(f"Hello, :rainbow[**{comp_name}**]")
+    st.logo(get_logo(), size='large')
+    
+    
 def reset_validate():
     st.session_state['validated'] = False
     

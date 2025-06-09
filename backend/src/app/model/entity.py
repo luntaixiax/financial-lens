@@ -20,10 +20,10 @@ class Address(EnhancedBaseModel):
     @property
     def address_line(self) -> str:
         adress_line = ""
-        if self.suite_no is not None:
+        if self.suite_no not in (None, ""):
             adress_line += f"{self.suite_no} - "
         adress_line += self.address1
-        if self.address2 is not None:
+        if self.address2 not in (None, ""):
             adress_line += f", {self.address2}"
             
         return adress_line

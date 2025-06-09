@@ -9,10 +9,10 @@ import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
 from utils.tools import DropdownSelect
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
-from utils.apis import get_fx, list_customer, list_item, list_sales_invoice, get_sales_invoice_journal, \
-    get_item, get_default_tax_rate, get_accounts_by_type, validate_sales, \
-    create_journal_from_new_sales_invoice, get_all_accounts, add_sales_invoice, \
-    update_sales_invoice, delete_sales_invoice, get_base_currency, preview_sales_invoice, \
+from utils.apis import get_fx, list_supplier, list_item, list_purchase_invoice, get_purchase_invoice_journal, \
+    get_item, get_default_tax_rate, get_accounts_by_type, validate_purchase, \
+    create_journal_from_new_purchase_invoice, get_all_accounts, add_purchase_invoice, \
+    update_purchase_invoice, delete_purchase_invoice, get_base_currency, preview_purchase_invoice, \
     get_comp_contact, get_logo
 
 st.set_page_config(layout="wide")
@@ -116,7 +116,7 @@ def update_inv_item(entry: dict) -> dict:
         entry['amount_pre_tax'] = unit_pirce * quantity * (1 - discount_rate / 100)
         
     # set default account to record this
-    entry['acct_name'] = dds_inc_accts._mappings.get(item['default_acct_id'])
+    entry['acct_name'] = dds_exp_accts._mappings.get(item['default_acct_id'])
         
     return entry
 
@@ -214,7 +214,7 @@ def convert_inv_items_to_db(inv_item_entries: list[dict]) -> list[dict]:
         r = {}
         r['item'] = get_item(dds_citems.get_id(e['item_id']))
         r['quantity'] = e['quantity']
-        r['acct_id'] = dds_inc_accts.get_id(e['acct_name'])
+        r['acct_id'] = dds_exp_accts.get_id(e['acct_name'])
         r['tax_rate'] = e['tax_rate'] / 100
         r['discount_rate'] = e['discount_rate'] / 100
         r['description'] = e['description']
@@ -288,7 +288,7 @@ def validate_invoice(invoice_: dict):
         )
         return
     
-    invoice_ = validate_sales(invoice_)
+    invoice_ = validate_purchase(invoice_)
     if isinstance(invoice_, dict):
         if invoice_.get('subtotal_invitems') is not None:
             # pass the validation, otherwise may not pass, just pop up alerts
@@ -300,7 +300,7 @@ def validate_invoice(invoice_: dict):
             st.session_state['validated'] = True
 
             # calculate and journal to session state
-            jrn_ = create_journal_from_new_sales_invoice(invoice_)
+            jrn_ = create_journal_from_new_purchase_invoice(invoice_)
             st.session_state['journal'] = jrn_
             
             return
@@ -315,13 +315,13 @@ def validate_invoice(invoice_: dict):
     )
     
 
-customers = list_customer()
-if len(customers) > 0:
-    dds_customers = DropdownSelect(
-        briefs=customers,
+suppliers = list_supplier()
+if len(suppliers) > 0:
+    dds_suppliers = DropdownSelect(
+        briefs=suppliers,
         include_null=False,
-        id_key='cust_id',
-        display_keys=['cust_id', 'customer_name']
+        id_key='supplier_id',
+        display_keys=['supplier_id', 'supplier_name']
     )
     dds_currency = DropdownSelect.from_enum(
         CurType,
@@ -329,8 +329,8 @@ if len(customers) > 0:
     )
     inc_accts = get_accounts_by_type(acct_type=AcctType.INC.value)
     exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
-    dds_inc_accts = DropdownSelect(
-        briefs=inc_accts,
+    dds_exp_accts = DropdownSelect(
+        briefs=exp_accts,
         include_null=False,
         id_key='acct_id',
         display_keys=['acct_name']
@@ -365,17 +365,17 @@ if len(customers) > 0:
         )
 
     with widget_cols[1]:
-        edit_customer = st.selectbox(
+        edit_supplier = st.selectbox(
             label='👇 Select Customer',
-            options=dds_customers.options,
+            options=dds_suppliers.options,
             index=0
         )
-        cust_id = dds_customers.get_id(edit_customer)
+        supplier_id = dds_suppliers.get_id(edit_supplier)
         
     # either add mode or selected edit/view mode
     if edit_mode == 'Edit':
         
-        invoices = list_sales_invoice(customer_ids=[cust_id])
+        invoices = list_purchase_invoice(supplier_ids=[supplier_id])
         
         inv_displays = map(display_invoice, invoices)
         selected: dict = st.dataframe(
@@ -440,7 +440,7 @@ if len(customers) > 0:
 
         if  _row_list := selected['selection']['rows']:
             inv_id_sel = invoices[_row_list[0]]['invoice_id']
-            inv_sel, jrn_sel = get_sales_invoice_journal(inv_id_sel)
+            inv_sel, jrn_sel = get_purchase_invoice_journal(inv_id_sel)
 
             ui.badges(
                 badge_list=[("Invoice ID", "default"), (inv_id_sel, "secondary")], 
@@ -506,7 +506,7 @@ if len(customers) > 0:
         )
         
         # get item list (filter by currency)
-        items = list_item(entity_type=EntityType.CUSTOMER.value)
+        items = list_item(entity_type=EntityType.SUPPLIER.value)
         items = list(map(
             display_item, filter(
                 lambda e: e['currency'] == CurType[inv_cur_type_option].value, 
@@ -530,7 +530,7 @@ if len(customers) > 0:
                     'tax_rate': it['tax_rate'] * 100,
                     'discount_rate': it['discount_rate'] * 100,
                     'amount_pre_tax': it['amount_pre_tax'],
-                    'acct_name': dds_inc_accts._mappings.get(it['acct_id']),
+                    'acct_name': dds_exp_accts._mappings.get(it['acct_id']),
                     'description': it['description'],
                 } for it in inv_sel['invoice_items']
             ]
@@ -672,7 +672,7 @@ if len(customers) > 0:
                 'acct_name': st.column_config.SelectboxColumn(
                     label='Income Acct',
                     width=None,
-                    options=dds_inc_accts.options,
+                    options=dds_exp_accts.options,
                     #required=True
                 ),
                 'description': st.column_config.TextColumn(
@@ -717,7 +717,7 @@ if len(customers) > 0:
                     #required=True
                 ),
                 'acct_name': st.column_config.SelectboxColumn(
-                    label='Offset Acct',
+                    label='Bill Acct',
                     width=None,
                     options=dds_incexp_accts.options,
                     #required=True
@@ -779,8 +779,8 @@ if len(customers) > 0:
         
         invoice_ = {
             #"invoice_id": "string",
-            "entity_type": 1, # customer
-            "entity_id": cust_id,
+            "entity_type": 2, # supplier
+            "entity_id": supplier_id,
             "invoice_num": inv_num,
             "invoice_dt": inv_date.strftime('%Y-%m-%d'), # convert to string
             "due_dt": inv_due_date.strftime('%Y-%m-%d'),
@@ -941,7 +941,7 @@ if len(customers) > 0:
             # add button
             st.button(
                 label='Add Invoice',
-                on_click=add_sales_invoice,
+                on_click=add_purchase_invoice,
                 args=(invoice_,)
             )
             
@@ -954,14 +954,14 @@ if len(customers) > 0:
                     st.button(
                         label='Update',
                         type='secondary',
-                        on_click=update_sales_invoice,
+                        on_click=update_purchase_invoice,
                         args=(invoice_,)
                     )
             with btn_cols[0]:
                 st.button(
                     label='Delete',
                     type='primary',
-                    on_click=delete_sales_invoice,
+                    on_click=delete_purchase_invoice,
                     kwargs=dict(
                         invoice_id=inv_id_sel
                     )
@@ -970,12 +970,12 @@ if len(customers) > 0:
         if edit_mode == 'Edit':
             with st.container(border=True):
                 st.subheader("Invoice Preview")
-                # show sales invoice HTML preview
+                # show purchase invoice HTML preview
                 components.html(
-                    preview_sales_invoice(inv_id_sel), 
+                    preview_purchase_invoice(inv_id_sel), 
                     height = 1250, 
                     scrolling=True
                 )
                 
 else:
-    st.warning("No Customer found, must create customer to add/edit sales", icon='🥵')
+    st.warning("No Customer found, must create supplier to add/edit purchase", icon='🥵')

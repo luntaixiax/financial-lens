@@ -34,7 +34,6 @@ services:
       - ENV=prod
     volumes:
       - ./secrets.toml:/secrets.toml
-      - ./backend/configs.yaml:/app/configs.yaml
     ports:
       - 8181:8181
     command:

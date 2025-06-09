@@ -326,8 +326,8 @@ class EntryORM(SQLModelWithSort, table=True):
     cur_incexp: CurType | None = Field(
         sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
     )
-    amount: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
-    amount_base: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    amount: float = Field(sa_column=Column(DECIMAL(18, 6 , asdecimal=False), nullable = False, server_default = "0.0"))
+    amount_base: float = Field(sa_column=Column(DECIMAL(18, 6 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
     
