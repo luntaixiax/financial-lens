@@ -445,7 +445,7 @@ class InvoiceItemORM(SQLModelWithSort, table=True):
             nullable = False
         )
     )
-    quantity: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    quantity: float = Field(sa_column=Column(DECIMAL(18, 8 , asdecimal=False), nullable = False, server_default = "0.0"))
     acct_id: str = Field(
         sa_column=Column(
             String(length = 15), 
@@ -458,8 +458,8 @@ class InvoiceItemORM(SQLModelWithSort, table=True):
             nullable = False
         )
     )
-    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
-    discount_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 4 , asdecimal=False), nullable = False, server_default = "0.0"))
+    discount_rate: float = Field(sa_column=Column(DECIMAL(15, 4 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
 
 class GeneralInvoiceItemORM(SQLModelWithSort, table=True):
@@ -498,7 +498,7 @@ class GeneralInvoiceItemORM(SQLModelWithSort, table=True):
     )
     amount_pre_tax_raw: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     amount_pre_tax: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
-    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 4 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 
@@ -573,7 +573,7 @@ class ExpenseItemORM(SQLModelWithSort, table=True):
         )
     )
     amount_pre_tax: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
-    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    tax_rate: float = Field(sa_column=Column(DECIMAL(15, 4 , asdecimal=False), nullable = False, server_default = "0.0"))
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class PaymentORM(SQLModelWithSort, table=True):
