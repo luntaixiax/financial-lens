@@ -167,7 +167,12 @@ jobs:
   deploy:
     runs-on: runner-finlens # need self hosted runner as need connect to local servers
     needs: [update-backend-image, update-frontend-image] # will depend on previous step `build`
-    if: success() || cancelled() # runs whether previous step skipped or success
+    # https://stackoverflow.com/questions/68945610/how-to-put-conditional-job-in-need-of-another-job-in-github-action
+    if: |
+      always() && 
+      (needs.update-backend-image.result == 'success' || needs.update-backend-image.result == 'skipped') && 
+      (needs.update-frontend-image.result == 'success' || needs.update-frontend-image.result == 'skipped') && 
+      !(needs.update-backend-image.result == 'skipped' && needs.update-frontend-image.result == 'skipped')
 
     steps:
       - uses: actions/checkout@v4
