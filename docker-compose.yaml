@@ -2,26 +2,27 @@ version: '3.8'
 
 services:
 
-  mariadb:
-    image: mariadb:latest
+  mysql:
+    image: mysql:latest
     volumes:
       - ./configs/setups/mysql_setup.sql:/data/application/mysql_setup.sql
-      - mariadb-volume:/var/lib/mysql
+      - mysql-volume:/var/lib/mysql
     environment:
-      MARIADB_ROOT_USER: "root"
-      MARIADB_ROOT_PASSWORD_FILE: "/run/secrets/mariadb_root_password"
-      MARIADB_USER: "luntaixia"
-      MARIADB_PASSWORD: "luntaixia"
-      MARIADB_DATABASE: "finlens"
+      MYSQL_ROOT_USER: "root"
+      MYSQL_ROOT_PASSWORD_FILE: "/run/secrets/mysql_root_password"
+      MYSQL_USER: "luntaixia"
+      MYSQL_PASSWORD: "luntaixia"
+      MYSQL_DATABASE: "finlens"
     secrets:
-      - mariadb_root_password
+      - mysql_root_password
     ports:
       - 3309:3306
     command:
       --init-file=/data/application/mysql_setup.sql
+      --log-error-verbosity=1
     restart: always
     healthcheck:
-      test: ["CMD", "mariadb-admin" ,"ping", "-h", "localhost", '-u', 'root', '-p$$MARIADB_ROOT_PASSWORD']
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", '-u', 'root', '-p$$MYSQL_ROOT_PASSWORD']
       #test: ["CMD", "whoami"]
       interval: 10s
       retries: 5
@@ -45,7 +46,7 @@ services:
       retries: 5
       start_period: 30s
     depends_on:
-      mariadb:
+      mysql:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -65,8 +66,8 @@ services:
 
 
 secrets:
-   mariadb_root_password:
+   mysql_root_password:
      file: configs/secrets/mysql_root_password.txt
 
 volumes:
-  mariadb-volume:
+  mysql-volume:
