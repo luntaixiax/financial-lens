@@ -600,8 +600,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
             'tax_rate': st.column_config.NumberColumn(
                 label='Tax Rate',
                 width=None,
-                format='%.1f%%',
-                step=0.1,
+                format='%.2f%%',
+                step=0.01,
                 min_value=0.0,
                 max_value=100.0,
                 default=get_default_tax_rate() * 100,

@@ -629,23 +629,23 @@ if len(customers) > 0:
                 'unit_price': st.column_config.NumberColumn(
                     label='Unit Price',
                     width=None,
-                    format='$ %.2f',
-                    step=0.01,
+                    format='$ %.3f',
+                    step=0.001,
                     disabled=True
                     #required=True
                 ),
                 'quantity': st.column_config.NumberColumn(
                     label='Quantity',
                     width=None,
-                    format='%.2f',
-                    step=0.001,
+                    format='%.6f',
+                    step=0.000001,
                     #required=True
                 ),
                 'tax_rate': st.column_config.NumberColumn(
                     label='Tax Rate',
                     width=None,
-                    format='%.1f%%',
-                    step=0.1,
+                    format='%.2f%%',
+                    step=0.01,
                     min_value=0.0,
                     max_value=100.0,
                     default=get_default_tax_rate() * 100,
@@ -654,8 +654,8 @@ if len(customers) > 0:
                 'discount_rate': st.column_config.NumberColumn(
                     label='Discount Rate',
                     width=None,
-                    format='%.1f%%',
-                    step=0.1,
+                    format='%.2f%%',
+                    step=0.01,
                     min_value=0.0,
                     max_value=100.0,
                     default=0
@@ -745,8 +745,8 @@ if len(customers) > 0:
                 'tax_rate': st.column_config.NumberColumn(
                     label='Tax Rate',
                     width=None,
-                    format='%.1f%%',
-                    step=0.1,
+                    format='%.2f%%',
+                    step=0.01,
                     min_value=0.0,
                     max_value=100.0,
                     default=get_default_tax_rate() * 100,
