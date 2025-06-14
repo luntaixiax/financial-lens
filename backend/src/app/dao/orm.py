@@ -1,9 +1,9 @@
 from typing import List, Dict, Tuple
 from sqlmodel import Field, SQLModel, Column, create_engine
-from sqlalchemy import ForeignKey, Boolean, JSON, ARRAY, Integer, String, Text, Date, DateTime, Float, Numeric, DECIMAL, UniqueConstraint, inspect, INT, CHAR
-from sqlalchemy_utils import EmailType, PasswordType, PhoneNumberType, ChoiceType, CurrencyType, PhoneNumber
+from sqlalchemy import ForeignKey, Boolean, JSON, ARRAY, Integer, String, Text, Date, DECIMAL, inspect, INT, CHAR
+from sqlalchemy_utils import EmailType, PasswordType, PhoneNumberType, ChoiceType
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from datetime import date, datetime
+from datetime import date
 
 from src.app.model.exceptions import FKNoDeleteUpdateError, FKNotExistError, AlreadyExistError
 from src.app.model.enums import AcctType, BankAcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, PropertyTransactionType, PropertyType, UnitType
