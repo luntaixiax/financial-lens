@@ -197,8 +197,9 @@ with tabs[1]:
         # unit price
         sales_unit_price = st.number_input(
             label='🏷️ Unit Price',
-            value=0 if edit_mode == 'Add' else existing_sales_item['unit_price'],
-            key='sales-price'
+            value=0.0 if edit_mode == 'Add' else existing_sales_item['unit_price'],
+            key='sales-price',
+            step=0.001
         )
         
     # default account (only income type)
