@@ -13,8 +13,8 @@ botocore==1.35.93
 s3fs==2025.2.0
 SQLAlchemy==2.0.36
 SQLAlchemy_Utils==0.41.2
-sqlmodel==0.0.24
-starlette==0.46.1
+sqlmodel==0.0.24 # 0.0.22
+starlette==0.46.1 # 0.40.0
 tomli==2.2.1
 python-multipart==0.0.6
 babel==2.13.0
