@@ -3,8 +3,9 @@ from pathlib import Path
 import sqlalchemy
 from sqlalchemy import MetaData, JSON, column, event
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlite3 import Connection as SQLite3Connection
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 from src.app.dao.orm import get_class_by_tablename, SQLModelWithSort
 from src.app.utils.tools import get_file_root
 from src.app.dao.connection import get_storage_fs, get_engine
@@ -15,10 +16,13 @@ def drop_tables(engine: Engine):
     
     # respect foreign key constraints so sort the tables
     with Session(engine) as s:
+        src_metadata = MetaData()
+        src_metadata.reflect(bind=engine)
+    
         for tbl in reversed(metadata.sorted_tables):
-            s.exec(tbl.delete())
-            s.commit()
-
+            table_cls = get_class_by_tablename(tbl.name)
+            table_cls.__table__.drop(bind=engine)
+            
 def migrate_database(src_engine: Engine, tgt_engine: Engine):
 
     src_metadata = MetaData()
