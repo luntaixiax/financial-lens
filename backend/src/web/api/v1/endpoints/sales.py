@@ -99,8 +99,10 @@ def preview_sales_invoice(request: Request, invoice_id: str):
         bill_contact=bill_from_contact,
         ship_same_as_bill=True
     )
+    css_path = SettingService.get_static_server_path()
     
     data = {
+        'css_path': css_path,
         'logo': base64.b64encode(bytes(SettingService.get_logo().content, encoding='latin-1')).decode("latin-1"),
         'bill_from': bill_from.model_dump(mode='python'),
         'bill_to': bill_to.model_dump(mode='python'),
