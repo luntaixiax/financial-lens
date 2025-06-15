@@ -1,3 +1,4 @@
+import base64
 from typing import Any, Tuple
 from datetime import date, datetime, timezone
 from functools import wraps
@@ -836,11 +837,13 @@ def delete_sales_invoice(invoice_id: str):
 @st.cache_data
 @message_box
 def preview_sales_invoice(invoice_id: str) -> str:
-    return plain_get_req(
-        prefix='sales',
-        endpoint='invoice/preview',
-        params={'invoice_id': invoice_id}
-    )
+    return base64.b64encode(
+        plain_get_req(
+            prefix='sales',
+            endpoint='invoice/preview',
+            params={'invoice_id': invoice_id}
+        ).encode("utf-8")
+    ).decode('utf-8')
 
 @st.cache_data
 @message_box
@@ -1100,11 +1103,13 @@ def delete_purchase_invoice(invoice_id: str):
 @st.cache_data
 @message_box
 def preview_purchase_invoice(invoice_id: str) -> str:
-    return plain_get_req(
-        prefix='purchase',
-        endpoint='invoice/preview',
-        params={'invoice_id': invoice_id}
-    )
+    return base64.b64encode(
+        plain_get_req(
+            prefix='purchase',
+            endpoint='invoice/preview',
+            params={'invoice_id': invoice_id}
+        ).encode("utf-8")
+    ).decode('utf-8')
 
 @st.cache_data
 @message_box

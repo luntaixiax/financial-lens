@@ -971,8 +971,8 @@ if len(suppliers) > 0:
             with st.container(border=True):
                 st.subheader("Invoice Preview")
                 # show purchase invoice HTML preview
-                components.html(
-                    preview_purchase_invoice(inv_id_sel), 
+                components.iframe(
+                    f"data:text/html;base64,{preview_purchase_invoice(inv_id_sel)}",
                     height = 1250, 
                     scrolling=True
                 )
