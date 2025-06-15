@@ -14,6 +14,7 @@ VAULT_MOUNT_PATH = {
     'storage_server' : f"{ENV}/storage_server",
     'backup_server' : f"{ENV}/backup_server",
     'stateapi' : f"{ENV}/stateapi",
+    'static_server': f"{ENV}/static_server",
 }
 
 def id_generator(prefix: str, length: int = 8, existing_list: list = None) -> str:
@@ -82,12 +83,17 @@ def get_secret() -> dict:
         mount_point = VAULT_MOUNT_POINT,
         path = VAULT_MOUNT_PATH['stateapi'],
     )
+    static_server = get_vault_resp(
+        mount_point = VAULT_MOUNT_POINT,
+        path = VAULT_MOUNT_PATH['static_server']
+    )
     
     return {
         'database' : database,
         'storage_server' : storage_server,
         'backup_server' : backup_server,
         'stateapi' : stateapi,
+        'static_server': static_server
     }
 
 def get_file_root(type_: Literal['files', 'backup'] = 'files') -> str:

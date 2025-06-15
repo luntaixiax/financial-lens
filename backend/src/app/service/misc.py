@@ -148,3 +148,8 @@ class SettingService:
     @classmethod
     def set_default_tax_rate(cls, default_tax_rate: float):
         cls.set_config_value('default_tax_rate', default_tax_rate)
+        
+    @classmethod
+    def get_static_server_path(cls) -> str:
+        secret = get_secret()['static_server']
+        return f"http://{secret['hostname']}:{secret['port']}"
