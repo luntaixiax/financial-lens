@@ -11,6 +11,11 @@ class Merchant(BaseModel):
     platform: str | None = Field(None)
     ref_no: str | None = Field(None)
 
+class ExpInfo(BaseModel):
+    merchant: Merchant
+    external_pmt_acct: str | None = Field(None)
+
+
 class ExpenseItem(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
@@ -85,7 +90,7 @@ class Expense(EnhancedBaseModel):
     payment_amount: float = Field(
         description='Payment amount, in payment account currency. If payment currency equals expense currency, this amount should equal to self.total'
     )
-    merchant: Merchant
+    exp_info: ExpInfo
     note: str | None = Field(None)
     receipts: list[str] | None =  Field(
         None,

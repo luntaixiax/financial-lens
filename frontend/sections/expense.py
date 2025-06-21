@@ -637,17 +637,17 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
         
         merchant = st.text_input(
             label='🏪 Merchant',
-            value="" if edit_mode == 'Add' else exp_sel['merchant']['merchant'],
+            value="" if edit_mode == 'Add' else exp_sel['exp_info']['merchant']['merchant'],
             placeholder="merchant here",
         )
         platform = st.text_input(
             label='🏬 Platform',
-            value="" if edit_mode == 'Add' else exp_sel['merchant']['platform'],
+            value="" if edit_mode == 'Add' else exp_sel['exp_info']['merchant']['platform'],
             placeholder="platform here (e.g., Uber)",
         )
         ref_no = st.text_input(
             label='#️⃣ Reference #',
-            value="" if edit_mode == 'Add' else exp_sel['merchant']['ref_no'],
+            value="" if edit_mode == 'Add' else exp_sel['exp_info']['merchant']['ref_no'],
             placeholder="reference number",
         )
         
@@ -710,10 +710,13 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
         "expense_items": convert_exp_items_to_db(exp_item_entries),
         "payment_acct_id": pmt_acct_id,
         "payment_amount": pmt_amt,
-        "merchant": {
-            'merchant': None if merchant == "" else merchant,
-            'platform': None if platform == "" else platform,
-            'ref_no': None if ref_no == "" else ref_no,
+        "exp_info": {
+            'merchant' : {
+                'merchant': None if merchant == "" else merchant,
+                'platform': None if platform == "" else platform,
+                'ref_no': None if ref_no == "" else ref_no,
+            }
+            
         },
         "note": None if note == "" else note,
         "receipts": exp_sel['receipts'] if edit_mode == 'Edit' else None
@@ -891,6 +894,6 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 type='primary',
                 on_click=delete_expense,
                 kwargs=dict(
-                    invoice_id=exp_id_sel
+                    expense_id=exp_id_sel
                 )
             )

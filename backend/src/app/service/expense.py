@@ -11,7 +11,7 @@ from src.app.service.journal import JournalService
 from src.app.service.fx import FxService
 from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
-from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, Merchant
+from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, ExpInfo, Merchant
 from src.app.model.journal import Journal, Entry
 
 class ExpenseService:
@@ -40,10 +40,13 @@ class ExpenseService:
             ],
             payment_acct_id='acct-credit',
             payment_amount=123.74,
-            merchant=Merchant(
-                merchant='Good Taste Sushi',
-                platform='Uber Eats',
-                ref_no='ub12345'
+            exp_info=ExpInfo(
+                merchant=Merchant(
+                    merchant='Good Taste Sushi',
+                    platform='Uber Eats',
+                    ref_no='ub12345'
+                ),
+                external_pmt_acct='BNS Amex'
             ),
             note='Meal for client gathering',
             receipts=[
@@ -66,10 +69,13 @@ class ExpenseService:
             ],
             payment_acct_id='acct-shareloan',
             payment_amount=1250, # paid EUR1250
-            merchant=Merchant(
-                merchant='Shareholder',
-                platform=None,
-                ref_no='RENT-20240101'
+            exp_info=ExpInfo(
+                merchant=Merchant(
+                    merchant='Shareholder',
+                    platform=None,
+                    ref_no='RENT-20240101'
+                ),
+                external_pmt_acct='Scotia Check'
             ),
             note='Rent for 2024-01-01',
             receipts=None

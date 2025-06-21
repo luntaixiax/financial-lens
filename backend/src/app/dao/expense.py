@@ -5,7 +5,7 @@ from sqlalchemy import JSON, column
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.enums import CurType, EntryType
-from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, Merchant
+from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, ExpInfo
 from src.app.dao.orm import AcctORM, EntryORM, ExpenseItemORM, ExpenseORM, infer_integrity_error
 from src.app.dao.connection import get_engine
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, FKNoDeleteUpdateError
@@ -41,7 +41,7 @@ class expenseDao:
             currency=expense.currency,
             payment_acct_id=expense.payment_acct_id,
             payment_amount=expense.payment_amount,
-            merchant=expense.merchant.model_dump(),
+            exp_info=expense.exp_info.model_dump(),
             receipts=expense.receipts,
             note=expense.note,
             journal_id=journal_id # TODO
@@ -63,7 +63,7 @@ class expenseDao:
             ],
             payment_acct_id=expense_orm.payment_acct_id,
             payment_amount=expense_orm.payment_amount,
-            merchant=Merchant.model_validate(expense_orm.merchant),
+            exp_info=ExpInfo.model_validate(expense_orm.exp_info),
             receipts=expense_orm.receipts,
             note=expense_orm.note,
         )
@@ -169,7 +169,7 @@ class expenseDao:
             p.currency = expense_orm.currency
             p.payment_acct_id = expense_orm.payment_acct_id
             p.payment_amount = expense_orm.payment_amount
-            p.merchant = expense_orm.merchant
+            p.exp_info = expense_orm.exp_info
             p.note = expense_orm.note
             p.receipts = expense_orm.receipts
             p.journal_id = journal_id # update to new journal id
@@ -311,7 +311,7 @@ class expenseDao:
                 select(
                     ExpenseORM.expense_id,
                     ExpenseORM.expense_dt,
-                    ExpenseORM.merchant, # TODO, extract merchant
+                    ExpenseORM.exp_info, # TODO, extract exp_info
                     ExpenseORM.currency,
                     AcctORM.acct_name.label('payment_acct_name'),
                     expense_summary.c.expense_acct_name_strs,
@@ -377,7 +377,7 @@ class expenseDao:
             _ExpenseBrief(
                 expense_id=expense.expense_id,
                 expense_dt=expense.expense_dt,
-                merchant=Merchant.model_validate(expense.merchant).merchant,
+                merchant=ExpInfo.model_validate(expense.exp_info).merchant.merchant,
                 currency=expense.currency,
                 payment_acct_name=expense.payment_acct_name,
                 expense_acct_name_strs=expense.expense_acct_name_strs,

@@ -5,7 +5,7 @@ import pytest
 from src.app.utils.tools import get_base_cur
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError
 from src.app.model.enums import CurType
-from src.app.model.expense import ExpenseItem, Expense, Merchant
+from src.app.model.expense import ExpenseItem, Expense, ExpInfo, Merchant
 
 @pytest.fixture
 def sample_expense_meal() -> Expense: 
@@ -30,10 +30,13 @@ def sample_expense_meal() -> Expense:
         ],
         payment_acct_id='acct-credit',
         payment_amount=123.74,
-        merchant=Merchant(
-            merchant='Good Taste Sushi',
-            platform='Uber Eats',
-            ref_no='ub12345'
+        exp_info=ExpInfo(
+            merchant=Merchant(
+                merchant='Good Taste Sushi',
+                platform='Uber Eats',
+                ref_no='ub12345'
+            ),
+            external_pmt_acct='BNS Amex'
         ),
         note='Meal for client gathering',
         receipts=[
@@ -59,10 +62,13 @@ def sample_expense_rent() -> Expense:
         ],
         payment_acct_id='acct-shareloan',
         payment_amount=110.74,
-        merchant=Merchant(
-            merchant='Shareholder',
-            platform=None,
-            ref_no='RENT-20240101'
+        exp_info=ExpInfo(
+            merchant=Merchant(
+                merchant='Shareholder',
+                platform=None,
+                ref_no='RENT-20240101'
+            ),
+            external_pmt_acct='Scotia Check'
         ),
         note='Rent for 2024-01-01',
         receipts=None
