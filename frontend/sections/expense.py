@@ -653,11 +653,16 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
         
         
     with exp_cols[1]:
+        external_pmt_acct = st.text_input(
+            label='🪪 External Payment Account',
+            value="" if edit_mode == 'Add' else exp_sel['exp_info']['external_pmt_acct'],
+            placeholder="the account get charged, if externally paid",
+        )
         note = st.text_area(
             label='📝 Note',
             value="" if edit_mode == 'Add' else exp_sel['note'],
             placeholder="payment note here",
-            height=205
+            height=123
         )
         
     
@@ -715,8 +720,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 'merchant': None if merchant == "" else merchant,
                 'platform': None if platform == "" else platform,
                 'ref_no': None if ref_no == "" else ref_no,
-            }
-            
+            },
+            'external_pmt_acct': None if external_pmt_acct == "" else external_pmt_acct
         },
         "note": None if note == "" else note,
         "receipts": exp_sel['receipts'] if edit_mode == 'Edit' else None
