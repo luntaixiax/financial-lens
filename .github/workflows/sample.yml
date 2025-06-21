@@ -21,6 +21,6 @@ jobs:
           envs: IMAGE
           script: |
             echo "Login to $(hostname)"
-            PATH="{{ vars.DOCKER_BIN_PATH }}:$PATH"
+            PATH="${{ vars.DOCKER_BIN_PATH }}:$PATH"
             echo $PATH
             docker ps
