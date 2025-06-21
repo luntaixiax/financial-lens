@@ -21,4 +21,6 @@ jobs:
           envs: IMAGE
           script: |
             echo "Login to $(hostname)"
-            whoami
+            exec bash \-l
+            echo $PATH
+            docker ps
