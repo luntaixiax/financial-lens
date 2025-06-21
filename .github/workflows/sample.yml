@@ -21,6 +21,4 @@ jobs:
           envs: IMAGE
           script: |
             echo "Login to $(hostname)"
-            export PATH="${{ vars.DOCKER_BIN_PATH }}:$PATH"
-            echo $PATH
-            docker ps
+            ${{ vars.DOCKER_BIN_PATH }}/docker ps
