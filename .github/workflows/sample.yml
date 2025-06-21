@@ -21,4 +21,5 @@ jobs:
           envs: IMAGE
           script: |
             echo "Login to $(hostname)"
+            echo $PATH
             docker ps -a
