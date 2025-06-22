@@ -771,13 +771,13 @@ if len(suppliers) > 0:
         
         # total amount and tax
         subtotal = st.session_state.get('subtotal', '-')
-        st.markdown(f"🛒 **SubTotal {inv_cur}**: {subtotal if subtotal != '-' else '-'}")
+        st.markdown(f"🛒 **SubTotal {inv_cur}**: {round(subtotal, 2) if subtotal != '-' else '-'}")
         
         tax_amount = st.session_state.get('tax_amount', '-')
-        st.markdown(f"🧾 **Tax Amount {inv_cur}**: {tax_amount if tax_amount != '-' else '-'}")
+        st.markdown(f"🧾 **Tax Amount {inv_cur}**: {round(tax_amount, 2) if tax_amount != '-' else '-'}")
         
         total = st.session_state.get('total', '-')
-        st.markdown(f"💵 **Total {inv_cur}**: {total if total != '-' else '-'}")
+        st.markdown(f"💵 **Total {inv_cur}**: {round(total, 2) if total != '-' else '-'}")
         
         invoice_ = {
             #"invoice_id": "string",

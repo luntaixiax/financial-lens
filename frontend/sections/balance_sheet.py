@@ -51,7 +51,7 @@ with cols[0]:
     total_ass = bal_sh[str(AcctType.AST.value)]['chart_summary']['net_base']
     st.markdown(f"**Total Asset :green-background[({CurType(get_base_currency()).name}) {total_ass:,.2f}]**")
     show_expander(bal_sh[str(AcctType.AST.value)], icon='🏘️')
-    st.markdown(f'📥 **Total Asset ({CurType(get_base_currency()).name})**: :grey-background[{total_ass:,.1f}]')
+    st.markdown(f'📥 **Total Asset ({CurType(get_base_currency()).name})**: :grey-background[{total_ass:,.2f}]')
 
 with cols[1]:
     total_lib = bal_sh[str(AcctType.LIB.value)]['chart_summary']['net_base']
@@ -64,4 +64,4 @@ with cols[1]:
     show_expander(bal_sh[str(AcctType.EQU.value)], icon='💸')
     
     
-    st.markdown(f'📥 **Total Equity+Liability ({CurType(get_base_currency()).name})**: :grey-background[{total_lib+total_equ:,.1f}]')
+    st.markdown(f'📥 **Total Equity+Liability ({CurType(get_base_currency()).name})**: :grey-background[{total_lib+total_equ:,.2f}]')
