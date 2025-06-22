@@ -1,5 +1,7 @@
 bidict==0.23.1
 pandas==2.2.3
+xlsxwriter==3.2.5
+openpyxl==3.1.5
 pydantic==2.10.6
 Requests==2.32.3
 streamlit==1.41.1

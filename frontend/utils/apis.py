@@ -1,3 +1,4 @@
+import io
 from typing import Any, Tuple
 from datetime import date, datetime, timezone
 from functools import wraps
@@ -5,6 +6,7 @@ import uuid
 from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
     FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError, UnprocessableEntityError
 from utils.base import get_req, plain_get_req, post_req, delete_req, put_req
+import pandas as pd
 import streamlit_shadcn_ui as ui
 import streamlit as st
 
@@ -359,12 +361,6 @@ def get_parent_chart(chart_id: str) -> dict:
         endpoint=f'chart/{chart_id}/get_parent',
     )
     
-@message_box
-def list_accounts_by_chart(chart_id: str) -> list[dict]:
-    return get_req(
-        prefix='accounts',
-        endpoint=f'account/list/{chart_id}',
-    )
 
 @message_box  
 def add_chart(chart: dict, parent_chart_id: str):
@@ -1309,7 +1305,7 @@ def list_expense(
     )
 
 @message_box
-def add_expense(expense: dict, files: list[str]):
+def add_expense(expense: dict, files: list[Tuple[str, bytes]]):
     #save the files
     if len(files) > 0:
         file_ids = upload_file(files)
@@ -1319,6 +1315,23 @@ def add_expense(expense: dict, files: list[str]):
         prefix='expense',
         endpoint='add',
         data=expense
+    )
+    list_expense.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    summary_expense.clear()
+    
+@message_box
+def add_expenses(expenses: list[dict]):
+    #save the files
+        
+    post_req(
+        prefix='expense',
+        endpoint='batch_add',
+        data=expenses
     )
     list_expense.clear()
     list_journal.clear()
@@ -1771,3 +1784,187 @@ def list_backup_ids() -> list[str]:
         prefix='management',
         endpoint=f'list_backup_ids',
     )
+
+@message_box
+def get_batch_exp_excel_template() -> bytes:
+    from utils.enums import AcctType
+    
+    # expense tab
+    expense_tab = pd.DataFrame(
+        columns=[
+            'fake_exp_id', # same expense should share same id
+            'exp_dt',
+            'pmt_acct',
+            'pmt_amount',
+            'exp_currency', # allowed text
+            'exp_acct',
+            'amount_pre_tax',
+            'tax_rate',
+            'description',
+            'external_pmt_method',
+            'merchant',
+            'platform',
+            'ref_no',
+            'note',
+            'receipt_1', # receipt name
+            'receipt_2', # receipt name
+            'receipt_3' # receipt name
+        ]
+    )
+    
+    # allowed expense
+    exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value) # expense accounts
+    exp_accts = pd.DataFrame.from_records([
+        {
+            'chart_name': e['chart']['name'],
+            'exp_acct': e['acct_name'],
+        }
+        for e in exp_accts
+    ])
+    
+    # allowed payment accounts
+    ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
+    lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
+    equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value)
+    pmt_accts = pd.DataFrame.from_records([
+        {
+            'chart_name': e['chart']['name'],
+            'payment_acct': e['acct_name'],
+        }
+        for e in ast_accts + lib_accts + equ_accts
+    ])
+    
+    excel_buffer = io.BytesIO()
+    
+    with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+        expense_tab.to_excel(writer, sheet_name='Expense', index=False)
+        exp_accts.to_excel(writer, sheet_name='Allowed Expense', index=False)
+        pmt_accts.to_excel(writer, sheet_name='Allowed Payment Act', index=False)
+        
+    return excel_buffer
+
+@message_box
+def upload_batch_exp_excel(exp_batch):
+    from utils.enums import AcctType, CurType
+    from utils.tools import DropdownSelect
+    
+    exp_batch = io.BufferedReader(exp_batch)
+    exps = pd.read_excel(
+        exp_batch, 
+        sheet_name='Expense', 
+        engine='openpyxl',
+        dtype={
+            'fake_exp_id': 'str', # same expense should share same id
+            'exp_dt': 'str',
+            'pmt_acct': 'str',
+            'pmt_amount': 'float',
+            'exp_currency': 'str', # allowed text
+            'exp_acct': 'str',
+            'amount_pre_tax': 'float',
+            'tax_rate': 'float',
+            'description': 'str',
+            'external_pmt_method': 'str',
+            'merchant': 'str',
+            'platform': 'str',
+            'ref_no': 'str',
+            'note': 'str',
+            'receipt_1': 'str', # receipt name
+            'receipt_2': 'str', # receipt name
+            'receipt_3': 'str' # receipt name
+        }
+    )
+    exps['exp_dt'] = pd.to_datetime(exps['exp_dt'], format='%Y-%m-%d').dt.date
+    # using up to date accounts
+    exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value) # expense accounts
+    exp_accts_pd = pd.DataFrame.from_records([
+        {
+            'chart_name': e['chart']['name'],
+            'exp_acct': e['acct_name'],
+        }
+        for e in exp_accts
+    ])
+    # allowed payment accounts
+    ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
+    lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
+    equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value)
+    pmt_accts = pd.DataFrame.from_records([
+        {
+            'chart_name': e['chart']['name'],
+            'payment_acct': e['acct_name'],
+        }
+        for e in ast_accts + lib_accts + equ_accts
+    ])
+    
+    # validation of foreign key
+    unexpected_pmt_accts = set(exps['pmt_acct']).difference(pmt_accts['payment_acct'])
+    if len(unexpected_pmt_accts) > 0:
+        raise NotExistError(
+            message="Payment accounts not exist in system",
+            details=f"{unexpected_pmt_accts}"
+        )
+        
+    unexpected_exp_accts = set(exps['exp_acct']).difference(exp_accts_pd['exp_acct'])
+    if len(unexpected_exp_accts) > 0:
+        raise NotExistError(
+            message="Expense accounts not exist in system",
+            details=f"{unexpected_exp_accts}"
+        )
+        
+    # validation of currency
+    allowed_cur = [c.name for c in CurType]
+    unexpected_cur = set(exps['exp_currency']).difference(allowed_cur)
+    if len(unexpected_exp_accts) > 0:
+        raise NotExistError(
+            message="Currency not supported",
+            details=f"{unexpected_cur}"
+        )
+        
+    # convert to list of expenses
+    dds_balsh_accts = DropdownSelect(
+        briefs=ast_accts + lib_accts + equ_accts,
+        include_null=False,
+        id_key='acct_id',
+        display_keys=['acct_name']
+    )
+    dds_exp_accts = DropdownSelect(
+        briefs=exp_accts,
+        include_null=False,
+        id_key='acct_id',
+        display_keys=['acct_name']
+    )
+    
+    expenses = []
+    for exp_id in exps['fake_exp_id'].unique():
+        exp_dict = exps[exps['fake_exp_id'] == exp_id].to_records()
+        
+        expense = {
+            "expense_dt": exp_dict[0]['exp_dt'].strftime('%Y-%m-%d'),
+            "currency": CurType[exp_dict[0]['exp_currency']].value,
+            "payment_acct_id": dds_balsh_accts.get_id(exp_dict[0]['pmt_acct']),
+            "payment_amount": float(exp_dict[0]['pmt_amount']),
+            "exp_info": {
+                "merchant": {
+                    'merchant': None if pd.isnull(exp_dict[0]['merchant']) else exp_dict[0]['merchant'],
+                    'platform': None if pd.isnull(exp_dict[0]['platform']) else exp_dict[0]['platform'],
+                    'ref_no': None if pd.isnull(exp_dict[0]['ref_no']) else exp_dict[0]['ref_no'],
+                },
+                "external_pmt_acct": None if pd.isnull(exp_dict[0]['external_pmt_method']) else exp_dict[0]['external_pmt_method'],
+            },
+            "note": None if pd.isnull(exp_dict[0]['note']) else exp_dict[0]['note'],
+            "receipts": [
+                r for r in (exp_dict[0]['receipt_1'], exp_dict[0]['receipt_2'], exp_dict[0]['receipt_3']) 
+                if not pd.isnull(r)
+            ]
+        }
+        exp_items = []
+        for exp_item in exp_dict:
+            exp_items.append({
+                "expense_acct_id": dds_exp_accts.get_id(exp_item['exp_acct']),
+                "amount_pre_tax": float(exp_item['amount_pre_tax']),
+                "tax_rate": float(exp_item['tax_rate']),
+                "description": None if pd.isnull(exp_item['description']) else exp_item['description'],
+            })
+        expense['expense_items'] = exp_items
+        expenses.append(expense)
+        
+    add_expenses(expenses)

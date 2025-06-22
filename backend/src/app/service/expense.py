@@ -1,9 +1,10 @@
 from datetime import date
 import math
+from time import sleep
 from typing import Tuple
 from src.app.utils.tools import get_base_cur
 from src.app.dao.expense import expenseDao
-from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
 from src.app.model.const import SystemAcctNumber
 from src.app.model.invoice import GeneralInvoiceItem
 from src.app.service.acct import AcctService
@@ -274,6 +275,31 @@ class ExpenseService:
                 f"Expense id {expense.expense_id} already exist",
                 details=f"Expense: {_expense}, journal_id: {_jrn_id}"
             )
+            
+    @classmethod
+    def add_expenses(cls, expenses: list[Expense]):
+        errs = []
+        err_exps = []
+        dup_exps = []
+        for i, expense in enumerate(expenses):
+            try:
+                cls.add_expense(expense)
+            except (FKNotExistError, NotMatchWithSystemError, FKNoDeleteUpdateError, OpNotPermittedError) as e:
+                errs.append(e)
+                err_exps.append(expense)
+            except AlreadyExistError as e:
+                dup_exps.append(expense)
+                
+            # not to pressure db # TODO optimize
+            if i % 10:
+                sleep(1)
+        
+        if len(err_exps) > 0:
+            raise OpNotPermittedError(
+                message="Several expenses not added due to error",
+                details="\n".join(f"Error ({er}), Expense {exp}" for er, exp in zip(errs, err_exps))
+            )
+            
             
     @classmethod
     def delete_expense(cls, expense_id: str):
