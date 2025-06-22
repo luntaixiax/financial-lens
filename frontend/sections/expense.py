@@ -8,6 +8,7 @@ import streamlit as st
 import streamlit_shadcn_ui as ui
 from datetime import datetime, date
 from utils.tools import DropdownSelect
+from utils.exceptions import NotExistError
 from utils.enums import AcctType, CurType, EntryType, JournalSrc
 from utils.apis import convert_to_base, get_base_currency, list_expense, get_expense_journal, \
     create_journal_from_new_expense, validate_expense, add_expense, update_expense, delete_expense, \
@@ -686,26 +687,30 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
         receipts = []
         remove_receipts = []
         for recpt_id in recpt_ids:
-            receipt = get_file(file_id = recpt_id)
-            receipts.append(receipt)
+            try:
+                receipt = get_file(file_id = recpt_id)
+            except NotExistError as e:
+                receipt_section.error(f"{e.message}")
+            else:
+                receipts.append(receipt)
 
-            # show receipts
-            with receipt_section.expander(
-                label = f"{receipt['filename']} | {receipt['file_id']}",
-                expanded=False,
-                icon='🖼️'
-            ):
-                try:
-                    st.image(
-                        image=receipt['content'],
-                        caption=receipt['filehash']
-                    )
-                except Exception as e:
-                    st.json({
-                        'file_id': receipt['file_id'],
-                        'file_hash': receipt['filehash']
-                    })
-        
+                # show receipts
+                with receipt_section.expander(
+                    label = f"{receipt['filename']} | {receipt['file_id']}",
+                    expanded=False,
+                    icon='🖼️'
+                ):
+                    try:
+                        st.image(
+                            image=receipt['content'],
+                            caption=receipt['filehash']
+                        )
+                    except Exception as e:
+                        st.json({
+                            'file_id': receipt['file_id'],
+                            'file_hash': receipt['filehash']
+                        })
+            
     
     # compile expense (without receipts)
     expense_ = {

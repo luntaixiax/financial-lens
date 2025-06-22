@@ -1409,7 +1409,7 @@ def delete_file(file_id: str):
         endpoint=f'delete_file/{file_id}'
     )
 
-@message_box
+#@message_box
 def get_file(file_id: str) -> dict:
     f = get_req(
         prefix='misc',
