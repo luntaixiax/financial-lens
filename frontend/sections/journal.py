@@ -537,7 +537,8 @@ if edit_mode == 'Edit':
                 'total_base_amount': st.column_config.NumberColumn(
                     label='$Amount',
                     width=None,
-                    format='$ %.2f'
+                    format='$ %.2f',
+                    step=0.001
                 ),
                 'acct_names': st.column_config.ListColumn(
                     label='Involved Accounts',
@@ -649,14 +650,14 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_jrns > 0 and _row_list):
                 label='Raw Amt',
                 width=None,
                 format='$ %.2f',
-                step=0.01,
+                step=0.001,
                 #required=True
             ),
             'amount_base': st.column_config.NumberColumn(
                 label='Base Amt',
                 width=None,
                 format='$ %.2f',
-                step=0.01,
+                step=0.001,
                 #required=True
             ),
             'description': st.column_config.TextColumn(
@@ -708,14 +709,14 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_jrns > 0 and _row_list):
                 label='Raw Amt',
                 width=None,
                 format='$ %.2f',
-                step=0.01
+                step=0.001
                 #required=True
             ),
             'amount_base': st.column_config.NumberColumn(
                 label='Base Amt',
                 width=None,
                 format='$ %.2f',
-                step=0.01
+                step=0.001
                 #required=True
             ),
             'description': st.column_config.TextColumn(

@@ -337,14 +337,14 @@ if (edit_mode == 'Add' and st.session_state.get('validated', False)) or edit_mod
                     label='Raw Amt',
                     width=None,
                     format='$ %.2f',
-                    step=0.01,
+                    step=0.001,
                     #required=True
                 ),
                 'amount_base': st.column_config.NumberColumn(
                     label='Base Amt',
                     width=None,
                     format='$ %.2f',
-                    step=0.01,
+                    step=0.001,
                     #required=True
                 ),
                 'description': st.column_config.TextColumn(
@@ -395,14 +395,14 @@ if (edit_mode == 'Add' and st.session_state.get('validated', False)) or edit_mod
                     label='Raw Amt',
                     width=None,
                     format='$ %.2f',
-                    step=0.01
+                    step=0.001
                     #required=True
                 ),
                 'amount_base': st.column_config.NumberColumn(
                     label='Base Amt',
                     width=None,
                     format='$ %.2f',
-                    step=0.01
+                    step=0.001
                     #required=True
                 ),
                 'description': st.column_config.TextColumn(

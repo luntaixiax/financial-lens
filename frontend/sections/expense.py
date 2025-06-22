@@ -454,7 +454,8 @@ if edit_mode == 'Edit':
                 'total_raw_amount': st.column_config.NumberColumn(
                     label='Amount',
                     width=None,
-                    format='$ %.2f'
+                    format='$ %.2f',
+                    step=0.001
                 ),
                 'expense_acct_names': st.column_config.ListColumn(
                     label='Exp Accts',
@@ -594,7 +595,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 label="Pretax Amount",
                 width=None,
                 format='$ %.2f',
-                step=0.01,
+                step=0.001,
                 disabled=False
                 #required=True
             ),
@@ -602,7 +603,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 label='Tax Rate',
                 width=None,
                 format='%.2f%%',
-                step=0.01,
+                step=0.001,
                 min_value=0.0,
                 max_value=100.0,
                 default=get_default_tax_rate() * 100,
@@ -612,7 +613,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 label=f"Amount Paid ({CurType(pmt_acct['currency']).name})",
                 width=None,
                 format='$ %.2f',
-                step=0.01,
+                step=0.001,
                 disabled=False
                 #required=True
             ),
@@ -789,14 +790,14 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                         label='Raw Amt',
                         width=None,
                         format='$ %.2f',
-                        step=0.01,
+                        step=0.001,
                         #required=True
                     ),
                     'amount_base': st.column_config.NumberColumn(
                         label='Base Amt',
                         width=None,
                         format='$ %.2f',
-                        step=0.01,
+                        step=0.001,
                         #required=True
                     ),
                     'description': st.column_config.TextColumn(
@@ -847,14 +848,14 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                         label='Raw Amt',
                         width=None,
                         format='$ %.2f',
-                        step=0.01
+                        step=0.001
                         #required=True
                     ),
                     'amount_base': st.column_config.NumberColumn(
                         label='Base Amt',
                         width=None,
                         format='$ %.2f',
-                        step=0.01
+                        step=0.001
                         #required=True
                     ),
                     'description': st.column_config.TextColumn(

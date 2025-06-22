@@ -35,7 +35,14 @@ def get_settings() -> dict:
         }
     }
 
+@lru_cache()
+def get_amount_precision() -> int:
+    return 2 # dollar amount precision will be maxed at this decimal place
 
+def finround(x: float) -> float:
+    return round(x, get_amount_precision())
+
+@lru_cache()
 def get_base_cur() -> CurType:
     settings = get_settings()
     return settings['preferences']['base_cur']

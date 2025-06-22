@@ -3,7 +3,7 @@ from functools import partial
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.enums import CurType
-from src.app.utils.tools import get_default_tax_rate, id_generator
+from src.app.utils.tools import get_default_tax_rate, id_generator, finround
 from src.app.utils.base import EnhancedBaseModel
 
 class Merchant(BaseModel):
@@ -44,9 +44,19 @@ class ExpenseItem(EnhancedBaseModel):
         return self.amount_pre_tax * self.tax_rate
     
     @computed_field()
+    def tax_amount_round(self) -> float:
+        # in item currency
+        return finround(self.tax_amount)
+    
+    @computed_field()
     def amount_after_tax(self) -> float:
         # in item currency
         return self.amount_pre_tax * (1 + self.tax_rate)
+    
+    @computed_field()
+    def amount_after_tax_round(self) -> float:
+        # in item currency
+        return finround(self.amount_after_tax)
 
 class _ExpenseBrief(EnhancedBaseModel):
     expense_id: str
@@ -100,15 +110,15 @@ class Expense(EnhancedBaseModel):
     @computed_field()
     def subtotal(self) -> float:
         # in item currency, all item before shipping
-        return sum(item.amount_pre_tax for item in self.expense_items)
+        return finround(sum(item.amount_pre_tax for item in self.expense_items))
     
     @computed_field()
     def tax_amount(self) -> float:
         # in item currency
-        return sum(item.tax_amount for item in self.expense_items)
+        return finround(sum(item.tax_amount for item in self.expense_items))
     
     @computed_field()
     def total(self) -> float:
         # in item currency
-        return self.subtotal + self.tax_amount
+        return finround(self.subtotal + self.tax_amount)
     

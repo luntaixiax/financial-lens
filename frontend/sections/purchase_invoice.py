@@ -422,12 +422,14 @@ if len(suppliers) > 0:
                 'total_raw_amount': st.column_config.NumberColumn(
                     label='$Raw Amount',
                     width=None,
-                    format='$ %.2f'
+                    format='$ %.2f',
+                    step=0.001
                 ),
                 'total_base_amount': st.column_config.NumberColumn(
                     label='$Base Amount',
                     width=None,
-                    format='$ %.2f'
+                    format='$ %.2f',
+                    step=0.001
                 ),
             },
             on_select=clear_entries_from_cache,
@@ -645,7 +647,7 @@ if len(suppliers) > 0:
                     label='Tax Rate',
                     width=None,
                     format='%.2f%%',
-                    step=0.01,
+                    step=0.001,
                     min_value=0.0,
                     max_value=100.0,
                     default=get_default_tax_rate() * 100,
@@ -655,7 +657,7 @@ if len(suppliers) > 0:
                     label='Discount Rate',
                     width=None,
                     format='%.2f%%',
-                    step=0.01,
+                    step=0.001,
                     min_value=0.0,
                     max_value=100.0,
                     default=0
@@ -665,7 +667,7 @@ if len(suppliers) > 0:
                     label='Pre Tax',
                     width=None,
                     format='$ %.2f',
-                    step=0.01,
+                    step=0.001,
                     disabled=True
                     #required=True
                 ),
@@ -732,21 +734,21 @@ if len(suppliers) > 0:
                     label='Raw Amount',
                     width=None,
                     format='$ %.2f',
-                    step=0.01,
+                    step=0.001,
                     #required=True
                 ),
                 'amount_pre_tax': st.column_config.NumberColumn(
                     label=f'Invoice Amount ({inv_cur})',
                     width=None,
                     format='$ %.2f',
-                    step=0.01,
+                    step=0.001,
                     #required=True
                 ),
                 'tax_rate': st.column_config.NumberColumn(
                     label='Tax Rate',
                     width=None,
                     format='%.2f%%',
-                    step=0.01,
+                    step=0.001,
                     min_value=0.0,
                     max_value=100.0,
                     default=get_default_tax_rate() * 100,
@@ -850,14 +852,14 @@ if len(suppliers) > 0:
                             label='Raw Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01,
+                            step=0.001,
                             #required=True
                         ),
                         'amount_base': st.column_config.NumberColumn(
                             label='Base Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01,
+                            step=0.001,
                             #required=True
                         ),
                         'description': st.column_config.TextColumn(
@@ -908,14 +910,14 @@ if len(suppliers) > 0:
                             label='Raw Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01
+                            step=0.001
                             #required=True
                         ),
                         'amount_base': st.column_config.NumberColumn(
                             label='Base Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01
+                            step=0.001
                             #required=True
                         ),
                         'description': st.column_config.TextColumn(

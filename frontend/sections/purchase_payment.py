@@ -306,7 +306,8 @@ if len(suppliers) > 0:
                 'gross_payment_base': st.column_config.NumberColumn(
                     label='$Gross Base',
                     width=None,
-                    format='$ %.2f'
+                    format='$ %.2f',
+                    step=0.001
                 ),
                 'invoice_nums': st.column_config.ListColumn(
                     label='Invoice Nums',
@@ -427,7 +428,7 @@ if len(suppliers) > 0:
                     label="Balance (Inv Cur)",
                     width=None,
                     format='$ %.2f',
-                    step=0.01,
+                    step=0.001,
                     disabled=True
                     #required=True
                 ),
@@ -435,7 +436,7 @@ if len(suppliers) > 0:
                     label="Credit Amount (Inv Cur)",
                     width=None,
                     format='$ %.2f',
-                    step=0.01,
+                    step=0.001,
                     disabled=False
                     #required=True
                 ),
@@ -443,7 +444,7 @@ if len(suppliers) > 0:
                     label=f"Amount Paid ({CurType(pmt_acct['currency']).name})",
                     width=None,
                     format='$ %.2f',
-                    step=0.01,
+                    step=0.001,
                     disabled=False
                     #required=True
                 ),
@@ -545,14 +546,14 @@ if len(suppliers) > 0:
                             label='Raw Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01,
+                            step=0.001,
                             #required=True
                         ),
                         'amount_base': st.column_config.NumberColumn(
                             label='Base Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01,
+                            step=0.001,
                             #required=True
                         ),
                         'description': st.column_config.TextColumn(
@@ -603,14 +604,14 @@ if len(suppliers) > 0:
                             label='Raw Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01
+                            step=0.001
                             #required=True
                         ),
                         'amount_base': st.column_config.NumberColumn(
                             label='Base Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01
+                            step=0.001
                             #required=True
                         ),
                         'description': st.column_config.TextColumn(

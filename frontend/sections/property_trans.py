@@ -256,7 +256,8 @@ if len(properties) > 0:
                     'trans_amount': st.column_config.NumberColumn(
                         label='Amount',
                         width=None,
-                        format='$ %.2f'
+                        format='$ %.2f',
+                        step=0.001
                     )
                 },
                 on_select=clear_entries_from_cache,
@@ -397,14 +398,14 @@ if len(properties) > 0:
                             label='Raw Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01,
+                            step=0.001,
                             #required=True
                         ),
                         'amount_base': st.column_config.NumberColumn(
                             label='Base Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01,
+                            step=0.001,
                             #required=True
                         ),
                         'description': st.column_config.TextColumn(
@@ -455,14 +456,14 @@ if len(properties) > 0:
                             label='Raw Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01
+                            step=0.001
                             #required=True
                         ),
                         'amount_base': st.column_config.NumberColumn(
                             label='Base Amt',
                             width=None,
                             format='$ %.2f',
-                            step=0.01
+                            step=0.001
                             #required=True
                         ),
                         'description': st.column_config.TextColumn(
