@@ -37,12 +37,13 @@ class FileService:
                 err_files.append(filename)
             except AlreadyExistError as e:
                 dup_files.append(filename)
+                maps[filename] = fileDao.get_file_id_by_name(filename) # must record as well
+                
             else:
                 
                 # not to pressure db # TODO optimize
                 # if i % 10:
                 #     sleep(1)
-                
                 maps[filename] = file_id
         
         if len(err_files) > 0:
