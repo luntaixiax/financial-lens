@@ -101,7 +101,10 @@ class FxService:
     @classmethod
     def get(cls, currency: CurType, cur_dt: date) -> float:
         # convert using user defined base currency
-        base_fx = cls._get(get_base_cur(), cur_dt=cur_dt)
+        base_cur = get_base_cur()
+        if base_cur == currency:
+            return 1.0
+        base_fx = cls._get(base_cur, cur_dt=cur_dt)
         target_fx = cls._get(currency, cur_dt=cur_dt)
         return base_fx / target_fx
     

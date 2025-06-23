@@ -239,44 +239,6 @@ class AcctORM(SQLModelWithSort, table=True):
         )
     )
     
-class BankAcctORM(SQLModelWithSort, table=True):
-    
-    __tablename__ = "bank_accounts"
-    
-    linked_acct_id: str = Field(
-        sa_column=Column(
-            String(length = 15), 
-            ForeignKey(
-                'accounts.acct_id', 
-                onupdate = 'CASCADE', 
-                ondelete = 'RESTRICT'
-            ),
-            primary_key = True, 
-            nullable = True # if not business account, can be nullable
-        )
-    )
-    bank_acct_name: str = Field(
-        sa_column=Column(String(length = 50), nullable = False, unique = False)
-    )
-    bank_acct_number: str = Field(
-        sa_column=Column(String(length = 50), nullable = False, unique = False)
-    )
-    bank_acct_type: BankAcctType = Field(
-        sa_column=Column(ChoiceType(BankAcctType, impl = Integer()), nullable = False)
-    )
-    currency: CurType | None = Field(
-        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = False)
-    )
-    is_business: bool = Field(
-        sa_column=Column(
-            Boolean(create_constraint=True), 
-            default = False, 
-            nullable = False
-        )
-    )
-    extra_info: dict | None = Field(sa_column=Column(JSON(), nullable = True))
-    
-    
 class JournalORM(SQLModelWithSort, table=True):
     
     __tablename__ = "journals"
@@ -525,7 +487,7 @@ class ExpenseORM(SQLModelWithSort, table=True):
         )
     )
     payment_amount: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
-    merchant: dict = Field(sa_column=Column(JSON(), nullable = True))
+    exp_info: dict = Field(sa_column=Column(JSON(), nullable = True))
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     receipts: list[str] | None = Field(sa_column=Column(JSON(), nullable = True))
     journal_id: str = Field(

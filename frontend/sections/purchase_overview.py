@@ -42,6 +42,7 @@ def get_purchase_payment_hist() -> list[dict]:
             'currency': payment['currency'],
             'raw_amount': payment['gross_payment_raw'],
             'base_amount': payment['gross_payment_base'],
+            'invoice_nums': payment['invoice_nums']
         })
         
     return sorted(chain, key=lambda x: x['trans_dt'], reverse=True)
@@ -137,6 +138,7 @@ if len(suppliers) > 0:
             label = f"{dt_display} | **:green-background[payment]**"
             disp = {
                 'Payment #': history['trans_num'],
+                'Against Invoices': history['invoice_nums'],
                 'Currency': CurType(history['currency']).name,
                 'Amount': round(history['raw_amount'], 2)
             }

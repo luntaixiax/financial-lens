@@ -6,7 +6,7 @@ from unittest import mock
 from src.app.utils.tools import get_base_cur
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, NotMatchWithSystemError
 from src.app.model.enums import CurType, ItemType, JournalSrc, UnitType
-from src.app.model.expense import Expense, ExpenseItem, Merchant
+from src.app.model.expense import Expense, ExpenseItem, ExpInfo, Merchant
 from src.app.model.const import SystemAcctNumber
 
 @mock.patch("src.app.dao.connection.get_engine")
@@ -101,10 +101,13 @@ def test_validate_expense(mock_engine, engine_with_sample_choa):
         ],
         payment_acct_id='acct-credit', # same currency
         payment_amount=123.74,
-        merchant=Merchant(
-            merchant='Good Taste Sushi',
-            platform='Uber Eats',
-            ref_no='ub12345'
+        exp_info=ExpInfo(
+            merchant=Merchant(
+                merchant='Good Taste Sushi',
+                platform='Uber Eats',
+                ref_no='ub12345'
+            ),
+            external_pmt_acct='BNS Amex'
         ),
         note='Meal for client gathering',
         receipts=[

@@ -47,7 +47,7 @@ def list_expense(
     offset: int = 0,
     expense_ids: list[str] | None = None,
     min_dt: date = date(1970, 1, 1), 
-    max_dt: date = date(2099, 12, 31), 
+    max_dt: date = date(2099, 12, 31),
     currency: CurType | None = None,
     payment_acct_id: str | None = None,
     payment_acct_name: str | None = None,
@@ -83,6 +83,10 @@ def summary_expense(start_dt: date, end_dt: date) -> list[_ExpenseSummaryBrief]:
 @router.post("/add")
 def add_expense(expense: Expense):
     ExpenseService.add_expense(expense=expense)
+    
+@router.post("/batch_add")
+def add_expenses(expenses: list[Expense]):
+    ExpenseService.add_expenses(expenses=expenses)
     
 @router.put("/update")
 def update_expense(expense: Expense):

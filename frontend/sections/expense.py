@@ -8,6 +8,7 @@ import streamlit as st
 import streamlit_shadcn_ui as ui
 from datetime import datetime, date
 from utils.tools import DropdownSelect
+from utils.exceptions import NotExistError
 from utils.enums import AcctType, CurType, EntryType, JournalSrc
 from utils.apis import convert_to_base, get_base_currency, list_expense, get_expense_journal, \
     create_journal_from_new_expense, validate_expense, add_expense, update_expense, delete_expense, \
@@ -453,7 +454,8 @@ if edit_mode == 'Edit':
                 'total_raw_amount': st.column_config.NumberColumn(
                     label='Amount',
                     width=None,
-                    format='$ %.2f'
+                    format='$ %.2f',
+                    step=0.001
                 ),
                 'expense_acct_names': st.column_config.ListColumn(
                     label='Exp Accts',
@@ -593,7 +595,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 label="Pretax Amount",
                 width=None,
                 format='$ %.2f',
-                step=0.01,
+                step=0.001,
                 disabled=False
                 #required=True
             ),
@@ -601,7 +603,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 label='Tax Rate',
                 width=None,
                 format='%.2f%%',
-                step=0.01,
+                step=0.001,
                 min_value=0.0,
                 max_value=100.0,
                 default=get_default_tax_rate() * 100,
@@ -611,7 +613,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 label=f"Amount Paid ({CurType(pmt_acct['currency']).name})",
                 width=None,
                 format='$ %.2f',
-                step=0.01,
+                step=0.001,
                 disabled=False
                 #required=True
             ),
@@ -637,27 +639,32 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
         
         merchant = st.text_input(
             label='🏪 Merchant',
-            value="" if edit_mode == 'Add' else exp_sel['merchant']['merchant'],
+            value="" if edit_mode == 'Add' else exp_sel['exp_info']['merchant']['merchant'],
             placeholder="merchant here",
         )
         platform = st.text_input(
             label='🏬 Platform',
-            value="" if edit_mode == 'Add' else exp_sel['merchant']['platform'],
+            value="" if edit_mode == 'Add' else exp_sel['exp_info']['merchant']['platform'],
             placeholder="platform here (e.g., Uber)",
         )
         ref_no = st.text_input(
             label='#️⃣ Reference #',
-            value="" if edit_mode == 'Add' else exp_sel['merchant']['ref_no'],
+            value="" if edit_mode == 'Add' else exp_sel['exp_info']['merchant']['ref_no'],
             placeholder="reference number",
         )
         
         
     with exp_cols[1]:
+        external_pmt_acct = st.text_input(
+            label='🪪 External Payment Account',
+            value="" if edit_mode == 'Add' else exp_sel['exp_info']['external_pmt_acct'],
+            placeholder="the account get charged, if externally paid",
+        )
         note = st.text_area(
             label='📝 Note',
             value="" if edit_mode == 'Add' else exp_sel['note'],
             placeholder="payment note here",
-            height=205
+            height=123
         )
         
     
@@ -681,26 +688,30 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
         receipts = []
         remove_receipts = []
         for recpt_id in recpt_ids:
-            receipt = get_file(file_id = recpt_id)
-            receipts.append(receipt)
+            try:
+                receipt = get_file(file_id = recpt_id)
+            except NotExistError as e:
+                receipt_section.error(f"{e.message}")
+            else:
+                receipts.append(receipt)
 
-            # show receipts
-            with receipt_section.expander(
-                label = f"{receipt['filename']} | {receipt['file_id']}",
-                expanded=False,
-                icon='🖼️'
-            ):
-                try:
-                    st.image(
-                        image=receipt['content'],
-                        caption=receipt['filehash']
-                    )
-                except Exception as e:
-                    st.json({
-                        'file_id': receipt['file_id'],
-                        'file_hash': receipt['filehash']
-                    })
-        
+                # show receipts
+                with receipt_section.expander(
+                    label = f"{receipt['filename']} | {receipt['file_id']}",
+                    expanded=False,
+                    icon='🖼️'
+                ):
+                    try:
+                        st.image(
+                            image=receipt['content'],
+                            caption=receipt['filehash']
+                        )
+                    except Exception as e:
+                        st.json({
+                            'file_id': receipt['file_id'],
+                            'file_hash': receipt['filehash']
+                        })
+            
     
     # compile expense (without receipts)
     expense_ = {
@@ -710,10 +721,13 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
         "expense_items": convert_exp_items_to_db(exp_item_entries),
         "payment_acct_id": pmt_acct_id,
         "payment_amount": pmt_amt,
-        "merchant": {
-            'merchant': None if merchant == "" else merchant,
-            'platform': None if platform == "" else platform,
-            'ref_no': None if ref_no == "" else ref_no,
+        "exp_info": {
+            'merchant' : {
+                'merchant': None if merchant == "" else merchant,
+                'platform': None if platform == "" else platform,
+                'ref_no': None if ref_no == "" else ref_no,
+            },
+            'external_pmt_acct': None if external_pmt_acct == "" else external_pmt_acct
         },
         "note": None if note == "" else note,
         "receipts": exp_sel['receipts'] if edit_mode == 'Edit' else None
@@ -776,14 +790,14 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                         label='Raw Amt',
                         width=None,
                         format='$ %.2f',
-                        step=0.01,
+                        step=0.001,
                         #required=True
                     ),
                     'amount_base': st.column_config.NumberColumn(
                         label='Base Amt',
                         width=None,
                         format='$ %.2f',
-                        step=0.01,
+                        step=0.001,
                         #required=True
                     ),
                     'description': st.column_config.TextColumn(
@@ -834,14 +848,14 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                         label='Raw Amt',
                         width=None,
                         format='$ %.2f',
-                        step=0.01
+                        step=0.001
                         #required=True
                     ),
                     'amount_base': st.column_config.NumberColumn(
                         label='Base Amt',
                         width=None,
                         format='$ %.2f',
-                        step=0.01
+                        step=0.001
                         #required=True
                     ),
                     'description': st.column_config.TextColumn(
@@ -891,6 +905,6 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 type='primary',
                 on_click=delete_expense,
                 kwargs=dict(
-                    invoice_id=exp_id_sel
+                    expense_id=exp_id_sel
                 )
             )

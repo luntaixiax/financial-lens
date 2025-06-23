@@ -1,9 +1,10 @@
 from datetime import date
 import math
+from time import sleep
 from typing import Tuple
 from src.app.utils.tools import get_base_cur
 from src.app.dao.expense import expenseDao
-from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
 from src.app.model.const import SystemAcctNumber
 from src.app.model.invoice import GeneralInvoiceItem
 from src.app.service.acct import AcctService
@@ -11,7 +12,7 @@ from src.app.service.journal import JournalService
 from src.app.service.fx import FxService
 from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
-from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, Merchant
+from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, ExpInfo, Merchant
 from src.app.model.journal import Journal, Entry
 
 class ExpenseService:
@@ -40,10 +41,13 @@ class ExpenseService:
             ],
             payment_acct_id='acct-credit',
             payment_amount=123.74,
-            merchant=Merchant(
-                merchant='Good Taste Sushi',
-                platform='Uber Eats',
-                ref_no='ub12345'
+            exp_info=ExpInfo(
+                merchant=Merchant(
+                    merchant='Good Taste Sushi',
+                    platform='Uber Eats',
+                    ref_no='ub12345'
+                ),
+                external_pmt_acct='BNS Amex'
             ),
             note='Meal for client gathering',
             receipts=[
@@ -66,10 +70,13 @@ class ExpenseService:
             ],
             payment_acct_id='acct-shareloan',
             payment_amount=1250, # paid EUR1250
-            merchant=Merchant(
-                merchant='Shareholder',
-                platform=None,
-                ref_no='RENT-20240101'
+            exp_info=ExpInfo(
+                merchant=Merchant(
+                    merchant='Shareholder',
+                    platform=None,
+                    ref_no='RENT-20240101'
+                ),
+                external_pmt_acct='Scotia Check'
             ),
             note='Rent for 2024-01-01',
             receipts=None
@@ -268,6 +275,31 @@ class ExpenseService:
                 f"Expense id {expense.expense_id} already exist",
                 details=f"Expense: {_expense}, journal_id: {_jrn_id}"
             )
+            
+    @classmethod
+    def add_expenses(cls, expenses: list[Expense]):
+        errs = []
+        err_exps = []
+        dup_exps = []
+        for i, expense in enumerate(expenses):
+            try:
+                cls.add_expense(expense)
+            except (FKNotExistError, NotMatchWithSystemError, FKNoDeleteUpdateError, OpNotPermittedError) as e:
+                errs.append(e)
+                err_exps.append(expense)
+            except AlreadyExistError as e:
+                dup_exps.append(expense)
+                
+            # not to pressure db # TODO optimize
+            # if i % 10:
+            #     sleep(1)
+        
+        if len(err_exps) > 0:
+            raise OpNotPermittedError(
+                message="Several expenses not added due to error",
+                details="\n".join(f"Error ({er}), Expense {exp}" for er, exp in zip(errs, err_exps))
+            )
+            
             
     @classmethod
     def delete_expense(cls, expense_id: str):

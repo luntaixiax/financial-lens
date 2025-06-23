@@ -3,13 +3,18 @@ from functools import partial
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.enums import CurType
-from src.app.utils.tools import get_default_tax_rate, id_generator
+from src.app.utils.tools import get_default_tax_rate, id_generator, finround, taxround
 from src.app.utils.base import EnhancedBaseModel
 
 class Merchant(BaseModel):
     merchant: str | None = Field(None)
     platform: str | None = Field(None)
     ref_no: str | None = Field(None)
+
+class ExpInfo(BaseModel):
+    merchant: Merchant
+    external_pmt_acct: str | None = Field(None)
+
 
 class ExpenseItem(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
@@ -39,9 +44,19 @@ class ExpenseItem(EnhancedBaseModel):
         return self.amount_pre_tax * self.tax_rate
     
     @computed_field()
+    def tax_amount_round(self) -> float:
+        # in item currency
+        return finround(self.tax_amount)
+    
+    @computed_field()
     def amount_after_tax(self) -> float:
         # in item currency
         return self.amount_pre_tax * (1 + self.tax_rate)
+    
+    @computed_field()
+    def amount_after_tax_round(self) -> float:
+        # in item currency
+        return finround(self.amount_after_tax)
 
 class _ExpenseBrief(EnhancedBaseModel):
     expense_id: str
@@ -85,7 +100,7 @@ class Expense(EnhancedBaseModel):
     payment_amount: float = Field(
         description='Payment amount, in payment account currency. If payment currency equals expense currency, this amount should equal to self.total'
     )
-    merchant: Merchant
+    exp_info: ExpInfo
     note: str | None = Field(None)
     receipts: list[str] | None =  Field(
         None,
@@ -95,15 +110,16 @@ class Expense(EnhancedBaseModel):
     @computed_field()
     def subtotal(self) -> float:
         # in item currency, all item before shipping
-        return sum(item.amount_pre_tax for item in self.expense_items)
+        return finround(sum(item.amount_pre_tax for item in self.expense_items))
     
     @computed_field()
     def tax_amount(self) -> float:
         # in item currency
-        return sum(item.tax_amount for item in self.expense_items)
+        return taxround(sum(item.tax_amount for item in self.expense_items))
     
     @computed_field()
     def total(self) -> float:
         # in item currency
-        return self.subtotal + self.tax_amount
+        return taxround(sum(item.amount_pre_tax for item in self.expense_items) 
+                        + sum(item.tax_amount for item in self.expense_items))
     
