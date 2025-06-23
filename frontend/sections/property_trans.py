@@ -220,7 +220,7 @@ if len(properties) > 0:
         # when user navigate to other pages, the data will still be kepted
         # but when user navigate back to journal page, need to make sure the Edit tab is selected
         # otherwise the Add page will contain edit mode cache
-        index=1,
+        index=0,
         horizontal=True,
         on_change=clear_entries_and_reset_page, # clear cache
     )
