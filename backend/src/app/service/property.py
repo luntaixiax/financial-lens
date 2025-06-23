@@ -1,4 +1,5 @@
 from datetime import date
+import math
 from typing import Tuple
 from src.app.service.journal import JournalService
 from src.app.dao.property import propertyDao, propertyTransactionDao
@@ -22,6 +23,7 @@ class PropertyService:
             property_type=PropertyType.EQUIP,
             pur_dt=date(2024, 1, 3),
             pur_price=10000,
+            tax=700,
             pur_acct_id='acct-fbank'
         )
         depreciation = PropertyTransaction(
@@ -86,8 +88,9 @@ class PropertyService:
         pur_acct: Account = AcctService.get_account(
             property.pur_acct_id
         )
+        # book value of cost
         amount_base=FxService.convert_to_base(
-            amount=property.pur_price,
+            amount=property.pur_cost,
             src_currency=pur_acct.currency, # purchase currency
             cur_dt=property.pur_dt, # convert fx at purchase date
         )
@@ -100,16 +103,37 @@ class PropertyService:
             amount_base=amount_base,
             description=f"Property purchased"
         )
+        entries.append(property_entry)
+        # sales tax
+        if not math.isclose(property.tax, 0):
+            amount_tax=FxService.convert_to_base(
+                amount=property.tax,
+                src_currency=pur_acct.currency, # purchase currency
+                cur_dt=property.pur_dt, # convert fx at purchase date
+            )
+            tax_entry = Entry(
+                entry_type=EntryType.DEBIT, # tax is debit
+                acct=AcctService.get_account(SystemAcctNumber.INPUT_TAX),
+                cur_incexp=None, # balance sheet item should not have currency
+                amount=amount_tax, # amount in raw currency
+                # amount in base currency
+                amount_base=amount_tax,
+                description=f"Sales Tax"
+            )
+            entries.append(tax_entry)
+        else:
+            amount_tax = 0.0
+        
         purchase_entry = Entry(
             entry_type=EntryType.CREDIT, # credit to payment account
             acct=pur_acct,
             cur_incexp=None, # balance sheet item should not have currency
             amount=property.pur_price, # amount in raw currency
             # amount in base currency
-            amount_base=amount_base,
+            amount_base=amount_base + amount_tax,
             description=f"Payment for purchase property"
         )
-        entries.append(property_entry)
+        
         entries.append(purchase_entry)
         
         # create journal

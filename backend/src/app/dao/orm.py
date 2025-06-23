@@ -627,6 +627,7 @@ class PropertyORM(SQLModelWithSort, table=True):
     )
     pur_dt: date = Field(sa_column=Column(Date(), nullable = False))
     pur_price: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    tax: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     pur_acct_id: str = Field(
         sa_column=Column(
             String(length = 15), 

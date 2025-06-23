@@ -19,6 +19,7 @@ class propertyDao:
             property_type=property.property_type,
             pur_dt=property.pur_dt,
             pur_price=property.pur_price,
+            tax=property.tax,
             pur_acct_id=property.pur_acct_id,
             journal_id=journal_id,
         )
@@ -30,6 +31,7 @@ class propertyDao:
             property_name=property_orm.property_name,
             property_type=property_orm.property_type,
             pur_dt=property_orm.pur_dt,
+            tax=property_orm.tax,
             pur_price=property_orm.pur_price,
             pur_acct_id=property_orm.pur_acct_id,
         )
@@ -104,6 +106,7 @@ class propertyDao:
             p.property_type = property_orm.property_type
             p.pur_dt = property_orm.pur_dt
             p.pur_price = property_orm.pur_price
+            p.tax = property_orm.tax
             p.pur_acct_id = property_orm.pur_acct_id
             p.journal_id = journal_id # update to new journal id
             
@@ -246,14 +249,14 @@ class propertyTransactionDao:
     def get_acc_stat(cls, property_id: str, rep_dt: date) -> _PropertyPriceBrief:
         with Session(get_engine()) as s:
             prop_summary = (
-                select(PropertyORM.pur_price)
+                select(PropertyORM)
                 .where(
                     PropertyORM.pur_dt <= rep_dt,
                     PropertyORM.property_id == property_id,   
                 )
             )
             try:
-                price = s.exec(prop_summary).one()
+                prop = s.exec(prop_summary).one()
             except NoResultFound as e:
                 raise NotExistError(details=str(e))
             
@@ -276,7 +279,9 @@ class propertyTransactionDao:
             except NoResultFound as e:
                 raise NotExistError(details=str(e))
             
-            p = _PropertyPriceBrief(pur_price=price)
+            
+            prop = propertyDao.toProperty(prop)
+            p = _PropertyPriceBrief(pur_cost=prop.pur_cost)
             if len(result) > 0:
                 attr_mapping = {
                     PropertyTransactionType.APPRECIATION: 'acc_depreciation',
