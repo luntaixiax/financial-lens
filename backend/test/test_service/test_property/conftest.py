@@ -12,6 +12,7 @@ def sample_property() -> Property:
         property_type=PropertyType.EQUIP,
         pur_dt=date(2024, 1, 3),
         pur_price=10000,
+        tax=700,
         pur_acct_id='acct-fbank'
     )
     return property

@@ -153,12 +153,12 @@ if len(properties) > 0:
     # add key date points to transaction history
     trans_curve = [{
         'event_dt': pur_dt,
-        'bool_value': prop_sel['pur_price'],
+        'bool_value': prop_sel['pur_cost'],
     }]
     trans_events = [{
         'event': 'PURCHASE',
         'event_dt':pur_dt,
-        'amount': prop_sel['pur_price'],
+        'amount': prop_sel['pur_cost'],
     }]
     for prop_tran in prop_trans:
         event_dt = datetime.strptime(prop_tran['trans_dt'], '%Y-%m-%d').date()
@@ -201,7 +201,7 @@ if len(properties) > 0:
     # show cumulative value
     trans_stat = get_property_stat(existing_property_id, rep_dt=datetime.now().date())
     trans_stat_display = pd.DataFrame.from_records([{
-        'Purchase Cost': f"{currency} {round(trans_stat['pur_price'], 2):,.2f}",
+        'Purchase Cost': f"{currency} {round(trans_stat['pur_cost'], 2):,.2f}",
         'Acc. Appreciation': f"{currency} {round(trans_stat['acc_appreciation'], 2):,.2f}",
         'Acc. Depreciation': f"{currency} {round(trans_stat['acc_depreciation'], 2):,.2f}",
         'Acc. Impairment': f"{currency} {round(trans_stat['acc_impairment'], 2):,.2f}",

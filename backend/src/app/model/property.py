@@ -22,7 +22,15 @@ class Property(EnhancedBaseModel):
     pur_price: float = Field(
         description="Purchase price, expressed in account curreny"
     )
+    tax: float = Field(
+        default=0.0,
+        description="Sales tax, expressed in account curreny, only include if need to record as input tax credit"
+    )
     pur_acct_id: str
+    
+    @computed_field
+    def pur_cost(self) -> float:
+        return self.pur_price - self.tax
     
 class PropertyTransaction(EnhancedBaseModel):
     trans_id: str = Field(
@@ -41,12 +49,12 @@ class PropertyTransaction(EnhancedBaseModel):
     )
 
 class _PropertyPriceBrief(EnhancedBaseModel):
-    pur_price: float = 0.0
+    pur_cost: float = 0.0 # purchase cost, net of sales tax
     acc_depreciation: float = 0.0
     acc_appreciation: float = 0.0
     acc_impairment: float = 0.0
     
     @computed_field
     def value(self) -> float:
-        return self.pur_price + self.acc_depreciation - self.acc_appreciation - self.acc_impairment
+        return self.pur_cost + self.acc_depreciation - self.acc_appreciation - self.acc_impairment
     

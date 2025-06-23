@@ -143,7 +143,7 @@ if len(properties) > 0:
             'Type': PropertyType(p['property_type']).name,
             'Purchase Date': p['pur_dt'],
             'Purchase Acct': acct['acct_name'],
-            'Cost': f"{CurType(acct['currency']).name} {round(p['pur_price'], 2):,.2f}",
+            'Cost': f"{CurType(acct['currency']).name} {round(p['pur_cost'], 2):,.2f}",
             'Book Value': f"{CurType(acct['currency']).name} {round(stat['value'], 2):,.2f}",
         }
         prop_stitch.append(prop)
@@ -230,8 +230,7 @@ with prop_col1[1]:
             key='radio2',
         )
 
-prop_col2 = st.columns(3)
-with prop_col2[0]:
+with prop_col1[0]:
     pur_date = st.date_input(
         label='📅 Purchase Date',
         value=date.today() if edit_mode == 'Add' else existing_prop_item['pur_dt'],
@@ -240,7 +239,7 @@ with prop_col2[0]:
         on_change=reset_validate
     )
 
-with prop_col2[1]:
+with prop_col1[1]:
     if edit_mode == 'Add':
         pur_acct = st.selectbox(
             label='💳 Purchase Account',
@@ -264,12 +263,22 @@ with prop_col2[1]:
 pur_acct_id = dds_balsh_accts.get_id(pur_acct)
 pur_acct = get_account(pur_acct_id)
 
-with prop_col2[2]:
+with prop_col1[0]:
     pur_amt = st.number_input(
-        label=f"💰 Purchase Amount ({CurType(pur_acct['currency']).name})",
+        label=f"💰 Purchase Price (Inclu. Tax) ({CurType(pur_acct['currency']).name})",
         value=0.0 if edit_mode == 'Add' else existing_prop_item['pur_price'],
         step=0.01,
         key='pur_amt',
+        on_change=reset_validate
+    )
+    
+
+with prop_col1[1]:
+    pur_tax = st.number_input(
+        label=f"🧾 Sales Tax ({CurType(pur_acct['currency']).name})",
+        value=0.0 if edit_mode == 'Add' else existing_prop_item['tax'],
+        step=0.01,
+        key='tax',
         on_change=reset_validate
     )
 
@@ -279,6 +288,7 @@ property_ = {
     "property_type": PropertyType[property_type].value,
     "pur_dt": pur_date.strftime('%Y-%m-%d'), # convert to string
     "pur_price": pur_amt,
+    "tax": pur_tax,
     "pur_acct_id": pur_acct_id
 }
 
