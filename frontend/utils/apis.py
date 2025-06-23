@@ -794,6 +794,7 @@ def add_sales_invoice(invoice: dict):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    get_psales_invoices_balance_by_entity.clear()
 
 @message_box
 def update_sales_invoice(invoice: dict):
@@ -812,6 +813,7 @@ def update_sales_invoice(invoice: dict):
     list_entry_by_acct.clear()
     preview_sales_invoice.clear()
     get_sales_invoice_balance.clear()
+    get_psales_invoices_balance_by_entity.clear()
 
 @message_box
 def delete_sales_invoice(invoice_id: str):
@@ -828,6 +830,7 @@ def delete_sales_invoice(invoice_id: str):
     list_entry_by_acct.clear()
     preview_sales_invoice.clear()
     get_sales_invoice_balance.clear()
+    get_psales_invoices_balance_by_entity.clear()
 
 @st.cache_data
 @message_box
@@ -1058,6 +1061,7 @@ def add_purchase_invoice(invoice: dict):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+    get_ppurchase_invoices_balance_by_entity.clear()
 
 @message_box
 def update_purchase_invoice(invoice: dict):
@@ -1076,6 +1080,7 @@ def update_purchase_invoice(invoice: dict):
     list_entry_by_acct.clear()
     preview_purchase_invoice.clear()
     get_purchase_invoice_balance.clear()
+    get_ppurchase_invoices_balance_by_entity.clear()
 
 @message_box
 def delete_purchase_invoice(invoice_id: str):
@@ -1092,6 +1097,7 @@ def delete_purchase_invoice(invoice_id: str):
     list_entry_by_acct.clear()
     preview_purchase_invoice.clear()
     get_purchase_invoice_balance.clear()
+    get_ppurchase_invoices_balance_by_entity.clear()
 
 @st.cache_data
 @message_box
