@@ -3,7 +3,7 @@ from functools import partial
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.enums import CurType
-from src.app.utils.tools import get_default_tax_rate, id_generator, finround
+from src.app.utils.tools import get_default_tax_rate, id_generator, finround, taxround
 from src.app.utils.base import EnhancedBaseModel
 
 class Merchant(BaseModel):
@@ -115,10 +115,11 @@ class Expense(EnhancedBaseModel):
     @computed_field()
     def tax_amount(self) -> float:
         # in item currency
-        return finround(sum(item.tax_amount for item in self.expense_items))
+        return taxround(sum(item.tax_amount for item in self.expense_items))
     
     @computed_field()
     def total(self) -> float:
         # in item currency
-        return finround(self.subtotal + self.tax_amount)
+        return taxround(sum(item.amount_pre_tax for item in self.expense_items) 
+                        + sum(item.tax_amount for item in self.expense_items))
     

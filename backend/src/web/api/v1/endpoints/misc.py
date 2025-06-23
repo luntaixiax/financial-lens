@@ -39,6 +39,15 @@ def convert_from_base(amount: float, tgt_currency: CurType, cur_dt: date) -> flo
     return FxService.convert_from_base(amount, tgt_currency, cur_dt)
 
 
+@router.post("/register_file")
+def register_file(filename: str) -> str:
+    return FileService.register_file(filename)
+    
+@router.post("/register_files")
+def register_files(filenames: list[str]) -> dict[str, str]:
+    return FileService.register_files(filenames)
+    
+
 @router.post("/upload_file")
 def upload_file(files: list[UploadFile] = File(...)) -> list[str]:
     

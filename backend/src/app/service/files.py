@@ -1,8 +1,57 @@
-from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
 from src.app.model.misc import FileWrapper
 from src.app.dao.files import fileDao
 
 class FileService:
+    
+    @classmethod
+    def register_file(cls, filename: str) -> str:
+        # if the file already exist on storage, but just want to register back to DB
+        try:
+            file_id = fileDao.register(filename)
+        except NotExistError as e:
+            raise NotExistError(
+                message=f"File not exist",
+                details=f"{filename}"
+            )
+        except AlreadyExistError as e:
+            raise AlreadyExistError(
+                message=f"File already exist",
+                details=f"{filename}"
+            )
+        
+        return file_id
+        
+    @classmethod
+    def register_files(cls, filenames: list[str]) -> dict[str, str]:
+        # return {filename: file_id}
+        errs = []
+        err_files = []
+        dup_files = []
+        maps = {}
+        for i, filename in enumerate(filenames):
+            try:
+                file_id = cls.register_file(filename)
+            except (NotExistError, FKNotExistError, NotMatchWithSystemError, FKNoDeleteUpdateError, OpNotPermittedError) as e:
+                errs.append(e)
+                err_files.append(filename)
+            except AlreadyExistError as e:
+                dup_files.append(filename)
+            else:
+                
+                # not to pressure db # TODO optimize
+                # if i % 10:
+                #     sleep(1)
+                
+                maps[filename] = file_id
+        
+        if len(err_files) > 0:
+            raise OpNotPermittedError(
+                message="Several files not registered due to error",
+                details="\n".join(f"Error ({er}), Expense {exp}" for er, exp in zip(errs, err_files))
+            )
+        
+        return maps
     
     @classmethod
     def add_file(cls, file: FileWrapper):

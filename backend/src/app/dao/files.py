@@ -75,6 +75,37 @@ class fileDao:
         )
         
     @classmethod
+    def register(cls, filename: str) -> str:
+        # if the file already exist on storage, but just want to register back to DB
+        # return the file id
+        fs = get_storage_fs()
+        filepath = cls.getFilePath(filename)
+        if fs.exists(filepath):
+            with fs.open(filepath, 'rb') as obj:
+                content = obj.read().decode(encoding='latin-1')
+                file = FileWrapper(
+                    filename=filename,
+                    content=content
+                )
+            
+            # register to DB
+            with Session(get_engine()) as s:
+                file_orm = cls.fromFile(file)
+                
+                s.add(file_orm)
+                try:
+                    s.commit()
+                except IntegrityError as e:
+                    s.rollback()
+                    raise infer_integrity_error(e, during_creation=True)
+                
+            return file.file_id
+            
+        else:
+            raise NotExistError(f"File ({filename}) not exist @ {filepath}")
+        
+        
+    @classmethod
     def add(cls, file: FileWrapper):
         # save file to file system
         filepath = cls.getFilePath(file.filename)

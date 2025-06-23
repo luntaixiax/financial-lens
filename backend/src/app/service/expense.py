@@ -291,8 +291,8 @@ class ExpenseService:
                 dup_exps.append(expense)
                 
             # not to pressure db # TODO optimize
-            if i % 10:
-                sleep(1)
+            # if i % 10:
+            #     sleep(1)
         
         if len(err_exps) > 0:
             raise OpNotPermittedError(

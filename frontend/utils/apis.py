@@ -1403,6 +1403,24 @@ def upload_file(files: list[Tuple[str, bytes]]) -> list[str]:
     )
 
 @message_box
+def register_file(filename: str) -> str:
+    return post_req(
+        prefix='misc',
+        endpoint='register_file',
+        params={
+            'filename': filename
+        }
+    )
+    
+#@message_box
+def register_files(filenames: list[str]) -> dict[str, str]:
+    return post_req(
+        prefix='misc',
+        endpoint='register_files',
+        data=filenames
+    )
+
+@message_box
 def delete_file(file_id: str):
     delete_req(
         prefix='misc',
@@ -1934,6 +1952,7 @@ def upload_batch_exp_excel(exp_batch):
     )
     
     expenses = []
+    file_names = []
     for exp_id in exps['fake_exp_id'].unique():
         exp_dict = exps[exps['fake_exp_id'] == exp_id].to_records()
         
@@ -1966,5 +1985,15 @@ def upload_batch_exp_excel(exp_batch):
             })
         expense['expense_items'] = exp_items
         expenses.append(expense)
+        file_names.extend(expense['receipts'])
+        
+    # translate filenames to file ids by register
+    file_id_mappings = register_files(filenames=file_names)
+    for i in range(len(expenses)):
+        expenses[i]['receipts'] = [
+            file_id_mappings.get(fn)
+            for fn in expenses[i]['receipts']
+            if file_id_mappings.get(fn) is not None
+        ]
         
     add_expenses(expenses)

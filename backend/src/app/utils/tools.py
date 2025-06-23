@@ -1,4 +1,5 @@
 from functools import lru_cache
+import math
 from typing import Literal
 import uuid
 import hvac
@@ -40,7 +41,16 @@ def get_amount_precision() -> int:
     return 2 # dollar amount precision will be maxed at this decimal place
 
 def finround(x: float) -> float:
+    # banker rounding: <= 4 round down, >= 6 round up. =5 half up half down
     return round(x, get_amount_precision())
+
+def taxround(x: float) -> float:
+    # tax rounding: <= 4 round down and >= 5 round up
+    precision = get_amount_precision()
+    expoN = x * 10 ** precision
+    if round(abs(expoN) - abs(math.floor(expoN)), 9) < 0.5: # must round here to prevent error
+        return math.floor(expoN) / 10 ** precision
+    return math.ceil(expoN) / 10 ** precision
 
 @lru_cache()
 def get_base_cur() -> CurType:
