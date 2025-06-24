@@ -42,7 +42,7 @@ def get_sales_payment_hist() -> list[dict]:
             'currency': payment['currency'],
             'raw_amount': payment['gross_payment_raw'],
             'base_amount': payment['gross_payment_base'],
-            'invoice_nums': payment['invoice_nums']
+            'invoice_nums': payment['invoice_num_strs']
         })
         
     return sorted(chain, key=lambda x: x['trans_dt'], reverse=True)
@@ -106,21 +106,21 @@ if len(customers) > 0:
     with card_cols[0]:
         ui.metric_card(
             title="Total Invoiced", 
-            content=f"{base_currency} {total_billed: .2f}", 
+            content=f"{base_currency} {total_billed: ,.2f}", 
             description=f"# invoice: {num_billed}", 
             key="card1"
         )
     with card_cols[1]:
         ui.metric_card(
             title="Total Paid", 
-            content=f"{base_currency} {total_paid: .2f}", 
+            content=f"{base_currency} {total_paid: ,.2f}", 
             description=f"# payment: {num_paid}", 
             key="card2"
         )
     with card_cols[2]:
         ui.metric_card(
             title="Remaining Balance", 
-            content=f"{base_currency} {total_balance: .2f}", 
+            content=f"{base_currency} {total_balance: ,.2f}", 
             description=f"equivalent in base currency", 
             key="card3"
         )
