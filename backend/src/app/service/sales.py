@@ -202,10 +202,6 @@ class SalesService:
         )
         entries.append(ar)
         
-        for e in entries:
-            print(e)
-            print("--------------------------------------")
-        
         # create journal
         journal = Journal(
             jrn_date=invoice.invoice_dt,

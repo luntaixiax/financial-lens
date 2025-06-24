@@ -58,3 +58,12 @@ class DropdownSelect:
             id_key = 'value',
             display_keys = ['name']
         )
+        
+        
+def display_number(x: float | None) -> str:
+    if x is None:
+        return '-'
+    if x == 0:
+        return '-'
+    else:
+        return f"{x:,.2f}"

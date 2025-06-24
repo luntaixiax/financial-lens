@@ -3,6 +3,7 @@ import uuid
 from itertools import cycle
 import streamlit as st
 import streamlit_shadcn_ui as ui
+from utils.tools import display_number
 from utils.enums import CurType
 from utils.apis import summary_expense, get_base_currency, get_comp_contact, get_logo
 
@@ -101,7 +102,7 @@ if len(qry_exp) == 0:
     st.warning("No expense found during the selected period", icon='🥵')
 else:
 
-    st.markdown(f"**Total Expense ({CurType(base_cur).name})**: :violet-background[{qry_exp_total:.2f}]")
+    st.markdown(f"**Total Expense ({CurType(base_cur).name})**: :violet-background[{display_number(qry_exp_total)}]")
     st.bar_chart(
         data=process_exp_for_barchart(qry_exp),
         x='expense_type',

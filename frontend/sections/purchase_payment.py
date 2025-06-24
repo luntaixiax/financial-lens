@@ -7,7 +7,7 @@ import streamlit as st
 import streamlit_shadcn_ui as ui
 import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
-from utils.tools import DropdownSelect
+from utils.tools import DropdownSelect, display_number
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from utils.apis import get_account, get_fx, get_purchase_payment_journal, list_supplier, list_purchase_invoice, list_purchase_payment, \
     get_accounts_by_type, get_purchase_invoice_balance, validate_purchase_payment, create_journal_from_new_purchase_payment, \
@@ -251,7 +251,7 @@ if len(suppliers) > 0:
         {
             'invoice_id': i['invoice_id'],
             'invoice_num': i['invoice_num'],
-            'raw_amount': f"{CurType(i['currency']).name} {i['total_raw_amount']:.2f}"
+            'raw_amount': f"{CurType(i['currency']).name} {display_number(i['total_raw_amount'])}"
         }
         for i in invoices
     ]
@@ -572,7 +572,7 @@ if len(suppliers) > 0:
                     for e in debit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{total_debit:.2f}]')
+                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
                 
                 st.caption('Credit Entries')
                 credit_entries = st.data_editor(
@@ -630,7 +630,7 @@ if len(suppliers) > 0:
                     for e in credit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{total_credit:.2f}]')
+                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
 
 
         if edit_mode == 'Add' and st.session_state.get('validated', False):
