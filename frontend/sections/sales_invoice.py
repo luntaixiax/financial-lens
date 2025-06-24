@@ -254,6 +254,7 @@ def convert_general_inv_items_to_db(general_inv_item_entries: list[dict]) -> lis
 def validate_invoice(invoice_: dict):
     # TODO: get back validated invoice with computed field and write to st.session_state for display
     # at least have 1 item
+    print(invoice_)
     if len(invoice_['invoice_items']) + len(invoice_['ginvoice_items']) < 1:
         ui.alert_dialog(
             show=True, # TODO

@@ -98,7 +98,6 @@
                 <td class="border-b-2 border-main pb-3 pl-2 font-bold text-main">Item</td>
                 <td class="border-b-2 border-main pb-3 pl-2 text-center font-bold text-main">Price</td>
                 <td class="border-b-2 border-main pb-3 pl-2 text-center font-bold text-main">Qty</td>
-                <td class="border-b-2 border-main pb-3 pl-2 text-center font-bold text-main">Unit</td>
                 <td class="border-b-2 border-main pb-3 pl-2 text-center font-bold text-main">Discount</td>
                 <td class="border-b-2 border-main pb-3 pl-2 text-center font-bold text-main">Tax Rate</td>
                 <td class="border-b-2 border-main pb-3 pl-2 pr-3 text-right font-bold text-main">Pretax Subtotal</td>
@@ -108,10 +107,21 @@
             {% for invoice_item in invoice.invoice_items %}
               <tr>
                 <td class="border-b py-3 pl-3">{{ loop.index }}.</td>
-                <td class="border-b py-3 pl-2">{{ invoice_item.item.name }}</td>
-                <td class="border-b py-3 pl-2 text-center">{{  "{:0,.2f}".format(invoice_item.item.unit_price) }}</td>
-                <td class="border-b py-3 pl-2 text-center">{{ invoice_item.quantity }}</td>
-                <td class="border-b py-3 pl-2 text-center">{{ invoice_item.item.unit.name }}</td>
+                <td class="border-b py-3 pl-2">
+                  {{ invoice_item.item.name }} 
+                  <br/> 
+                  <p style="font-size:11px; color: #203b64;"><em>{{ invoice_item.description or '-' }}</em></p>
+                </td>
+                <td class="border-b py-3 pl-2 text-center">
+                  {{  "{:0,.2f}".format(invoice_item.item.unit_price) }}
+                  <br/> 
+                  <p style="font-size:11px; color: #203b64;"><em> {{ invoice.currency.name }}</em></p>
+                </td>
+                <td class="border-b py-3 pl-2 text-center">
+                  {{ invoice_item.quantity }}
+                  <br/> 
+                  <p style="font-size:11px; color: #203b64;"><em>{{ invoice_item.item.unit.name or '-' }}</em></p>
+                </td>
                 <td class="border-b py-3 pl-2 text-center" style="color: #b63b3b">
                   {% if invoice_item.discount_rate > 0 %}
                   {{ '%.0f%%'| format(- invoice_item.discount_rate * 100) }}
@@ -120,7 +130,11 @@
                   {% endif %}
                 </td>
                 <td class="border-b py-3 pl-2 text-center">{{ '%.0f%%'| format(invoice_item.tax_rate * 100) }}</td>
-                <td class="border-b py-3 pl-2 pr-3 text-right">{{ "{:0,.2f}".format(invoice_item.amount_pre_tax) }}</td>
+                <td class="border-b py-3 pl-2 pr-3 text-right">
+                  {{ "{:0,.2f}".format(invoice_item.amount_pre_tax) }}
+                  <br/> 
+                  <p style="font-size:11px; color: #203b64;"><em> {{ invoice.currency.name }}</em></p>
+                </td>
               </tr>
             {% endfor %}
             
@@ -166,10 +180,18 @@
             {% for ginvoice_item in invoice.ginvoice_items %}
               <tr>
                 <td class="border-b py-3 pl-3">{{ loop.index }}.</td>
-                <td class="border-b py-3 pl-2">{{ ginvoice_item.description }}</td>
+                <td class="border-b py-3 pl-2">{{ ginvoice_item.description or 'Not Specified Item' }}</td>
                 <td class="border-b py-3 pl-2 text-center">{{ ginvoice_item.incur_dt.strftime('%b %d, %Y') }}</td>
-                <td class="border-b py-3 pl-2 text-center">({{ ginvoice_item.currency.name }}) {{  "{:0,.2f}".format(ginvoice_item.amount_pre_tax_raw) }}</td>
-                <td class="border-b py-3 pl-2 text-center">{{  "{:0,.2f}".format(ginvoice_item.amount_pre_tax) }}</td>
+                <td class="border-b py-3 pl-2 text-center">
+                  {{  "{:0,.2f}".format(ginvoice_item.amount_pre_tax_raw) }}
+                  <br/> 
+                  <p style="font-size:11px; color: #203b64;"><em>{{ ginvoice_item.currency.name }}</em></p>
+                </td>
+                <td class="border-b py-3 pl-2 text-center">
+                  {{  "{:0,.2f}".format(ginvoice_item.amount_pre_tax) }}
+                  <br/> 
+                  <p style="font-size:11px; color: #203b64;"><em> {{ invoice.currency.name }}</em></p>
+                </td>
                 <td class="border-b py-3 pl-2 text-center">{{ '%.0f%%'| format(ginvoice_item.tax_rate * 100) }}</td>
               </tr>
             {% endfor %}
