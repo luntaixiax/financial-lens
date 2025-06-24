@@ -7,7 +7,7 @@ import streamlit as st
 import streamlit_shadcn_ui as ui
 import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
-from utils.tools import DropdownSelect
+from utils.tools import DropdownSelect, display_number
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from utils.apis import get_fx, list_customer, list_item, list_sales_invoice, get_sales_invoice_journal, \
     get_item, get_default_tax_rate, get_accounts_by_type, validate_sales, \
@@ -116,17 +116,18 @@ def update_inv_item(entry: dict) -> dict:
         entry['amount_pre_tax'] = unit_pirce * quantity * (1 - discount_rate / 100)
         
     # set default account to record this
-    entry['acct_name'] = dds_inc_accts._mappings.get(item['default_acct_id'])
+    if entry.get('item_id') is not None:
+        entry['acct_name'] = dds_inc_accts._mappings.get(item['default_acct_id'])
         
     return entry
 
 def on_change_inv_items():
     # whenever edited the table
     reset_validate()
-    st.session_state['subtotal_invitems'] = '-'
-    st.session_state['subtotal'] = '-'
-    st.session_state['tax_amount'] = '-'
-    st.session_state['total'] = '-'
+    st.session_state['subtotal_invitems'] = 0
+    st.session_state['subtotal'] = 0
+    st.session_state['tax_amount'] = 0
+    st.session_state['total'] = 0
     
     
     # get changes from data editor
@@ -171,10 +172,10 @@ def update_general_inv_item(entry: dict) -> dict:
 def on_change_general_inv_items():
     # whenever edited the table
     reset_validate()
-    st.session_state['subtotal_ginvitems'] = '-'
-    st.session_state['subtotal'] = '-'
-    st.session_state['tax_amount'] = '-'
-    st.session_state['total'] = '-'
+    st.session_state['subtotal_ginvitems'] = 0
+    st.session_state['subtotal'] = 0
+    st.session_state['tax_amount'] = 0
+    st.session_state['total'] = 0
     # get changes from data editor
     state = st.session_state['key_editor_general_inv_items']
     
@@ -254,7 +255,6 @@ def convert_general_inv_items_to_db(general_inv_item_entries: list[dict]) -> lis
 def validate_invoice(invoice_: dict):
     # TODO: get back validated invoice with computed field and write to st.session_state for display
     # at least have 1 item
-    print(invoice_)
     if len(invoice_['invoice_items']) + len(invoice_['ginvoice_items']) < 1:
         ui.alert_dialog(
             show=True, # TODO
@@ -691,8 +691,8 @@ if len(customers) > 0:
             on_change=on_change_inv_items,
         )
         
-        total_inv_items = st.session_state.get('subtotal_invitems', '-')
-        inv_item_container.markdown(f"📐 **Total Invoice Items {inv_cur}**: {total_inv_items if total_inv_items != '-' else '-'}")
+        total_inv_items = st.session_state.get('subtotal_invitems')
+        inv_item_container.markdown(f"📐 **Total Invoice Items {inv_cur}**: {display_number(total_inv_items)}")
         
         # general invoice items
         general_inv_item_container = st.container(border=True)
@@ -767,18 +767,18 @@ if len(customers) > 0:
             disabled=False,
             on_change=on_change_general_inv_items,
         )
-        total_ginvitems = st.session_state.get('subtotal_ginvitems', '-')
-        general_inv_item_container.markdown(f"🍥 **Total General Items {inv_cur}**: {total_ginvitems if total_ginvitems != '-' else '-'}")
+        total_ginvitems = st.session_state.get('subtotal_ginvitems')
+        general_inv_item_container.markdown(f"🍥 **Total General Items {inv_cur}**: {display_number(total_ginvitems)}")
         
         # total amount and tax
-        subtotal = st.session_state.get('subtotal', '-')
-        st.markdown(f"🛒 **SubTotal {inv_cur}**: {round(subtotal, 2) if subtotal != '-' else '-'}")
+        subtotal = st.session_state.get('subtotal')
+        st.markdown(f"🛒 **SubTotal {inv_cur}**: {display_number(subtotal)}")
         
-        tax_amount = st.session_state.get('tax_amount', '-')
-        st.markdown(f"🧾 **Tax Amount {inv_cur}**: {round(tax_amount, 2) if tax_amount != '-' else '-'}")
+        tax_amount = st.session_state.get('tax_amount')
+        st.markdown(f"🧾 **Tax Amount {inv_cur}**: {display_number(tax_amount)}")
         
-        total = st.session_state.get('total', '-')
-        st.markdown(f"💵 **Total {inv_cur}**: {round(total, 2) if total != '-' else '-'}")
+        total = st.session_state.get('total')
+        st.markdown(f"💵 **Total {inv_cur}**: {display_number(total)}")
         
         invoice_ = {
             #"invoice_id": "string",
@@ -879,7 +879,7 @@ if len(customers) > 0:
                     for e in debit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{total_debit:.2f}]')
+                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
                 
                 st.caption('Credit Entries')
                 credit_entries = st.data_editor(
@@ -937,7 +937,7 @@ if len(customers) > 0:
                     for e in credit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{total_credit:.2f}]')
+                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
 
         
         if edit_mode == 'Add' and st.session_state.get('validated', False):

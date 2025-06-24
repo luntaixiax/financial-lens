@@ -6,7 +6,7 @@ pd.set_option('future.no_silent_downcasting', True)
 import streamlit as st
 import streamlit_shadcn_ui as ui
 from datetime import datetime, date
-from utils.tools import DropdownSelect
+from utils.tools import DropdownSelect, display_number
 from utils.enums import CurType, EntryType, JournalSrc
 from utils.apis import convert_to_base, get_base_currency, list_journal, get_journal, \
     get_all_accounts, get_account, add_journal, delete_journal, update_journal, \
@@ -741,10 +741,10 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_jrns > 0 and _row_list):
     #st.json(debit_entries)
     total_debit = get_total_amount_base(debit_entries)
     #debit_container.json(debit_entries)
-    debit_container.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{total_debit:.2f}]')
+    debit_container.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
     total_credit = get_total_amount_base(credit_entries)
     #credit_container.json(credit_entries)
-    credit_container.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{total_credit:.2f}]')
+    credit_container.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
     
     if not disbale_edit:
         validate_btn = st.button(

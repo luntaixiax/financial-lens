@@ -7,7 +7,7 @@ pd.set_option('future.no_silent_downcasting', True)
 import streamlit as st
 import streamlit_shadcn_ui as ui
 from datetime import datetime, date
-from utils.tools import DropdownSelect
+from utils.tools import DropdownSelect, display_number
 from utils.exceptions import NotExistError
 from utils.enums import AcctType, CurType, EntryType, JournalSrc
 from utils.apis import convert_to_base, get_base_currency, list_expense, get_expense_journal, \
@@ -628,9 +628,9 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
     tax = sum((e['amount_pre_tax'] or 0) * (e['tax_rate'] or 0) / 100 for e in exp_item_entries)
     
     exp_item_container.markdown(
-        f"💲 **Subtotal**: {subtotal: .2f}"
-        + f" ➕ **Tax**: {tax: .2f}"
-        + f" 🟰 **Total ({cur_type_option})**: {subtotal + tax: .2f}"
+        f"💲 **Subtotal**: {display_number(subtotal)}"
+        + f" ➕ **Tax**: {display_number(tax)}"
+        + f" 🟰 **Total ({cur_type_option})**: {display_number(subtotal + tax)}"
     )
     
     
@@ -816,7 +816,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 for e in debit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{total_debit:.2f}]')
+            st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
             
             st.caption('Credit Entries')
             credit_entries = st.data_editor(
@@ -874,7 +874,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 for e in credit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{total_credit:.2f}]')
+            st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
 
 
     

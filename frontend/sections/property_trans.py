@@ -12,7 +12,7 @@ from utils.apis import list_property, get_account, get_property_journal, \
     get_propertytrans_journal, validate_property_trans, create_journal_from_new_property_trans, \
     add_property_trans, update_property_trans, delete_property_trans, get_comp_contact, get_logo
 from utils.enums import PropertyType, PropertyTransactionType, CurType, AcctType, EntryType
-from utils.tools import DropdownSelect
+from utils.tools import DropdownSelect, display_number
 
 st.set_page_config(layout="centered")
 with st.sidebar:
@@ -424,7 +424,7 @@ if len(properties) > 0:
                     for e in debit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{total_debit:.2f}]')
+                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
                 
                 st.caption('Credit Entries')
                 credit_entries = st.data_editor(
@@ -482,7 +482,7 @@ if len(properties) > 0:
                     for e in credit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{total_credit:.2f}]')
+                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
 
         
         if edit_mode == 'Add' and st.session_state.get('validated', False):
