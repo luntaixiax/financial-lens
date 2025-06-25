@@ -132,6 +132,7 @@ class _InvoiceBrief(EnhancedBaseModel):
     
 class _InvoiceBalance(EnhancedBaseModel):
     invoice_id: str = Field(description='Invoice ID')
+    invoice_num: str = Field(description='Invoice number')
     currency: CurType = Field(description='Currency used for the invoice')
     raw_amount: float = Field(description='Total amount invoiced in invoice currency')
     paid_amount: float = Field(description='Total amount paid in invoice currency')

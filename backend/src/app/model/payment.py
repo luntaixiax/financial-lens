@@ -37,7 +37,7 @@ class _PaymentBrief(EnhancedBaseModel):
     num_invoices: int
     invoice_num_strs: str
     gross_payment_base: float = Field(description='payment amount before fee, in base currency')
-    gross_payment_raw: float = Field(description='payment amount before fee, in raw currency for that payment')
+    gross_payment: float = Field(description='payment amount before fee, in currency for that payment')
     
     @computed_field
     def invoice_nums(self) -> list[str]:
