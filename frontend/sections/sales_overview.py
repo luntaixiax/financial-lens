@@ -44,6 +44,7 @@ def get_sales_payment_hist() -> list[dict]:
             'currency': payment['currency'],
             'raw_amount': payment['gross_payment'],
             'base_amount': payment['gross_payment_base'],
+            'offset_amount': payment['accrual_offset_base'],
             'invoice_nums': payment['invoice_num_strs']
         })
         
@@ -67,41 +68,17 @@ if len(customers) > 0:
         index=0
     )
     cust_id = dds_customers.get_id(edit_customer)
-
-    balances = get_psales_invoices_balance_by_entity(
-        entity_id=cust_id,
-        bal_dt=date.today()
-    )
-
-    st.subheader("Outstanding Invoices")
-    if len(balances) > 0:
-        balances_display = pd.DataFrame.from_records([
-            {
-                'Invoice #': b['invoice_num'],
-                'Currency': CurType(b['currency']).name,
-                'Amount Billed': round(b['raw_amount'], 2),
-                'Amount Paid': round(b['paid_amount'], 2),
-                'Balance': round(b['balance'], 2),
-                
-            } for b in balances
-        ])
-        balances_display = balances_display[balances_display['Balance'] != 0]
-
-        st.markdown(f"As of :blue[{date.today().strftime('%b %d, %Y')}]")
-        ui.table(balances_display)
-        
-    else:
-        st.info("All Invoices cleared!", icon='👏')
-
-    st.subheader("Transactions")
-
+    
+    # display metrics
     historys = get_sales_payment_hist()
 
     total_billed = sum(h['base_amount'] for h in historys if h['direction'] == 'invoice')
     num_billed = sum(1 for h in historys if h['direction'] == 'invoice')
     total_paid = sum(h['base_amount'] for h in historys if h['direction'] == 'payment')
     num_paid = sum(1 for h in historys if h['direction'] == 'payment')
-    total_balance = total_billed - total_paid
+    total_offset = sum(h['offset_amount'] for h in historys if h['direction'] == 'payment')
+    total_balance = total_billed - total_offset
+    fx_gain = total_paid - total_offset
     base_currency = CurType(get_base_currency()).name
 
     card_cols = st.columns(3)
@@ -121,38 +98,84 @@ if len(customers) > 0:
         )
     with card_cols[2]:
         ui.metric_card(
+            title="Total Offset", 
+            content=f"{base_currency} {total_offset: ,.2f}", 
+            description=f"offset in A/R", 
+            key="card3"
+        )
+        
+    card_cols2 = st.columns(2)
+    with card_cols2[0]:
+        ui.metric_card(
             title="Remaining Balance", 
             content=f"{base_currency} {total_balance: ,.2f}", 
             description=f"equivalent in base currency", 
-            key="card3"
+            key="card4"
+        )
+    with card_cols2[1]:
+        ui.metric_card(
+            title="FX Gain/Loss", 
+            content=f"{base_currency} {fx_gain: ,.2f}", 
+            description=f"between invoice and payment", 
+            key="card5"
         )
 
-    for history in historys:
-        dt_display = datetime.strptime(history['trans_dt'], '%Y-%m-%d').strftime('%b %d, %Y')
-        if history['direction'] == 'invoice':
-            label = f"**{dt_display}** | **:red-background[invoice]** | :grey-background[{history['trans_id']}]"
-            disp = {
-                'Invoice #': history['trans_num'],
-                'Currency': CurType(history['currency']).name,
-                'Amount': round(history['raw_amount'], 2)
-            }
-        else:
-            label = f"**{dt_display}** | **:green-background[payment]** | :grey-background[{history['trans_id']}]"
-            disp = {
-                'Payment #': history['trans_num'],
-                'Against Invoices': history['invoice_nums'],
-                'Currency': CurType(history['currency']).name,
-                'Amount': round(history['raw_amount'], 2)
-            }
+    tabs = st.tabs(['Oustanding Invoices', 'Transaction History'])
+    
+    with tabs[0]:
+        balances = get_psales_invoices_balance_by_entity(
+            entity_id=cust_id,
+            bal_dt=date.today()
+        )
+
+        st.subheader("Outstanding Invoices")
+        if len(balances) > 0:
+            balances_display = pd.DataFrame.from_records([
+                {
+                    'Invoice #': b['invoice_num'],
+                    'Currency': CurType(b['currency']).name,
+                    'Amount Billed': round(b['raw_amount'], 2),
+                    'Amount Paid': round(b['paid_amount'], 2),
+                    'Balance': round(b['balance'], 2),
+                    
+                } for b in balances
+            ])
+            balances_display = balances_display[balances_display['Balance'] != 0]
+
+            st.markdown(f"As of :blue[{date.today().strftime('%b %d, %Y')}]")
+            ui.table(balances_display)
             
-        if datetime.strptime(history['trans_dt'], '%Y-%m-%d').date() > date.today():
-            icon = '⌛'
         else:
-            icon = '☑️'
-        
-        with st.expander(label=label, expanded=True, icon=icon):
-            
-            ui.table(pd.DataFrame.from_records([disp]))
+            st.info("All Invoices cleared!", icon='👏')
+
+    with tabs[1]:
+        with st.container(height=1000, border=True):
+            for history in historys:
+                dt_display = datetime.strptime(history['trans_dt'], '%Y-%m-%d').strftime('%b %d, %Y')
+                if history['direction'] == 'invoice':
+                    label = f"**{dt_display}** | **:red-background[invoice]** | :grey-background[{history['trans_id']}]"
+                    disp = {
+                        'Invoice #': history['trans_num'],
+                        'Currency': CurType(history['currency']).name,
+                        'Amount': round(history['raw_amount'], 2)
+                    }
+                else:
+                    label = f"**{dt_display}** | **:green-background[payment]** | :grey-background[{history['trans_id']}]"
+                    disp = {
+                        'Payment #': history['trans_num'],
+                        'Against Invoices': history['invoice_nums'],
+                        'Currency': CurType(history['currency']).name,
+                        'Amount': round(history['raw_amount'], 2)
+                    }
+                    
+                if datetime.strptime(history['trans_dt'], '%Y-%m-%d').date() > date.today():
+                    icon = '⌛'
+                else:
+                    icon = '☑️'
+                
+                with st.expander(label=label, expanded=True, icon=icon):
+                    
+                    ui.table(pd.DataFrame.from_records([disp]))
             
 else:
     st.warning("No Customer found, must create customer to show sales", icon='🥵')

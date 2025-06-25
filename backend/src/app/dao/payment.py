@@ -3,6 +3,7 @@ import logging
 from typing import Tuple
 from sqlmodel import Session, select, delete, case, func as f
 from sqlalchemy.exc import NoResultFound, IntegrityError
+from src.app.model.const import SystemAcctNumber
 from src.app.model.enums import CurType, EntityType, EntryType
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError
 from src.app.dao.orm import AcctORM, EntryORM, InvoiceORM, PaymentItemORM, PaymentORM, infer_integrity_error
@@ -265,13 +266,19 @@ class paymentDao:
                 )
                 .subquery()
             )
+            accrual_acct_id = SystemAcctNumber.ACCT_RECEIV if entity_type == EntityType.CUSTOMER else SystemAcctNumber.ACCT_PAYAB
+            accrual_entry_type = EntryType.CREDIT if entity_type == EntityType.CUSTOMER else EntryType.DEBIT
             journal_summary = (
                 select(
                     EntryORM.journal_id,
-                    f.sum(EntryORM.amount_base).label('gross_payment_base')
+                    f.sum(EntryORM.amount_base).label('gross_payment_base'),
+                    f.sum(case(
+                        (EntryORM.acct_id.in_((accrual_acct_id, )), EntryORM.amount_base),
+                        else_=0
+                    )).label('accrual_offset_base'),
                 )
                 .where(
-                    EntryORM.entry_type == EntryType.DEBIT
+                    EntryORM.entry_type == accrual_entry_type
                 )
                 .group_by(
                     EntryORM.journal_id
@@ -315,6 +322,7 @@ class paymentDao:
                     payment_item_agg.c.num_invoices,
                     payment_item_agg.c.payment_amount,
                     payment_item_agg.c.invoice_num_strs,
+                    journal_summary.c.accrual_offset_base,
                     journal_summary.c.gross_payment_base
                 )
                 .join(
@@ -355,6 +363,7 @@ class paymentDao:
                 payment_acct_name=payment.payment_acct_name,
                 num_invoices=payment.num_invoices,
                 invoice_num_strs=payment.invoice_num_strs,
+                accrual_offset_base=payment.accrual_offset_base,
                 gross_payment_base=payment.gross_payment_base, # in base currency
                 gross_payment=payment.payment_amount # in payment currency
             )

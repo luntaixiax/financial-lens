@@ -36,6 +36,7 @@ class _PaymentBrief(EnhancedBaseModel):
     payment_acct_name: str
     num_invoices: int
     invoice_num_strs: str
+    accrual_offset_base: float = Field(description='offset amount in A/R or A/P, the actual amount applied to invoice. that is gross_payment_base net of FX gain/loss')
     gross_payment_base: float = Field(description='payment amount before fee, in base currency')
     gross_payment: float = Field(description='payment amount before fee, in currency for that payment')
     

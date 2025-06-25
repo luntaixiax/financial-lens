@@ -29,7 +29,7 @@ def display_payment(payment: dict) -> dict:
         'payment_acct_name': payment['payment_acct_name'],
         'currency': CurType(payment['currency']).name,
         'num_invoices': payment['num_invoices'],
-        'gross_payment_base': payment['gross_payment_base'],
+        'gross_payment': payment['gross_payment'],
         'invoice_nums': payment['invoice_nums'],
     }
 
@@ -278,7 +278,7 @@ if len(customers) > 0:
                 'payment_acct_name',
                 'currency',
                 #'num_invoices',
-                'gross_payment_base',
+                'gross_payment',
                 'invoice_nums'
             ],
             column_config={
@@ -303,10 +303,10 @@ if len(customers) > 0:
                     options=dds_currency.options,
                     #required=True
                 ),
-                'gross_payment_base': st.column_config.NumberColumn(
-                    label='$Gross Base',
+                'gross_payment': st.column_config.NumberColumn(
+                    label='Gross PMT',
                     width=None,
-                    format='$ %.2f',
+                    format='%.2f',
                     step=0.001
                 ),
                 'invoice_nums': st.column_config.ListColumn(
