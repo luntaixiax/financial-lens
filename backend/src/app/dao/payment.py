@@ -250,7 +250,8 @@ class paymentDao:
                     PaymentItemORM.payment_id,
                     f.count(PaymentItemORM.invoice_id.distinct()).label('num_invoices'),
                     # all payment items should use same currency to pay (so can sum across different items)
-                    f.sum(PaymentItemORM.payment_amount_raw).label('payment_amount_raw'),
+                    f.sum(PaymentItemORM.payment_amount).label('payment_amount'), # in payment currency
+                    f.sum(PaymentItemORM.payment_amount_raw).label('payment_amount_raw'), # in invoice currency
                     f.group_concat(InvoiceORM.invoice_num).label('invoice_num_strs'),
                     *inv_case_when
                 )
@@ -312,7 +313,7 @@ class paymentDao:
                     AcctORM.currency,
                     AcctORM.acct_name.label('payment_acct_name'),
                     payment_item_agg.c.num_invoices,
-                    payment_item_agg.c.payment_amount_raw,
+                    payment_item_agg.c.payment_amount,
                     payment_item_agg.c.invoice_num_strs,
                     journal_summary.c.gross_payment_base
                 )
@@ -354,8 +355,8 @@ class paymentDao:
                 payment_acct_name=payment.payment_acct_name,
                 num_invoices=payment.num_invoices,
                 invoice_num_strs=payment.invoice_num_strs,
-                gross_payment_base=payment.gross_payment_base,
-                gross_payment_raw=payment.payment_amount_raw
+                gross_payment_base=payment.gross_payment_base, # in base currency
+                gross_payment=payment.payment_amount # in payment currency
             )
             for payment in payments
         ]

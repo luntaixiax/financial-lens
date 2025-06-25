@@ -27,6 +27,7 @@ def get_sales_payment_hist() -> list[dict]:
     for invoice in invoices:    
         chain.append({
             'direction': 'invoice',
+            'trans_id': invoice['invoice_id'],
             'trans_num': invoice['invoice_num'],
             'trans_dt': invoice['invoice_dt'],
             'currency': invoice['currency'],
@@ -37,10 +38,11 @@ def get_sales_payment_hist() -> list[dict]:
     for payment in payments:    
         chain.append({
             'direction': 'payment',
+            'trans_id': payment['payment_id'],
             'trans_num': payment['payment_num'],
             'trans_dt': payment['payment_dt'],
             'currency': payment['currency'],
-            'raw_amount': payment['gross_payment_raw'],
+            'raw_amount': payment['gross_payment'],
             'base_amount': payment['gross_payment_base'],
             'invoice_nums': payment['invoice_num_strs']
         })
@@ -75,7 +77,7 @@ if len(customers) > 0:
     if len(balances) > 0:
         balances_display = pd.DataFrame.from_records([
             {
-                'Invoice ID': b['invoice_id'],
+                'Invoice #': b['invoice_num'],
                 'Currency': CurType(b['currency']).name,
                 'Amount Billed': round(b['raw_amount'], 2),
                 'Amount Paid': round(b['paid_amount'], 2),
@@ -128,14 +130,14 @@ if len(customers) > 0:
     for history in historys:
         dt_display = datetime.strptime(history['trans_dt'], '%Y-%m-%d').strftime('%b %d, %Y')
         if history['direction'] == 'invoice':
-            label = f"**{dt_display}** | **:red-background[invoice]**"
+            label = f"**{dt_display}** | **:red-background[invoice]** | :grey-background[{history['trans_id']}]"
             disp = {
                 'Invoice #': history['trans_num'],
                 'Currency': CurType(history['currency']).name,
                 'Amount': round(history['raw_amount'], 2)
             }
         else:
-            label = f"**{dt_display}** | **:green-background[payment]**"
+            label = f"**{dt_display}** | **:green-background[payment]** | :grey-background[{history['trans_id']}]"
             disp = {
                 'Payment #': history['trans_num'],
                 'Against Invoices': history['invoice_nums'],

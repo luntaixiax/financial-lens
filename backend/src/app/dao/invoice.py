@@ -615,6 +615,7 @@ class invoiceDao:
             invoice_joined = (
                 select(
                     InvoiceORM.currency,
+                    InvoiceORM.invoice_num,
                     (
                         InvoiceORM.shipping 
                         + f.coalesce(invoice_item_agg.c.total_raw_amount , 0)
@@ -634,6 +635,7 @@ class invoiceDao:
             
         return _InvoiceBalance(
             invoice_id=invoice_id,
+            invoice_num=joined.invoice_num,
             currency=joined.currency,
             raw_amount=joined.total_raw_amount,
             paid_amount=joined.payment_amount_raw
@@ -697,6 +699,7 @@ class invoiceDao:
             invoice_joined = (
                 select(
                     InvoiceORM.invoice_id,
+                    InvoiceORM.invoice_num,
                     InvoiceORM.currency,
                     (
                         InvoiceORM.shipping 
@@ -733,6 +736,7 @@ class invoiceDao:
         return [
             _InvoiceBalance(
                 invoice_id=j.invoice_id,
+                invoice_num=j.invoice_num,
                 currency=j.currency,
                 raw_amount=j.total_raw_amount,
                 paid_amount=j.payment_amount_raw
