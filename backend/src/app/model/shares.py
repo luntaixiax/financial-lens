@@ -28,9 +28,9 @@ class StockIssue(EnhancedBaseModel):
     issue_price: float = Field(
         description='Issue price of new stock, expressed in base currency'
     )
-    par_price: float = Field(
+    cost_price: float = Field(
         default_factory=get_par_share_price,
-        description='Par price of the new stock issue, should be predetermined initially'
+        description='Par price of the new stock issue for new issue, and cost of repurchase for reissue'
     )
     debit_acct_id: str = Field(
         description='Which account receives the new issue, typically asset or expense'
