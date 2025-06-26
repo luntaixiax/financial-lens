@@ -45,6 +45,11 @@ class StockIssue(EnhancedBaseModel):
         return finround(self.issue_price * self.num_shares)
     
     @computed_field()
+    def issue_cost_base(self) -> float:
+        # base currency
+        return finround(self.cost_price * self.num_shares)
+    
+    @computed_field()
     def issue_premium_base(self) -> float:
         # only applies for new issue, not repurchase reissue
         # base currency
@@ -74,7 +79,7 @@ class StockRepurchase(EnhancedBaseModel):
     )
     
     @computed_field()
-    def repurchase_amt_base(self) -> float:
+    def repur_amt_base(self) -> float:
         # base currency
         return finround(self.repur_price * self.num_shares)
 
