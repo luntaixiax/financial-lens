@@ -61,6 +61,7 @@ class JournalSrc(IntEnum):
     PAYMENT = 4
     EXPENSE = 5
     PPNE = 6
+    SHARE = 7
     
 @unique
 class EntityType(IntEnum):

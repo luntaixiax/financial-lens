@@ -32,7 +32,8 @@ def get_settings() -> dict:
     return {
         'preferences': {
             'base_cur': SettingService.get_base_currency(),
-            'default_sales_tax_rate': SettingService.get_default_tax_rate()
+            'default_sales_tax_rate': SettingService.get_default_tax_rate(),
+            'par_share_price': SettingService.get_par_share_price()
         }
     }
 
@@ -60,6 +61,11 @@ def get_base_cur() -> CurType:
 def get_default_tax_rate() -> float:
     settings = get_settings()
     return settings['preferences']['default_sales_tax_rate']
+
+@lru_cache() # TODO: should not change
+def get_par_share_price() -> float:
+    settings = get_settings()
+    return settings['preferences']['par_share_price']
 
 
 def get_vault_resp(mount_point: str, path: str) -> dict:

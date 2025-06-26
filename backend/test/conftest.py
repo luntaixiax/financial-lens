@@ -13,7 +13,8 @@ def settings():
     return {
         'preferences': {
             'base_cur': CurType.CAD,
-            'default_sales_tax_rate': 0.13
+            'default_sales_tax_rate': 0.13,
+            'par_share_price': 0.01,
         }
     }
 

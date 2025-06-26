@@ -161,6 +161,13 @@ class AcctService:
             currency=get_base_cur(),
             chart=total_equity.chart
         )
+        treas = Account(
+            acct_id=SystemAcctNumber.TREASURY_STOCK,
+            acct_name="Treasury Stock",
+            acct_type=AcctType.EQU,
+            currency=get_base_cur(),
+            chart=total_equity.chart
+        )
         div = Account(
             acct_id=SystemAcctNumber.ACC_DIV,
             acct_name="Acc. Dividend",
@@ -238,6 +245,7 @@ class AcctService:
         cls.add_account(ap)
         cls.add_account(cc)
         cls.add_account(api)
+        cls.add_account(treas)
         cls.add_account(div)
         cls.add_account(oci)
         cls.add_account(sc)

@@ -10,8 +10,9 @@ class SystemAcctNumber(str, Enum):
     OUTPUT_TAX = "acct-opt"
     ACCT_RECEIV = "acct-ar"
     ACCT_PAYAB = "acct-ap"
-    CONTR_CAP = "acct-cc"
-    ADD_PAID_IN = "acct-api"
+    CONTR_CAP = "acct-cc" # common stock
+    ADD_PAID_IN = "acct-api" # paid in premium
+    TREASURY_STOCK = "acct-treas" # treasury stock
     RETAIN_EARN = "acct-re" # special, created by balance sheet
     ACC_DIV = "acct-accdiv" # cumulative dividend
     OTH_COMP_INC = "acct-oci"
