@@ -111,7 +111,7 @@ class stockIssueDao:
             p.issue_price = stock_issue_orm.issue_price
             p.cost_price = stock_issue_orm.cost_price
             p.debit_acct_id = stock_issue_orm.debit_acct_id
-            p.issue_amt = stock_issue_orm.stock_issue_orm
+            p.issue_amt = stock_issue_orm.issue_amt
             p.journal_id = journal_id # update to new journal id
             
             try:
@@ -238,7 +238,7 @@ class stockRepurchaseDao:
             p.num_shares = stock_repur_orm.num_shares
             p.repur_price = stock_repur_orm.repur_price
             p.credit_acct_id = stock_repur_orm.credit_acct_id
-            p.repur_amt = stock_repur_orm.stock_repur_orm
+            p.repur_amt = stock_repur_orm.repur_amt
             p.journal_id = journal_id # update to new journal id
             
             try:
@@ -358,7 +358,7 @@ class dividendDao:
             # must update stock issue orm because journal id changed
             p.div_dt = div_orm.div_dt
             p.credit_acct_id = div_orm.credit_acct_id
-            p.div_amt = div_orm.div_orm
+            p.div_amt = div_orm.div_amt
             p.journal_id = journal_id # update to new journal id
             
             try:

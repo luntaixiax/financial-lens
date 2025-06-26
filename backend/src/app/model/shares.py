@@ -48,7 +48,7 @@ class StockIssue(EnhancedBaseModel):
     def issue_premium_base(self) -> float:
         # only applies for new issue, not repurchase reissue
         # base currency
-        return finround((self.issue_price - self.par_price) * self.num_shares)
+        return finround((self.issue_price - self.cost_price) * self.num_shares)
 
 
 class StockRepurchase(EnhancedBaseModel):
