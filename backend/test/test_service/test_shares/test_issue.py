@@ -9,6 +9,7 @@ from src.app.model.shares import StockIssue
 def test_create_journal_from_issue(mock_engine, engine_with_sample_choa, sample_issue):
     mock_engine.return_value = engine_with_sample_choa
     
+    from src.app.model.const import SystemAcctNumber
     from src.app.service.shares import SharesService
     from src.app.service.fx import FxService
     from src.app.service.acct import AcctService
@@ -17,6 +18,11 @@ def test_create_journal_from_issue(mock_engine, engine_with_sample_choa, sample_
     assert journal.jrn_src == JournalSrc.SHARE
     # should be non-redudant, i.e, similar entries have been combined
     assert not journal.is_redundant
+    
+    # common stock account should be credit
+    acct_ids = [e.acct.acct_id for e in journal.entries]
+    assert SystemAcctNumber.CONTR_CAP in acct_ids
+    assert SystemAcctNumber.TREASURY_STOCK not in acct_ids
     
     # total amount from issue should be same to total amount from journal (base currency)
     debit_acct = AcctService.get_account(
@@ -28,6 +34,19 @@ def test_create_journal_from_issue(mock_engine, engine_with_sample_choa, sample_
         cur_dt=sample_issue.issue_dt, # convert fx at issue date
     )
     assert amount_base == journal.total_credits
+    
+    # test reissue case
+    sample_issue.is_reissue = True
+    sample_issue.cost_price = 0.02
+    journal = SharesService.create_journal_from_issue(sample_issue)
+    assert journal.jrn_src == JournalSrc.SHARE
+    # should be non-redudant, i.e, similar entries have been combined
+    assert not journal.is_redundant
+    
+    # treasury stock account should be credit
+    acct_ids = [e.acct.acct_id for e in journal.entries]
+    assert SystemAcctNumber.CONTR_CAP not in acct_ids
+    assert SystemAcctNumber.TREASURY_STOCK in acct_ids
     
 @mock.patch("src.app.dao.connection.get_engine")
 def test_validate_issue(mock_engine, engine_with_sample_choa):
@@ -71,6 +90,11 @@ def test_validate_issue(mock_engine, engine_with_sample_choa):
         issue_amt=600
     )
     with pytest.raises(OpNotPermittedError):
+        SharesService._validate_issue(issue)
+        
+    # test not reissue cost price != par
+    issue.cost_price = 0.05
+    with pytest.raises(NotMatchWithSystemError):
         SharesService._validate_issue(issue)
 
 @mock.patch("src.app.dao.connection.get_engine")

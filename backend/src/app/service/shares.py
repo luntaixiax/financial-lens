@@ -10,7 +10,7 @@ from src.app.service.fx import FxService
 from src.app.model.const import SystemAcctNumber
 from src.app.model.journal import Entry, Journal
 from src.app.model.enums import AcctType, EntryType, JournalSrc
-from src.app.utils.tools import get_base_cur
+from src.app.utils.tools import get_base_cur, get_par_share_price
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
 from src.app.service.acct import AcctService
 from src.app.model.accounts import Account
@@ -60,6 +60,13 @@ class SharesService:
         # TODO: if reissue, need to check if num_shares <= total repurchased shares
         if issue.is_reissue:
             pass
+        else:
+            # need to use par value as issue cost
+            if not math.isclose(issue.cost_price, get_par_share_price()):
+                raise NotMatchWithSystemError(
+                    message='New stock should be issued with cost price=par value',
+                    details=f"cost={issue.cost_price} while par value set at ({get_par_share_price()})"
+                )
         
         # check if debit_acct_id exists
         try:
@@ -143,16 +150,22 @@ class SharesService:
         debit_acct: Account = AcctService.get_account(
             issue.debit_acct_id
         )
-        # credit common stock
-        cost_descrp = 'par price' if issue.is_reissue == False else 'repurchase priec'
+        # credit common stock / treasury stock
+        if issue.is_reissue:
+            credit_acct = AcctService.get_account(SystemAcctNumber.TREASURY_STOCK)
+            description=f"Reissue Treasy stock at cost={issue.cost_price}"
+        else:
+            credit_acct = AcctService.get_account(SystemAcctNumber.CONTR_CAP)
+            description=f"Common stock at par value={issue.cost_price}"
+
         common_entry = Entry(
             entry_type=EntryType.CREDIT, # common stock is credit entry
-            acct=AcctService.get_account(SystemAcctNumber.CONTR_CAP),
+            acct=credit_acct,
             cur_incexp=None, # balance sheet item should not have currency
             amount=issue.issue_cost_base, # amount in raw currency
             # amount in base currency
             amount_base=issue.issue_cost_base,
-            description=f"Common stock at {cost_descrp}={issue.cost_price}"
+            description=description,
         )
         # credit additional paid in capital
         add_entry = Entry(
