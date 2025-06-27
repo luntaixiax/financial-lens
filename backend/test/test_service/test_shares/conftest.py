@@ -36,7 +36,7 @@ def sample_reissue(sample_repur) -> StockIssue:
 def sample_repur() -> StockRepurchase:
     repur = StockRepurchase(
         repur_id='sample-repur',
-        repurchase_dt=date(2024, 1, 10),
+        repur_dt=date(2024, 1, 10),
         num_shares=20,
         repur_price=12.5,
         credit_acct_id='acct-bank',

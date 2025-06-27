@@ -190,7 +190,7 @@ class stockRepurchaseDao:
     def fromStockRepur(cls, journal_id: str, stock_repur: StockRepurchase) -> StockRepurchaseORM:
         return StockRepurchaseORM(
             repur_id=stock_repur.repur_id,
-            repurchase_dt=stock_repur.repurchase_dt,
+            repur_dt=stock_repur.repur_dt,
             num_shares=stock_repur.num_shares,
             repur_price=stock_repur.repur_price,
             credit_acct_id=stock_repur.credit_acct_id,
@@ -203,7 +203,7 @@ class stockRepurchaseDao:
     def toStockRepur(cls, stock_repur_orm: StockRepurchaseORM) -> StockRepurchase:
         return StockRepurchase(
             repur_id=stock_repur_orm.repur_id,
-            repurchase_dt=stock_repur_orm.repurchase_dt,
+            repur_dt=stock_repur_orm.repur_dt,
             num_shares=stock_repur_orm.num_shares,
             repur_price=stock_repur_orm.repur_price,
             credit_acct_id=stock_repur_orm.credit_acct_id,
@@ -277,7 +277,7 @@ class stockRepurchaseDao:
                 stock_repur=stock_repur
             )
             # must update stock issue orm because journal id changed
-            p.repurchase_dt = stock_repur_orm.repurchase_dt
+            p.repur_dt = stock_repur_orm.repur_dt
             p.num_shares = stock_repur_orm.num_shares
             p.repur_price = stock_repur_orm.repur_price
             p.credit_acct_id = stock_repur_orm.credit_acct_id

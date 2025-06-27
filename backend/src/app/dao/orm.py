@@ -751,7 +751,7 @@ class StockRepurchaseORM(SQLModelWithSort, table=True):
     repur_id: str = Field(
         sa_column=Column(String(length = 15), primary_key = True, nullable = False)
     )
-    repurchase_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    repur_dt: date = Field(sa_column=Column(Date(), nullable = False))
     num_shares: float = Field(sa_column=Column(DECIMAL(17, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     repur_price: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     credit_acct_id: str = Field(

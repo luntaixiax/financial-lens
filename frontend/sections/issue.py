@@ -10,7 +10,8 @@ from datetime import datetime, date
 from utils.tools import DropdownSelect, display_number
 from utils.exceptions import NotExistError
 from utils.enums import AcctType, CurType, EntryType, JournalSrc
-from utils.apis import add_issue, create_journal_from_new_issue, delete_issue, get_account, get_accounts_by_type, get_all_accounts, get_base_currency, get_comp_contact, get_issue_journal, get_logo, list_issue, \
+from utils.apis import add_issue, create_journal_from_new_issue, delete_issue, get_account, get_accounts_by_type, \
+    get_all_accounts, get_base_currency, get_comp_contact, get_issue_journal, get_logo, list_issue, \
     list_repur, get_total_reissue_from_repur, update_issue, validate_issue
 
 st.set_page_config(layout="centered")
@@ -237,7 +238,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
                 briefs=repurs,
                 include_null=False,
                 id_key='repur_id',
-                display_keys=['repurchase_dt', 'num_shares', 'repur_price']
+                display_keys=['repur_dt', 'num_shares', 'repur_price']
             )
             
             if edit_mode == 'Add':
@@ -299,7 +300,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
     with iss_cols[0]:
         if edit_mode == 'Add':
             pmt_acct = st.selectbox(
-                label='💳 Payment Account',
+                label='💳 Receiving Account',
                 options=dds_pay_accts.options,
                 key='acct_select',
                 index=0,
@@ -308,7 +309,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
             )
         elif edit_mode == 'Edit':
             pmt_acct = st.selectbox(
-                label='💳 Payment Account',
+                label='💳 Receiving Account',
                 options=dds_pay_accts.options,
                 key='acct_select2',
                 index=dds_pay_accts.get_idx_from_id(issue_sel['debit_acct_id']),
@@ -322,7 +323,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
         
     with iss_cols[1]:
         pmt_amt = st.number_input(
-            label=f"💰 Payment Amount ({CurType(pmt_acct['currency'] or get_base_currency()).name})",
+            label=f"💰 Received Amount ({CurType(pmt_acct['currency'] or get_base_currency()).name})",
             value=0.0 if edit_mode == 'Add' else issue_sel['issue_amt'],
             step=0.01,
             key='pmt_amt',

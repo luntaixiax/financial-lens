@@ -25,7 +25,7 @@ def test_create_journal_from_repur(mock_engine, engine_with_sample_choa, sample_
     amount_base = FxService.convert_to_base(
         amount=sample_repur.repur_amt,
         src_currency=credit_acct.currency, # purchase currency
-        cur_dt=sample_repur.repurchase_dt, # convert fx at repur date
+        cur_dt=sample_repur.repur_dt, # convert fx at repur date
     )
     assert amount_base == journal.total_debits
     
@@ -37,7 +37,7 @@ def test_validate_repur(mock_engine, engine_with_sample_choa):
     
     repur = StockRepurchase(
         repur_id='sample-repur',
-        repurchase_dt=date(2024, 1, 3),
+        repur_dt=date(2024, 1, 3),
         num_shares=100,
         repur_price=5.4,
         credit_acct_id='acct-fbank',
@@ -60,7 +60,7 @@ def test_validate_repur(mock_engine, engine_with_sample_choa):
     # test same currency
     repur = StockRepurchase(
         repur_id='sample-repur',
-        repurchase_dt=date(2024, 1, 3),
+        repur_dt=date(2024, 1, 3),
         num_shares=100,
         repur_price=5.4,
         credit_acct_id='acct-bank',
@@ -97,7 +97,7 @@ def test_repur(mock_engine, engine_with_sample_choa, sample_repur):
     # update 1 --  valid repur update
     sample_repur.repur_price = 6
     sample_repur.repur_amt=120
-    sample_repur.repurchase_dt = date(2024, 1, 10)
+    sample_repur.repur_dt = date(2024, 1, 10)
     SharesService.update_repur(sample_repur)
     _repur, _journal = SharesService.get_repur_journal(sample_repur.repur_id)
     assert _repur == sample_repur

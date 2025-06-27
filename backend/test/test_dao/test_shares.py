@@ -25,7 +25,7 @@ def sample_issue() -> StockIssue:
 def sample_repur() -> StockRepurchase:
     repur = StockRepurchase(
         repur_id='test-repur',
-        repurchase_dt=date(2024, 1, 3),
+        repur_dt=date(2024, 1, 3),
         num_shares=20,
         repur_price=12.5,
         credit_acct_id='acct-bank',
@@ -123,7 +123,7 @@ def test_repurchase(mock_engine, engine_with_sample_choa, sample_repur, sample_j
     assert _repur == sample_repur
     
     # test update issue
-    sample_repur.repurchase_dt = date(2024, 5, 1)
+    sample_repur.repur_dt = date(2024, 5, 1)
     sample_repur.repur_price = 6.5
     stockRepurchaseDao.update(sample_journal_meal.journal_id, sample_repur)
     _repur, _jrn_id = stockRepurchaseDao.get(sample_repur.repur_id)

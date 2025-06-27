@@ -64,7 +64,7 @@ class StockRepurchase(EnhancedBaseModel):
         ),
         frozen=True,
     )
-    repurchase_dt: date
+    repur_dt: date
     num_shares: float
     repur_price: float = Field(
         description='Repurchase price of own stock, expressed in base currency'

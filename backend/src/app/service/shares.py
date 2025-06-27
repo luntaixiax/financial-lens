@@ -34,7 +34,7 @@ class SharesService:
         )
         repur = StockRepurchase(
             repur_id='sample-repur',
-            repurchase_dt=date(2024, 1, 10),
+            repur_dt=date(2024, 1, 10),
             num_shares=20,
             repur_price=12.5,
             credit_acct_id='acct-bank',
@@ -72,10 +72,10 @@ class SharesService:
                 )
             else:
                 # verify if reissue is after repurchase
-                if issue.issue_dt < repur.repurchase_dt:
+                if issue.issue_dt < repur.repur_dt:
                     raise OpNotPermittedError(
                         message="Cannot reissue stock before that batch of stock being repurchased",
-                        details=f"issue date: {issue.issue_dt} while repurchased at {repur.repurchase_dt}"
+                        details=f"issue date: {issue.issue_dt} while repurchased at {repur.repur_dt}"
                     )
                 
                 # verify if issue # of stock is less than remaining repurchased shares
@@ -293,7 +293,7 @@ class SharesService:
             amount_base=FxService.convert_to_base(
                 amount=repur.repur_amt,
                 src_currency=credit_acct.currency, # receive currency
-                cur_dt=repur.repurchase_dt, # convert fx at repurchase date
+                cur_dt=repur.repur_dt, # convert fx at repurchase date
             )
             credit_entry = Entry(
                 entry_type=EntryType.CREDIT, # paying fund is credit entry
@@ -332,7 +332,7 @@ class SharesService:
         
         # create journal
         journal = Journal(
-            jrn_date=repur.repurchase_dt,
+            jrn_date=repur.repur_dt,
             entries=entries,
             jrn_src=JournalSrc.SHARE,
             note=f"Repurchasing stock @{get_base_cur()}{repur.repur_price} for {repur.num_shares} shares"
