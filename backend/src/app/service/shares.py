@@ -791,6 +791,14 @@ class SharesService:
         return stockIssueDao.list_reissue_from_repur(repur_id)
     
     @classmethod
+    def get_total_reissue_from_repur(cls, repur_id: str, rep_dt: date) -> float:
+        return stockIssueDao.get_total_reissue_from_repur(
+            repur_id=repur_id,
+            rep_dt=rep_dt,
+            exclu_issue_id=None # TODO: review this
+        )
+    
+    @classmethod
     def list_repurs(cls) -> list[StockRepurchase]:
         return stockRepurchaseDao.list_repurs()
     
