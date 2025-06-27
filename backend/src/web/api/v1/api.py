@@ -10,6 +10,7 @@ from src.web.api.v1.endpoints import (
     purchase,
     expense,
     property,
+    shares,
     reporting,
     management,
     settings
@@ -29,3 +30,4 @@ api_router.include_router(purchase.router)
 api_router.include_router(expense.router)
 api_router.include_router(property.router)
 api_router.include_router(reporting.router)
+api_router.include_router(shares.router)
