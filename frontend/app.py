@@ -35,7 +35,7 @@ pages = {
         st.Page("sections/property_trans.py", title="Manage Property", icon='🚧'),
     ],
     "Common Shares": [
-        st.Page("sections/issue.py", title="Issue Stock", icon='🫴🏻'),
+        st.Page("sections/issue.py", title="Issue/Reissue Stock", icon='📜'),
         st.Page("sections/repurchase.py", title="Stock Repurchase", icon='♻️'),
         st.Page("sections/dividend.py", title="Dividend", icon='💸'),
     ],

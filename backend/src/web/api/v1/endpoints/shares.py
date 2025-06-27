@@ -34,8 +34,8 @@ def list_reissue_from_repur(repur_id: str) -> list[StockIssue]:
     return SharesService.list_reissue_from_repur(repur_id)
 
 @router.get("/issue/get_total_reissue_from_repur")
-def get_total_reissue_from_repur(repur_id: str, rep_dt: date) -> float:
-    return SharesService.get_total_reissue_from_repur(repur_id=repur_id, rep_dt=rep_dt)
+def get_total_reissue_from_repur(repur_id: str, rep_dt: date, exclu_issue_id: str | None = None) -> float:
+    return SharesService.get_total_reissue_from_repur(repur_id=repur_id, rep_dt=rep_dt, exclu_issue_id=exclu_issue_id)
     
 
 @router.post("/issue/add")

@@ -743,6 +743,7 @@ class StockIssueORM(SQLModelWithSort, table=True):
             nullable = False
         )
     )
+    note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class StockRepurchaseORM(SQLModelWithSort, table=True):
     __tablename__ = "stock_repurchase"
@@ -778,6 +779,7 @@ class StockRepurchaseORM(SQLModelWithSort, table=True):
             nullable = False
         )
     )
+    note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class DividendORM(SQLModelWithSort, table=True):
     __tablename__ = "dividend"
@@ -811,3 +813,4 @@ class DividendORM(SQLModelWithSort, table=True):
             nullable = False
         )
     )
+    note: str | None = Field(sa_column=Column(Text(), nullable = True))

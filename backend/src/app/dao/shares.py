@@ -23,7 +23,8 @@ class stockIssueDao:
             reissue_repur_id=stock_issue.reissue_repur_id,
             debit_acct_id=stock_issue.debit_acct_id,
             issue_amt=stock_issue.issue_amt,
-            journal_id=journal_id
+            note=stock_issue.note,
+            journal_id=journal_id,
         )
         
     @classmethod
@@ -37,6 +38,7 @@ class stockIssueDao:
             reissue_repur_id=stock_issue_orm.reissue_repur_id,
             debit_acct_id=stock_issue_orm.debit_acct_id,
             issue_amt=stock_issue_orm.issue_amt,
+            note=stock_issue_orm.note
         )
         
     @classmethod
@@ -112,6 +114,7 @@ class stockIssueDao:
             p.reissue_repur_id = stock_issue_orm.reissue_repur_id
             p.debit_acct_id = stock_issue_orm.debit_acct_id
             p.issue_amt = stock_issue_orm.issue_amt
+            p.note = stock_issue_orm.note
             p.journal_id = journal_id # update to new journal id
             
             try:
@@ -178,10 +181,7 @@ class stockIssueDao:
             )
             total_reissue = s.exec(sql).one() # get the issues
             
-        if total_reissue is None:
-            return 0
-            
-        return total_reissue.total_reissue
+        return total_reissue or 0
     
     
 class stockRepurchaseDao:
@@ -195,6 +195,7 @@ class stockRepurchaseDao:
             repur_price=stock_repur.repur_price,
             credit_acct_id=stock_repur.credit_acct_id,
             repur_amt=stock_repur.repur_amt,
+            note=stock_repur.note,
             journal_id=journal_id
         )
         
@@ -207,6 +208,7 @@ class stockRepurchaseDao:
             repur_price=stock_repur_orm.repur_price,
             credit_acct_id=stock_repur_orm.credit_acct_id,
             repur_amt=stock_repur_orm.repur_amt,
+            note=stock_repur_orm.note
         )
         
     @classmethod
@@ -280,6 +282,7 @@ class stockRepurchaseDao:
             p.repur_price = stock_repur_orm.repur_price
             p.credit_acct_id = stock_repur_orm.credit_acct_id
             p.repur_amt = stock_repur_orm.repur_amt
+            p.note = stock_repur_orm.note
             p.journal_id = journal_id # update to new journal id
             
             try:
@@ -319,6 +322,7 @@ class dividendDao:
             div_dt=dividend.div_dt,
             credit_acct_id=dividend.credit_acct_id,
             div_amt=dividend.div_amt,
+            note=dividend.note,
             journal_id=journal_id
         )
         
@@ -329,6 +333,7 @@ class dividendDao:
             div_dt=div_orm.div_dt,
             credit_acct_id=div_orm.credit_acct_id,
             div_amt=div_orm.div_amt,
+            note=div_orm.note
         )
         
     @classmethod
@@ -400,6 +405,7 @@ class dividendDao:
             p.div_dt = div_orm.div_dt
             p.credit_acct_id = div_orm.credit_acct_id
             p.div_amt = div_orm.div_amt
+            p.note = div_orm.note
             p.journal_id = journal_id # update to new journal id
             
             try:

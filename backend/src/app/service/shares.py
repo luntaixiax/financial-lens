@@ -29,7 +29,8 @@ class SharesService:
             issue_price=5.4,
             reissue_repur_id=None,
             debit_acct_id='acct-fbank',
-            issue_amt=60000
+            issue_amt=60000,
+            note='Issue of 100 shares priced at 5.4'
         )
         repur = StockRepurchase(
             repur_id='sample-repur',
@@ -37,13 +38,15 @@ class SharesService:
             num_shares=20,
             repur_price=12.5,
             credit_acct_id='acct-bank',
-            repur_amt=250
+            repur_amt=250,
+            note='Repurchase of 20 shares priced at 12.5'
         )
         div = Dividend(
             div_id='sample-div',
             div_dt=date(2024, 1, 5),
             credit_acct_id='acct-bank',
-            div_amt=1000
+            div_amt=1000,
+            note='Pay dividend of $1000'
         )
         cls.add_issue(issue)
         cls.add_repur(repur)
@@ -791,11 +794,11 @@ class SharesService:
         return stockIssueDao.list_reissue_from_repur(repur_id)
     
     @classmethod
-    def get_total_reissue_from_repur(cls, repur_id: str, rep_dt: date) -> float:
+    def get_total_reissue_from_repur(cls, repur_id: str, rep_dt: date, exclu_issue_id: str | None = None) -> float:
         return stockIssueDao.get_total_reissue_from_repur(
             repur_id=repur_id,
             rep_dt=rep_dt,
-            exclu_issue_id=None # TODO: review this
+            exclu_issue_id=exclu_issue_id
         )
     
     @classmethod

@@ -1620,8 +1620,265 @@ def delete_property_trans(trans_id: str):
     get_blsh_balance.clear()
     get_incexp_flow.clear()
     list_entry_by_acct.clear()
+
+
+@st.cache_data
+@message_box
+def list_issue(is_reissue: bool = False) -> list[dict]:
+    return get_req(
+        prefix='shares',
+        endpoint='issue/list',
+        params={
+            'is_reissue': is_reissue
+        }
+    )
+    
+@st.cache_data
+@message_box
+def list_reissue_from_repur() -> list[dict]:
+    return get_req(
+        prefix='shares',
+        endpoint='issue/list_reissue_from_repur',
+    )
+    
+@message_box
+def get_total_reissue_from_repur(repur_id: str, rep_dt: date, exclu_issue_id: str | None = None) -> float:
+    return get_req(
+        prefix='shares',
+        endpoint='issue/get_total_reissue_from_repur',
+        params={
+            'repur_id': repur_id,
+            'rep_dt': rep_dt.strftime('%Y-%m-%d'),
+            'exclu_issue_id': exclu_issue_id
+        }
+    )
+    
+@st.cache_data
+@message_box
+def get_issue_journal(issue_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='shares',
+        endpoint=f"issue/get_issue_journal/{issue_id}",
+    )
+    
+@message_box
+def create_journal_from_new_issue(issue: dict) -> dict:
+    return get_req(
+        prefix='shares',
+        endpoint='issue/trial_journal',
+        data=issue
+    )
+    
+@message_box
+def validate_issue(issue: dict) -> dict:
+    return post_req(
+        prefix='shares',
+        endpoint='issue/validate_issue',
+        data=issue
+    )
+    
+@message_box
+def add_issue(issue: dict):
+    post_req(
+        prefix='shares',
+        endpoint='issue/add',
+        data=issue
+    )
+    list_issue.clear()
+    list_reissue_from_repur.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+@message_box
+def update_issue(issue: dict):
+    put_req(
+        prefix='shares',
+        endpoint='issue/update',
+        data=issue
+    )
+
+    list_issue.clear()
+    list_reissue_from_repur.clear()
+    get_issue_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+
+@message_box
+def delete_issue(issue_id: str):
+    delete_req(
+        prefix='shares',
+        endpoint=f'issue/delete/{issue_id}'
+    )
+    list_issue.clear()
+    list_reissue_from_repur.clear()
+    get_issue_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
     
 
+@st.cache_data
+@message_box
+def list_repur() -> list[dict]:
+    return get_req(
+        prefix='shares',
+        endpoint='repur/list',
+    )
+    
+@st.cache_data
+@message_box
+def get_repur_journal(repur_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='shares',
+        endpoint=f"repur/get_repur_journal/{repur_id}",
+    )
+    
+@message_box
+def create_journal_from_new_repur(repur: dict) -> dict:
+    return get_req(
+        prefix='shares',
+        endpoint='repur/trial_journal',
+        data=repur
+    )
+    
+@message_box
+def validate_repur(repur: dict) -> dict:
+    return post_req(
+        prefix='shares',
+        endpoint='repur/validate_repur',
+        data=repur
+    )
+    
+@message_box
+def add_repur(repur: dict):
+    post_req(
+        prefix='shares',
+        endpoint='repur/add',
+        data=repur
+    )
+    list_repur.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+@message_box
+def update_repur(repur: dict):
+    put_req(
+        prefix='shares',
+        endpoint='repur/update',
+        data=repur
+    )
+
+    list_repur.clear()
+    get_repur_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+
+@message_box
+def delete_repur(repur_id: str):
+    delete_req(
+        prefix='shares',
+        endpoint=f'repur/delete/{repur_id}'
+    )
+    list_repur.clear()
+    get_repur_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+
+
+@st.cache_data
+@message_box
+def list_div() -> list[dict]:
+    return get_req(
+        prefix='shares',
+        endpoint='div/list',
+    )
+    
+@st.cache_data
+@message_box
+def get_div_journal(div_id: str) -> Tuple[dict, dict]:
+    return get_req(
+        prefix='shares',
+        endpoint=f"div/get_div_journal/{div_id}",
+    )
+    
+@message_box
+def create_journal_from_new_div(div: dict) -> dict:
+    return get_req(
+        prefix='shares',
+        endpoint='div/trial_journal',
+        data=div
+    )
+    
+@message_box
+def validate_div(div: dict) -> dict:
+    return post_req(
+        prefix='shares',
+        endpoint='div/validate_div',
+        data=div
+    )
+    
+@message_box
+def add_div(div: dict):
+    post_req(
+        prefix='shares',
+        endpoint='div/add',
+        data=div
+    )
+    list_div.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+@message_box
+def update_div(div: dict):
+    put_req(
+        prefix='shares',
+        endpoint='div/update',
+        data=div
+    )
+
+    list_div.clear()
+    get_div_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+
+@message_box
+def delete_div(div_id: str):
+    delete_req(
+        prefix='shares',
+        endpoint=f'div/delete/{div_id}'
+    )
+    list_div.clear()
+    get_div_journal.clear()
+    list_journal.clear()
+    stat_journal_by_src.clear()
+    get_blsh_balance.clear()
+    get_incexp_flow.clear()
+    list_entry_by_acct.clear()
+    
+    
 @message_box
 def tree_balance_sheet(rep_dt: date) -> dict[int, Any]:
     return get_req(

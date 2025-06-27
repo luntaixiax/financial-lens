@@ -38,6 +38,7 @@ class StockIssue(EnhancedBaseModel):
     issue_amt: float = Field(
         description='dollar amount of the new issue, expressed in debit account currency'
     )
+    note: str | None = Field(None)
     
     @model_validator(mode='after')
     def validate_reissue(self):
@@ -74,6 +75,7 @@ class StockRepurchase(EnhancedBaseModel):
     repur_amt: float = Field(
         description='dollar amount of the repurchase, expressed in credit account currency'
     )
+    note: str | None = Field(None)
     
     @computed_field()
     def repur_amt_base(self) -> float:
@@ -98,3 +100,4 @@ class Dividend(EnhancedBaseModel):
     credit_acct_id: str = Field(
         description='Which account pays the dividend, typically asset'
     )
+    note: str | None = Field(None)

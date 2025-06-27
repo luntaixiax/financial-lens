@@ -12,7 +12,8 @@ def sample_issue() -> StockIssue:
         issue_price=5.4,
         reissue_repur_id=None,
         debit_acct_id='acct-fbank',
-        issue_amt=60000
+        issue_amt=60000,
+        note='Issue of 100 shares priced at 5.4'
     )
     return issue
 
@@ -26,7 +27,8 @@ def sample_reissue(sample_repur) -> StockIssue:
         issue_price=5.4,
         reissue_repur_id=sample_repur.repur_id,
         debit_acct_id='acct-fbank',
-        issue_amt=60000
+        issue_amt=60000,
+        note='Reissue of 10 shares priced at 5.4'
     )
     return reissue
 
@@ -38,7 +40,8 @@ def sample_repur() -> StockRepurchase:
         num_shares=20,
         repur_price=12.5,
         credit_acct_id='acct-bank',
-        repur_amt=250
+        repur_amt=250,
+        note='Repurchase of 20 shares priced at 12.5'
     )
     return repur
     
@@ -48,6 +51,7 @@ def sample_div() -> Dividend:
         div_id='sample-div',
         div_dt=date(2024, 1, 5),
         credit_acct_id='acct-bank',
-        div_amt=1000
+        div_amt=1000,
+        note='Pay dividend of $1000'
     )
     return div
