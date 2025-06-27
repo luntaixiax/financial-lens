@@ -10,7 +10,8 @@ from datetime import datetime, date
 from utils.tools import DropdownSelect, display_number
 from utils.exceptions import NotExistError
 from utils.enums import AcctType, CurType, EntryType, JournalSrc
-from utils.apis import add_repur, create_journal_from_new_repur, delete_repur, get_account, get_accounts_by_type, get_all_accounts, get_base_currency, get_comp_contact, \
+from utils.apis import add_repur, create_journal_from_new_repur, delete_repur, get_account, get_accounts_by_type, get_all_accounts, \
+    get_base_currency, get_comp_contact, list_reissue_from_repur, \
     get_repur_journal, get_logo, list_repur, update_repur, validate_repur
     
     
@@ -179,6 +180,23 @@ if edit_mode == 'Edit':
         if  _row_list := selected['selection']['rows']:
             rep_id_sel = repurs[_row_list[0]]['repur_id']
             repur_sel, jrn_sel = get_repur_journal(rep_id_sel)
+            
+            # display related reissue
+            reissues = list_reissue_from_repur(rep_id_sel)
+            if len(reissues) > 0:
+                reissue_disp = [{
+                    'Issue ID': r['issue_id'],
+                    'Issue Date': r['issue_dt'],
+                    '# of Shares': r['num_shares'],
+                    'Reissue Price': r['issue_price']
+                } for r in reissues]
+                
+                st.markdown('**Reissue History**')
+                ui.table(pd.DataFrame.from_records(reissue_disp))
+                
+            else:
+                st.info(f"No reissue found for this stock repurchase", icon='😆')
+            
             
             badge_cols = st.columns([1, 2])
             with badge_cols[0]:

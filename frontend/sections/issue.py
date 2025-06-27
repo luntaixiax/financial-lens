@@ -256,7 +256,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
                     options=dds_repurs.options,
                     key='repur_select',
                     index=dds_repurs.get_idx_from_id(issue_sel['reissue_repur_id']),
-                    disabled=False,
+                    disabled=(edit_mode == 'Edit'),
                     on_change=reset_validate
                 )
             
@@ -270,12 +270,13 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
             
         treasury_info = [
             {
-                'Batch id': repur_id,
+                'Batch ID': repur_id,
                 f'Cost': f"{base_cur_name} {repur['repur_price']:,.2f}",
                 '# of Shares': repur['num_shares'],
                 'Available': repur['num_shares'] - total_reissued
             }
         ]
+        st.markdown(f'**Treasury Stock Summary**')
         ui.table(pd.DataFrame.from_records(treasury_info))
     
     iss_cols = st.columns(2)

@@ -1635,10 +1635,13 @@ def list_issue(is_reissue: bool = False) -> list[dict]:
     
 @st.cache_data
 @message_box
-def list_reissue_from_repur() -> list[dict]:
+def list_reissue_from_repur(repur_id: str) -> list[dict]:
     return get_req(
         prefix='shares',
         endpoint='issue/list_reissue_from_repur',
+        params={
+            'repur_id': repur_id
+        }
     )
     
 @message_box
