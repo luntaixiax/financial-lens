@@ -688,3 +688,129 @@ class PropertyTransactionORM(SQLModelWithSort, table=True):
             nullable = False
         )
     )
+    
+
+class StockIssueORM(SQLModelWithSort, table=True):
+    __tablename__ = "stock_issue"
+    
+    issue_id: str = Field(
+        sa_column=Column(String(length = 15), primary_key = True, nullable = False)
+    )
+    issue_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    is_reissue: bool = Field(
+        sa_column=Column(
+            Boolean(create_constraint=True), 
+            default = False, 
+            nullable = False
+        )
+    )
+    num_shares: float = Field(sa_column=Column(DECIMAL(17, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    issue_price: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    reissue_repur_id: str | None = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'stock_repurchase.repur_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = True
+        )
+    )
+    debit_acct_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'accounts.acct_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    issue_amt: float = Field(sa_column=Column(DECIMAL(17, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    journal_id: str = Field(
+        sa_column=Column(
+            String(length = 20),
+            ForeignKey(
+                'journals.journal_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT' # TODO: review this
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    note: str | None = Field(sa_column=Column(Text(), nullable = True))
+    
+class StockRepurchaseORM(SQLModelWithSort, table=True):
+    __tablename__ = "stock_repurchase"
+    
+    repur_id: str = Field(
+        sa_column=Column(String(length = 15), primary_key = True, nullable = False)
+    )
+    repur_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    num_shares: float = Field(sa_column=Column(DECIMAL(17, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    repur_price: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    credit_acct_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'accounts.acct_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    repur_amt: float = Field(sa_column=Column(DECIMAL(17, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    journal_id: str = Field(
+        sa_column=Column(
+            String(length = 20),
+            ForeignKey(
+                'journals.journal_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT' # TODO: review this
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    note: str | None = Field(sa_column=Column(Text(), nullable = True))
+    
+class DividendORM(SQLModelWithSort, table=True):
+    __tablename__ = "dividend"
+    
+    div_id: str = Field(
+        sa_column=Column(String(length = 15), primary_key = True, nullable = False)
+    )
+    div_dt: date = Field(sa_column=Column(Date(), nullable = False))
+    div_amt: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    credit_acct_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'accounts.acct_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    journal_id: str = Field(
+        sa_column=Column(
+            String(length = 20),
+            ForeignKey(
+                'journals.journal_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT' # TODO: review this
+            ),
+            primary_key = False, 
+            nullable = False
+        )
+    )
+    note: str | None = Field(sa_column=Column(Text(), nullable = True))

@@ -49,6 +49,14 @@ def get_default_tax_rate() -> float:
 @router.post("/set_default_tax_rate")
 def set_default_tax_rate(default_tax_rate: float):
     SettingService.set_default_tax_rate(default_tax_rate)
+    
+@router.get("/get_par_share_price")
+def get_par_share_price() -> float:
+    return SettingService.get_par_share_price()
+
+@router.post("/set_par_share_price")
+def set_par_share_price(par_share_price: float):
+    SettingService.set_par_share_price(par_share_price)
 
 @router.post("/set_logo")
 def set_logo(logo: UploadFile = File(...)):

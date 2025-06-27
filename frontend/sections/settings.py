@@ -8,7 +8,7 @@ from utils.enums import CurType
 from utils.tools import DropdownSelect
 from utils.apis import set_logo, get_logo, list_country, list_state, list_city, \
     upsert_comp_contact, get_comp_contact, is_setup, get_base_currency, set_base_currency, \
-    get_default_tax_rate, set_default_tax_rate, initiate
+    get_default_tax_rate, set_default_tax_rate, get_par_share_price, set_par_share_price, initiate
     
 st.set_page_config(layout="centered")
 
@@ -179,6 +179,7 @@ is_set = is_setup()
 
 current_base_cur = get_base_currency(ignore_error=True) or CurType.USD.value
 current_default_tax_rate = get_default_tax_rate(ignore_error=True) or 0.13
+current_par_share_price = get_par_share_price(ignore_error=True) or 0.01
 
 st.toggle(
     label = 'Is Setup Already?',
@@ -211,6 +212,15 @@ with acct_cols[1]:
         value=current_default_tax_rate * 100
     )
 
+with acct_cols[0]:
+    par_share_price = st.number_input(
+        label=f'Par Shar Price ({CurType[base_cur].name})',
+        min_value=0.0,
+        step=0.01,
+        value=current_par_share_price,
+        disabled=is_set,
+    )
+    
 if is_set:
     st.button(
         label='Update Default Settings',
@@ -227,6 +237,7 @@ else:
         on_click=initiate,
         kwargs=dict(
             base_cur=CurType[base_cur].value,
-            default_tax_rate=default_tax_rate / 100
+            default_tax_rate=default_tax_rate / 100,
+            par_share_price=par_share_price
         )
     )

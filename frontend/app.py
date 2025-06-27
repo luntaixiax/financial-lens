@@ -34,6 +34,11 @@ pages = {
         st.Page("sections/property.py", title="Buy Property", icon='🏠'),
         st.Page("sections/property_trans.py", title="Manage Property", icon='🚧'),
     ],
+    "Common Shares": [
+        st.Page("sections/issue.py", title="Issue/Reissue Stock", icon='📜'),
+        st.Page("sections/repurchase.py", title="Stock Repurchase", icon='♻️'),
+        st.Page("sections/dividend.py", title="Dividend", icon='💸'),
+    ],
     "Reporting": [
         st.Page("sections/balance_sheet.py", title="Balance Sheet", icon='⚖️'),
         st.Page("sections/income_statement.py", title="Income Statement", icon='💰'),

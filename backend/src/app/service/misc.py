@@ -150,6 +150,26 @@ class SettingService:
         cls.set_config_value('default_tax_rate', default_tax_rate)
         
     @classmethod
+    def get_par_share_price(cls) -> float:
+        par_share_price = cls.get_config_value('par_share_price')
+        if par_share_price is None:
+            raise NotExistError("Par share price not set yet")
+        return par_share_price
+    
+    @classmethod
+    def set_par_share_price(cls, par_share_price: float):
+        try:
+            par_share_price = cls.get_par_share_price()
+        except NotExistError:
+            cls.set_config_value('par_share_price', par_share_price)
+        else:
+            if cls.is_setup():
+                raise OpNotPermittedError(f"Account already setup, cannot change par share price")
+            else:
+                # still want to set if setup is not finalized yet
+                cls.set_config_value('par_share_price', par_share_price)
+        
+    @classmethod
     def get_static_server_path(cls) -> str:
         secret = get_secret()['static_server']
         return f"http://{secret['hostname']}:{secret['port']}"
