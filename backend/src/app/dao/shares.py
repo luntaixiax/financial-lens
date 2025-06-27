@@ -253,13 +253,13 @@ class stockRepurchaseDao:
                 s.refresh(p) # update p to instantly have new values
                 
     @classmethod
-    def list_issues(cls) -> list[StockRepurchase]:
+    def list_repurs(cls) -> list[StockRepurchase]:
         with Session(get_engine()) as s:
 
             # get stock_repur
             sql = select(StockRepurchaseORM)
             try:
-                stock_repur_orms = s.exec(sql).all() # get the issues
+                stock_repur_orms = s.exec(sql).all() # get the repurchases
             except NoResultFound as e:
                 return []
             
@@ -373,13 +373,13 @@ class dividendDao:
                 s.refresh(p) # update p to instantly have new values
                 
     @classmethod
-    def list_issues(cls) -> list[Dividend]:
+    def list_divs(cls) -> list[Dividend]:
         with Session(get_engine()) as s:
 
             # get dividend
             sql = select(DividendORM)
             try:
-                div_orms = s.exec(sql).all() # get the issues
+                div_orms = s.exec(sql).all() # get the dividends
             except NoResultFound as e:
                 return []
             

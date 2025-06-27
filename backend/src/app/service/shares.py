@@ -2,13 +2,16 @@
 
 from datetime import date
 import math
+from typing import Tuple
 
+from src.app.service.journal import JournalService
+from src.app.dao.shares import dividendDao, stockIssueDao, stockRepurchaseDao
 from src.app.service.fx import FxService
 from src.app.model.const import SystemAcctNumber
 from src.app.model.journal import Entry, Journal
 from src.app.model.enums import AcctType, EntryType, JournalSrc
 from src.app.utils.tools import get_base_cur
-from src.app.model.exceptions import FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
 from src.app.service.acct import AcctService
 from src.app.model.accounts import Account
 from src.app.model.shares import Dividend, StockIssue, StockRepurchase
@@ -214,12 +217,538 @@ class SharesService:
             jrn_date=issue.issue_dt,
             entries=entries,
             jrn_src=JournalSrc.SHARE,
-            note="Issuing new stocks" if issue.is_reissue == False else "Reissue repurchased stocks"
+            note=f"Issuing new stocks @{get_base_cur()}{issue.issue_price} for {issue.num_shares} shares" \
+            if issue.is_reissue == False \
+            else f"Reissue repurchased stocks @{get_base_cur()}{issue.issue_price} for {issue.num_shares} shares"
         )
         journal.reduce_entries()
         return journal
     
+    @classmethod
+    def create_journal_from_repur(cls, repur: StockRepurchase) -> Journal:
+        cls._validate_repur(repur)
         
+        entries = []
+        credit_acct: Account = AcctService.get_account(
+            repur.credit_acct_id
+        )
         
+        # debit the treasury stock account
+        treasury_entry = Entry(
+            entry_type=EntryType.DEBIT, # repurchase is debit entry to treasury stock
+            acct=AcctService.get_account(SystemAcctNumber.TREASURY_STOCK),
+            cur_incexp=None, # balance sheet item should not have currency
+            amount=repur.repur_amt_base, # amount in raw currency
+            # amount in base currency
+            amount_base=repur.repur_amt_base,
+            description=f"Treasury stock at price={repur.repur_price}"
+        )
+        entries.append(treasury_entry)
+        
+        # credit the account paying the repurchase
+        if credit_acct.currency != get_base_cur():
+            amount_base=FxService.convert_to_base(
+                amount=repur.repur_amt,
+                src_currency=credit_acct.currency, # receive currency
+                cur_dt=repur.repurchase_dt, # convert fx at repurchase date
+            )
+            credit_entry = Entry(
+                entry_type=EntryType.CREDIT, # paying fund is credit entry
+                acct=credit_acct,
+                cur_incexp=None, # balance sheet item should not have currency
+                amount=repur.repur_amt,
+                # amount in base currency
+                amount_base=amount_base,
+                description=f"Paying fund"
+            )
             
+            # if using different currency, less paid is fx gain
+            gain = repur.repur_amt_base - amount_base
+            fx_gain = Entry(
+                entry_type=EntryType.CREDIT, # fx gain is credit
+                acct=AcctService.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
+                cur_incexp=get_base_cur(),
+                amount=gain, # gain is already expressed in base currency
+                amount_base=gain, # gain is already expressed in base currency
+                description='fx gain' if gain >=0 else 'fx loss'
+            )
+            entries.append(fx_gain)
+            
+        else:
+            credit_entry = Entry(
+                entry_type=EntryType.CREDIT, # paying fund is credit entry
+                acct=credit_acct,
+                cur_incexp=None, # balance sheet item should not have currency
+                amount=repur.repur_amt,
+                # amount in base currency
+                amount_base=repur.repur_amt,
+                description=f"Paying fund"
+            )
+            
+        entries.append(credit_entry)
         
+        # create journal
+        journal = Journal(
+            jrn_date=repur.repurchase_dt,
+            entries=entries,
+            jrn_src=JournalSrc.SHARE,
+            note=f"Repurchasing stock @{get_base_cur()}{repur.repur_price} for {repur.num_shares} shares"
+        )
+        journal.reduce_entries()
+        return journal
+    
+    @classmethod
+    def create_journal_from_div(cls, div: Dividend) -> Journal:
+        cls._validate_div(div)
+        
+        entries = []
+        credit_acct: Account = AcctService.get_account(
+            div.credit_acct_id
+        )
+        
+        # debit the accum. dividend account
+        amount_base=FxService.convert_to_base(
+            amount=div.div_amt,
+            src_currency=credit_acct.currency, # paying currency
+            cur_dt=div.div_dt, # convert fx at dividend date
+        )
+        div_entry = Entry(
+            entry_type=EntryType.DEBIT, # dividend is debit entry
+            acct=AcctService.get_account(SystemAcctNumber.TREASURY_STOCK),
+            cur_incexp=None, # balance sheet item should not have currency
+            amount=amount_base, # amount in base currency
+            # amount in base currency
+            amount_base=amount_base,
+            description=f"announced dividend"
+        )
+        entries.append(div_entry)
+        
+        # credit the paying account
+        credit_entry = Entry(
+            entry_type=EntryType.CREDIT, # paying fund is credit entry
+            acct=credit_acct,
+            cur_incexp=None, # balance sheet item should not have currency
+            amount=div.div_amt,
+            # amount in base currency
+            amount_base=amount_base,
+            description=f"paying dividend"
+        )
+        entries.append(credit_entry)
+        
+        # create journal
+        journal = Journal(
+            jrn_date=div.div_dt,
+            entries=entries,
+            jrn_src=JournalSrc.SHARE,
+            note=f"Paying dividend"
+        )
+        journal.reduce_entries()
+        return journal
+    
+    @classmethod
+    def add_issue(cls, issue: StockIssue):
+        # see if issue already exist
+        try:
+            _issue, _jrn_id  = stockIssueDao.get(issue.issue_id)
+        except NotExistError as e:
+            # if not exist, can safely create it
+            # validate it first
+            cls._validate_issue(issue)
+            
+            # add journal first
+            journal = cls.create_journal_from_issue(issue)
+            try:
+                JournalService.add_journal(journal)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Some component of journal does not exist: {journal}',
+                    details=e.details
+                )
+                
+            # add issue
+            try:
+                stockIssueDao.add(journal_id = journal.journal_id, stock_issue = issue)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Some component of issue does not exist: {issue}',
+                    details=e.details
+                )
+            except AlreadyExistError as e:
+                raise AlreadyExistError(
+                    f'StockIssue already exist, change one please',
+                    details=f"{issue}"
+                )
+            
+        else:
+            raise AlreadyExistError(
+                f"StockIssue id {issue.issue_id} already exist",
+                details=f"StockIssue: {_issue}, journal_id: {_jrn_id}"
+            )
+            
+    @classmethod
+    def add_repur(cls, repur: StockRepurchase):
+        # see if repur already exist
+        try:
+            _repur, _jrn_id  = stockRepurchaseDao.get(repur.repur_id)
+        except NotExistError as e:
+            # if not exist, can safely create it
+            # validate it first
+            cls._validate_repur(repur)
+            
+            # add journal first
+            journal = cls.create_journal_from_repur(repur)
+            try:
+                JournalService.add_journal(journal)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Some component of journal does not exist: {journal}',
+                    details=e.details
+                )
+                
+            # add repur
+            try:
+                stockRepurchaseDao.add(journal_id = journal.journal_id, stock_repur = repur)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Some component of repur does not exist: {repur}',
+                    details=e.details
+                )
+            except AlreadyExistError as e:
+                raise AlreadyExistError(
+                    f'StockRepurchase already exist, change one please',
+                    details=f"{repur}"
+                )
+            
+        else:
+            raise AlreadyExistError(
+                f"StockRepurchase id {repur.repur_id} already exist",
+                details=f"StockRepurchase: {_repur}, journal_id: {_jrn_id}"
+            )
+            
+    @classmethod
+    def add_div(cls, div: Dividend):
+        # see if div already exist
+        try:
+            _div, _jrn_id  = dividendDao.get(div.div_id)
+        except NotExistError as e:
+            # if not exist, can safely create it
+            # validate it first
+            cls._validate_div(div)
+            
+            # add journal first
+            journal = cls.create_journal_from_div(div)
+            try:
+                JournalService.add_journal(journal)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Some component of journal does not exist: {journal}',
+                    details=e.details
+                )
+                
+            # add div
+            try:
+                dividendDao.add(journal_id = journal.journal_id, dividend = div)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Some component of div does not exist: {div}',
+                    details=e.details
+                )
+            except AlreadyExistError as e:
+                raise AlreadyExistError(
+                    f'Dividend already exist, change one please',
+                    details=f"{div}"
+                )
+            
+        else:
+            raise AlreadyExistError(
+                f"Dividend id {div.div_id} already exist",
+                details=f"Dividend: {_div}, journal_id: {_jrn_id}"
+            )
+            
+    @classmethod
+    def get_issue_journal(cls, issue_id: str) -> Tuple[StockIssue, Journal]:
+        try:
+            stock_issue, jrn_id = stockIssueDao.get(issue_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'StockIssue id {issue_id} does not exist',
+                details=e.details
+            )
+        
+        # get journal
+        try:
+            journal = JournalService.get_journal(jrn_id)
+        except NotExistError as e:
+            # TODO: raise error or add missing journal?
+            # if not exist, add journal
+            journal = cls.create_journal_from_issue(stock_issue)
+            try:
+                JournalService.add_journal(journal)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Trying to add journal but failed, some component of journal does not exist: {journal}',
+                    details=e.details
+                )
+        
+        return stock_issue, journal
+    
+    @classmethod
+    def get_repur_journal(cls, repur_id: str) -> Tuple[StockRepurchase, Journal]:
+        try:
+            stock_repur, jrn_id = stockRepurchaseDao.get(repur_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'StockRepurchase id {repur_id} does not exist',
+                details=e.details
+            )
+        
+        # get journal
+        try:
+            journal = JournalService.get_journal(jrn_id)
+        except NotExistError as e:
+            # TODO: raise error or add missing journal?
+            # if not exist, add journal
+            journal = cls.create_journal_from_repur(stock_repur)
+            try:
+                JournalService.add_journal(journal)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Trying to add journal but failed, some component of journal does not exist: {journal}',
+                    details=e.details
+                )
+        
+        return stock_repur, journal
+    
+    @classmethod
+    def get_div_journal(cls, div_id: str) -> Tuple[Dividend, Journal]:
+        try:
+            dividend, jrn_id = dividendDao.get(div_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Dividend id {div_id} does not exist',
+                details=e.details
+            )
+        
+        # get journal
+        try:
+            journal = JournalService.get_journal(jrn_id)
+        except NotExistError as e:
+            # TODO: raise error or add missing journal?
+            # if not exist, add journal
+            journal = cls.create_journal_from_div(dividend)
+            try:
+                JournalService.add_journal(journal)
+            except FKNotExistError as e:
+                raise FKNotExistError(
+                    f'Trying to add journal but failed, some component of journal does not exist: {journal}',
+                    details=e.details
+                )
+        
+        return dividend, journal
+    
+    @classmethod
+    def delete_issue(cls, issue_id: str):
+        # remove journal first
+        # get journal
+        try:
+            issue, jrn_id  = stockIssueDao.get(issue_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Issue id {issue_id} does not exist',
+                details=e.details
+            )
+            
+        # remove issue first
+        stockIssueDao.remove(issue_id)
+        
+        # then remove journal
+        try:
+            JournalService.delete_journal(jrn_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Delete journal failed, some component depends on the journal id {jrn_id}",
+                details=e.details
+            )
+            
+    @classmethod
+    def delete_repur(cls, repur_id: str):
+        # remove journal first
+        # get journal
+        try:
+            repur, jrn_id  = stockRepurchaseDao.get(repur_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Repurchase id {repur_id} does not exist',
+                details=e.details
+            )
+            
+        # remove repur first
+        stockRepurchaseDao.remove(repur_id)
+        
+        # then remove journal
+        try:
+            JournalService.delete_journal(jrn_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Delete journal failed, some component depends on the journal id {jrn_id}",
+                details=e.details
+            )
+            
+    @classmethod
+    def delete_div(cls, div_id: str):
+        # remove journal first
+        # get journal
+        try:
+            div, jrn_id  = dividendDao.get(div_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Dividend id {div_id} does not exist',
+                details=e.details
+            )
+            
+        # remove div first
+        dividendDao.remove(div_id)
+        
+        # then remove journal
+        try:
+            JournalService.delete_journal(jrn_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Delete journal failed, some component depends on the journal id {jrn_id}",
+                details=e.details
+            )
+            
+    @classmethod
+    def update_issue(cls, issue: StockIssue):
+        cls._validate_issue(issue)
+        # only delete if validation passed
+        
+        # get existing journal id
+        try:
+            _issue, jrn_id  = stockIssueDao.get(issue.issue_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'StockIssue id {_issue.issue_id} does not exist',
+                details=e.details
+            )
+        
+        # add new journal first
+        journal = cls.create_journal_from_issue(issue)
+        try:
+            JournalService.add_journal(journal)
+        except FKNotExistError as e:
+            raise FKNotExistError(
+                f'Some component of journal does not exist: {journal}',
+                details=e.details
+            )
+        
+        # update issue
+        try:
+            stockIssueDao.update(
+                journal_id=journal.journal_id, # use new journal id
+                stock_issue=issue
+            )
+        except FKNotExistError as e:
+            # need to remove the new journal
+            JournalService.delete_journal(journal.journal_id)
+            raise FKNotExistError(
+                f"StockIssue element does not exist",
+                details=e.details
+            )
+        
+        # remove old journal
+        JournalService.delete_journal(jrn_id)
+        
+    @classmethod
+    def update_repur(cls, repur: StockRepurchase):
+        cls._validate_repur(repur)
+        # only delete if validation passed
+        
+        # get existing journal id
+        try:
+            _repur, jrn_id  = stockRepurchaseDao.get(repur.repur_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'StockRepurchase id {_repur.repur_id} does not exist',
+                details=e.details
+            )
+        
+        # add new journal first
+        journal = cls.create_journal_from_repur(repur)
+        try:
+            JournalService.add_journal(journal)
+        except FKNotExistError as e:
+            raise FKNotExistError(
+                f'Some component of journal does not exist: {journal}',
+                details=e.details
+            )
+        
+        # update repur
+        try:
+            stockRepurchaseDao.update(
+                journal_id=journal.journal_id, # use new journal id
+                stock_repur=repur
+            )
+        except FKNotExistError as e:
+            # need to remove the new journal
+            JournalService.delete_journal(journal.journal_id)
+            raise FKNotExistError(
+                f"StockRepurchase element does not exist",
+                details=e.details
+            )
+        
+        # remove old journal
+        JournalService.delete_journal(jrn_id)
+        
+    @classmethod
+    def update_div(cls, div: Dividend):
+        cls._validate_div(div)
+        # only delete if validation passed
+        
+        # get existing journal id
+        try:
+            _div, jrn_id  = dividendDao.get(div.div_id)
+        except NotExistError as e:
+            raise NotExistError(
+                f'Dividend id {_div.div_id} does not exist',
+                details=e.details
+            )
+        
+        # add new journal first
+        journal = cls.create_journal_from_div(div)
+        try:
+            JournalService.add_journal(journal)
+        except FKNotExistError as e:
+            raise FKNotExistError(
+                f'Some component of journal does not exist: {journal}',
+                details=e.details
+            )
+        
+        # update div
+        try:
+            dividendDao.update(
+                journal_id=journal.journal_id, # use new journal id
+                dividend=div
+            )
+        except FKNotExistError as e:
+            # need to remove the new journal
+            JournalService.delete_journal(journal.journal_id)
+            raise FKNotExistError(
+                f"Dividend element does not exist",
+                details=e.details
+            )
+        
+        # remove old journal
+        JournalService.delete_journal(jrn_id)
+        
+    @classmethod
+    def list_issues(cls) -> list[StockIssue]:
+        return stockIssueDao.list_issues()
+    
+    @classmethod
+    def list_repurs(cls) -> list[StockRepurchase]:
+        return stockRepurchaseDao.list_repurs()
+    
+    @classmethod
+    def list_divs(cls) -> list[Dividend]:
+        return dividendDao.list_divs()
