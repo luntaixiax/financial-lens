@@ -20,7 +20,7 @@ class stockIssueDao:
             is_reissue=stock_issue.is_reissue,
             num_shares=stock_issue.num_shares,
             issue_price=stock_issue.issue_price,
-            cost_price=stock_issue.cost_price,
+            reissue_repur_id=stock_issue.reissue_repur_id,
             debit_acct_id=stock_issue.debit_acct_id,
             issue_amt=stock_issue.issue_amt,
             journal_id=journal_id
@@ -34,7 +34,7 @@ class stockIssueDao:
             is_reissue=stock_issue_orm.is_reissue,
             num_shares=stock_issue_orm.num_shares,
             issue_price=stock_issue_orm.issue_price,
-            cost_price=stock_issue_orm.cost_price,
+            reissue_repur_id=stock_issue_orm.reissue_repur_id,
             debit_acct_id=stock_issue_orm.debit_acct_id,
             issue_amt=stock_issue_orm.issue_amt,
         )
@@ -109,7 +109,7 @@ class stockIssueDao:
             p.is_reissue = stock_issue_orm.is_reissue
             p.num_shares = stock_issue_orm.num_shares
             p.issue_price = stock_issue_orm.issue_price
-            p.cost_price = stock_issue_orm.cost_price
+            p.reissue_repur_id = stock_issue_orm.reissue_repur_id
             p.debit_acct_id = stock_issue_orm.debit_acct_id
             p.issue_amt = stock_issue_orm.issue_amt
             p.journal_id = journal_id # update to new journal id
@@ -126,11 +126,11 @@ class stockIssueDao:
                 s.refresh(p) # update p to instantly have new values
                 
     @classmethod
-    def list_issues(cls) -> list[StockIssue]:
+    def list_issues(cls, is_reissue: bool = False) -> list[StockIssue]:
         with Session(get_engine()) as s:
 
             # get stock_issue
-            sql = select(StockIssueORM)
+            sql = select(StockIssueORM).where(StockIssueORM.is_reissue == is_reissue)
             try:
                 stock_issue_orms = s.exec(sql).all() # get the issues
             except NoResultFound as e:
@@ -141,6 +141,47 @@ class stockIssueDao:
             ) for stock_issue_orm in stock_issue_orms]
             
         return stock_issues
+    
+    @classmethod
+    def list_reissue_from_repur(cls, repur_id: str) -> list[StockIssue]:
+        with Session(get_engine()) as s:
+
+            # get stock_issue
+            sql = select(StockIssueORM).where(
+                StockIssueORM.is_reissue == True,
+                StockIssueORM.reissue_repur_id == repur_id
+            )
+            try:
+                stock_issue_orms = s.exec(sql).all() # get the issues
+            except NoResultFound as e:
+                return []
+            
+            stock_issues = [cls.toStockIssue(
+                stock_issue_orm=stock_issue_orm,
+            ) for stock_issue_orm in stock_issue_orms]
+            
+        return stock_issues
+    
+    @classmethod
+    def get_total_reissue_from_repur(cls, repur_id: str, rep_dt: date, exclu_issue_id: str | None = None) -> float:
+        # need to exclude self issue id in counting
+        with Session(get_engine()) as s:
+
+            # get stock_issue
+            sql = select(
+                f.sum(StockIssueORM.num_shares).label('total_reissue')
+            ).where(
+                StockIssueORM.is_reissue == True,
+                StockIssueORM.reissue_repur_id == repur_id,
+                StockIssueORM.issue_dt <= rep_dt,
+                StockIssueORM.issue_id != exclu_issue_id
+            )
+            total_reissue = s.exec(sql).one() # get the issues
+            
+        if total_reissue is None:
+            return 0
+            
+        return total_reissue.total_reissue
     
     
 class stockRepurchaseDao:

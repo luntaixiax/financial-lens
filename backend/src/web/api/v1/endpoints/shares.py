@@ -26,8 +26,13 @@ def get_issue_journal(issue_id: str) -> Tuple[StockIssue, Journal]:
     return SharesService.get_issue_journal(issue_id=issue_id)
 
 @router.get("/issue/list")
-def list_issue() -> list[StockIssue]:
-    return SharesService.list_issues()
+def list_issue(is_reissue: bool = False) -> list[StockIssue]:
+    return SharesService.list_issues(is_reissue)
+
+@router.get("/issue/list_reissue_from_repur")
+def list_reissue_from_repur(repur_id: str) -> list[StockIssue]:
+    return SharesService.list_reissue_from_repur(repur_id)
+    
 
 @router.post("/issue/add")
 def add_issue(issue: StockIssue):

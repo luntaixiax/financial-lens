@@ -10,7 +10,7 @@ from src.app.service.fx import FxService
 from src.app.model.const import SystemAcctNumber
 from src.app.model.journal import Entry, Journal
 from src.app.model.enums import AcctType, EntryType, JournalSrc
-from src.app.utils.tools import get_base_cur, get_par_share_price
+from src.app.utils.tools import finround, get_base_cur, get_par_share_price
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
 from src.app.service.acct import AcctService
 from src.app.model.accounts import Account
@@ -27,7 +27,7 @@ class SharesService:
             is_reissue = False,
             num_shares=100,
             issue_price=5.4,
-            cost_price=0.01,
+            reissue_repur_id=None,
             debit_acct_id='acct-fbank',
             issue_amt=60000
         )
@@ -59,14 +59,36 @@ class SharesService:
     def _validate_issue(cls, issue: StockIssue) -> StockIssue:
         # TODO: if reissue, need to check if num_shares <= total repurchased shares
         if issue.is_reissue:
-            pass
-        else:
-            # need to use par value as issue cost
-            if not math.isclose(issue.cost_price, get_par_share_price()):
-                raise NotMatchWithSystemError(
-                    message='New stock should be issued with cost price=par value',
-                    details=f"cost={issue.cost_price} while par value set at ({get_par_share_price()})"
+            # check if reissue id exist
+            try:
+                repur, jrn = cls.get_repur_journal(issue.reissue_repur_id)
+            except NotExistError as e:
+                raise NotExistError(
+                    message=f'Repurchase id {issue.reissue_repur_id} not found for reissue',
+                    details=e.details
                 )
+            else:
+                # verify if reissue is after repurchase
+                if issue.issue_dt < repur.repurchase_dt:
+                    raise OpNotPermittedError(
+                        message="Cannot reissue stock before that batch of stock being repurchased",
+                        details=f"issue date: {issue.issue_dt} while repurchased at {repur.repurchase_dt}"
+                    )
+                
+                # verify if issue # of stock is less than remaining repurchased shares
+                total_reissued_excl_self = stockIssueDao.get_total_reissue_from_repur(
+                    repur_id=issue.reissue_repur_id,
+                    rep_dt=issue.issue_dt, # reissue on and before this date
+                    exclu_issue_id=issue.issue_id  # exclude itself to avoid recursive counting
+                ) # already reissued before given date
+                # remaining treasury stock available for that batch of repurchase
+                remaining_for_reissue = repur.num_shares - total_reissued_excl_self
+                
+                if issue.num_shares > remaining_for_reissue:
+                    raise OpNotPermittedError(
+                        message=f"You can only reissue remaining repurchased stock for batch {issue.reissue_repur_id}",
+                        details=f"total repurchased={repur.num_shares}, already issued={total_reissued_excl_self}, remaining={remaining_for_reissue} while you ask for {issue.num_shares}"
+                    )
         
         # check if debit_acct_id exists
         try:
@@ -152,29 +174,34 @@ class SharesService:
         )
         # credit common stock / treasury stock
         if issue.is_reissue:
+            repur, _ = cls.get_repur_journal(issue.reissue_repur_id)
+            cost_price = repur.repur_price # using cost method, cost is repurchase price
             credit_acct = AcctService.get_account(SystemAcctNumber.TREASURY_STOCK)
-            description=f"Reissue Treasy stock at cost={issue.cost_price}"
+            description=f"Reissue Treasy stock at cost={cost_price}"
         else:
+            cost_price = get_par_share_price()
             credit_acct = AcctService.get_account(SystemAcctNumber.CONTR_CAP)
-            description=f"Common stock at par value={issue.cost_price}"
-
+            description=f"Common stock at par value={cost_price}"
+            
+        issue_cost_base = finround(cost_price * issue.num_shares)
         common_entry = Entry(
             entry_type=EntryType.CREDIT, # common stock is credit entry
             acct=credit_acct,
             cur_incexp=None, # balance sheet item should not have currency
-            amount=issue.issue_cost_base, # amount in raw currency
+            amount=issue_cost_base, # amount in raw currency
             # amount in base currency
-            amount_base=issue.issue_cost_base,
+            amount_base=issue_cost_base,
             description=description,
         )
         # credit additional paid in capital
+        issue_premium_base = issue.issue_amt_base - issue_cost_base
         add_entry = Entry(
             entry_type=EntryType.CREDIT, # additional paid in stock is credit entry
             acct=AcctService.get_account(SystemAcctNumber.ADD_PAID_IN),
             cur_incexp=None, # balance sheet item should not have currency
-            amount=issue.issue_premium_base, # amount in raw currency
+            amount=issue_premium_base, # amount in raw currency
             # amount in base currency
-            amount_base=issue.issue_premium_base,
+            amount_base=issue_premium_base,
             description=f"Additional paid in premium"
         )
         entries.append(common_entry)
@@ -753,10 +780,15 @@ class SharesService:
         
         # remove old journal
         JournalService.delete_journal(jrn_id)
+    
         
     @classmethod
-    def list_issues(cls) -> list[StockIssue]:
-        return stockIssueDao.list_issues()
+    def list_issues(cls, is_reissue: bool = False) -> list[StockIssue]:
+        return stockIssueDao.list_issues(is_reissue=is_reissue)
+    
+    @classmethod
+    def list_reissue_from_repur(cls, repur_id: str) -> list[StockIssue]:
+        return stockIssueDao.list_reissue_from_repur(repur_id)
     
     @classmethod
     def list_repurs(cls) -> list[StockRepurchase]:

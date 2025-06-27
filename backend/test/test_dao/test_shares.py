@@ -14,7 +14,7 @@ def sample_issue() -> StockIssue:
         is_reissue = False,
         num_shares=100,
         issue_price=5.4,
-        cost_price=0.01,
+        reissue_repur_id=None,
         debit_acct_id='acct-fbank',
         issue_amt=60000
     )

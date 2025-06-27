@@ -706,7 +706,18 @@ class StockIssueORM(SQLModelWithSort, table=True):
     )
     num_shares: float = Field(sa_column=Column(DECIMAL(17, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     issue_price: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
-    cost_price: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
+    reissue_repur_id: str | None = Field(
+        sa_column=Column(
+            String(length = 15), 
+            ForeignKey(
+                'stock_repurchase.repur_id', 
+                onupdate = 'CASCADE', 
+                ondelete = 'RESTRICT'
+            ),
+            primary_key = False, 
+            nullable = True
+        )
+    )
     debit_acct_id: str = Field(
         sa_column=Column(
             String(length = 15), 

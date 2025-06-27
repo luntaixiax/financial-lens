@@ -24,13 +24,13 @@ class StockIssue(EnhancedBaseModel):
         # need to check if num_shares <= total repurchased shares
         # use repurchase price instead of par_price
     )
+    reissue_repur_id: str | None = Field(
+        default=None,
+        description='If reissue, need to specify which repurchase it linked to'
+    )
     num_shares: float
     issue_price: float = Field(
         description='Issue price of new stock, expressed in base currency'
-    )
-    cost_price: float = Field(
-        default_factory=get_par_share_price,
-        description='Par price of the new stock issue for new issue, and cost of repurchase for reissue'
     )
     debit_acct_id: str = Field(
         description='Which account receives the new issue, typically asset or expense'
@@ -39,21 +39,18 @@ class StockIssue(EnhancedBaseModel):
         description='dollar amount of the new issue, expressed in debit account currency'
     )
     
+    @model_validator(mode='after')
+    def validate_reissue(self):
+        if self.is_reissue:
+            assert self.reissue_repur_id is not None, "Must specify repurchase id if an reissue"
+        else:
+            assert self.reissue_repur_id is None, "Must not specify repurchase id if not an reissue"
+        return self
+    
     @computed_field()
     def issue_amt_base(self) -> float:
         # base currency
         return finround(self.issue_price * self.num_shares)
-    
-    @computed_field()
-    def issue_cost_base(self) -> float:
-        # base currency
-        return finround(self.cost_price * self.num_shares)
-    
-    @computed_field()
-    def issue_premium_base(self) -> float:
-        # only applies for new issue, not repurchase reissue
-        # base currency
-        return finround((self.issue_price - self.cost_price) * self.num_shares)
 
 
 class StockRepurchase(EnhancedBaseModel):
