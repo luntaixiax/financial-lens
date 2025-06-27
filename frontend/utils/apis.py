@@ -1720,9 +1720,10 @@ def init_coa():
     )
 
 @message_box
-def initiate(base_cur: int, default_tax_rate: float):
+def initiate(base_cur: int, default_tax_rate: float, par_share_price: float):
     set_base_currency(base_cur)
     set_default_tax_rate(default_tax_rate)
+    set_par_share_price(par_share_price)
     init_coa()
     
 @st.cache_data # TODO
@@ -1754,6 +1755,21 @@ def get_default_tax_rate(ignore_error: bool = False) -> float:
         else:
             raise e
     return default_tax_rate
+
+@st.cache_data # TODO
+@message_box
+def get_par_share_price(ignore_error: bool = False) -> float | None:
+    try:
+        par_price = get_req(
+            prefix='settings',
+            endpoint='get_par_share_price'
+        )
+    except NotExistError as e:
+        if ignore_error:
+            return None
+        else:
+            raise e
+    return par_price
     
 @message_box
 def set_base_currency(base_currency: int):
@@ -1779,6 +1795,18 @@ def set_default_tax_rate(default_tax_rate: float):
     )
     
     get_default_tax_rate.clear()
+    
+@message_box
+def set_par_share_price(par_share_price: float):
+    post_req(
+        prefix='settings',
+        endpoint='set_par_share_price',
+        params={
+            'par_share_price': par_share_price
+        }
+    )
+    
+    get_par_share_price.clear()
     
 @message_box
 def backup():
