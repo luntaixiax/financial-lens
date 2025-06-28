@@ -151,11 +151,11 @@ class chartOfAcctDao:
                     ChartOfAccountORM.chart_id == node.chart_id
                 )
                 p = s.exec(sql).one() # get the chart of account
-                s.delete(p)
                 
                 # need to delete (commit) one at a time
                 # because there are FK on same column
                 try:
+                    s.delete(p)
                     s.commit() # submit all in one commit
                 except IntegrityError as e:
                     s.rollback()

@@ -294,9 +294,13 @@ class supplierDao:
             except NoResultFound as e:
                 raise NotExistError(details=str(e))    
         
-        
-            s.delete(p)
-            s.commit()
+            try:
+                s.delete(p)
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise FKNoDeleteUpdateError(details=str(e))
+
             logging.info(f"Removed {p} from Supplier table")
             
     @classmethod

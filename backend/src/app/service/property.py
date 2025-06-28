@@ -358,7 +358,13 @@ class PropertyService:
             )
             
         # remove property first
-        propertyDao.remove(property_id)
+        try:
+            propertyDao.remove(property_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"property {property_id} have dependency cannot be deleted",
+                details=e.details
+            )
         
         # then remove journal
         try:
@@ -382,8 +388,14 @@ class PropertyService:
             )
             
         # remove property first
-        propertyTransactionDao.remove(trans_id)
-        
+        try:
+            propertyTransactionDao.remove(trans_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Property transaction {trans_id} have dependency cannot be deleted",
+                details=e.details
+            )
+            
         # then remove journal
         try:
             JournalService.delete_journal(jrn_id)

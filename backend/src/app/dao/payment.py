@@ -135,7 +135,11 @@ class paymentDao:
             sql = select(PaymentORM).where(
                 PaymentORM.payment_id == payment_id
             )
-            p = s.exec(sql).one()
+            
+            try:
+                p = s.exec(sql).one() # get the payment
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
             
             # commit at same time
             try:

@@ -6,7 +6,7 @@ from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.dao.orm import FxORM
 from src.app.dao.connection import get_engine
 from src.app.model.enums import CurType
-from src.app.model.exceptions import AlreadyExistError, NotExistError
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
 
 
 class fxDao:
@@ -57,8 +57,12 @@ class fxDao:
             except NoResultFound as e:
                 raise NotExistError(f"FX not exist, currency = {currency}, cur_dt = {cur_dt}")
             
-            s.delete(p)
-            s.commit()
+            try:
+                s.delete(p)
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise FKNoDeleteUpdateError(details=str(e))
             
         logging.info(f"Removed {p} from FX table")
     
