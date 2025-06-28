@@ -281,6 +281,12 @@ with prop_col1[1]:
         key='tax',
         on_change=reset_validate
     )
+    
+note = st.text_input(
+    label='📝 Note',
+    value="" if edit_mode == 'Add' else existing_prop_item['note'],
+    placeholder="property note here",
+)
 
 # compile property object
 property_ = {
@@ -289,7 +295,8 @@ property_ = {
     "pur_dt": pur_date.strftime('%Y-%m-%d'), # convert to string
     "pur_price": pur_amt,
     "tax": pur_tax,
-    "pur_acct_id": pur_acct_id
+    "pur_acct_id": pur_acct_id,
+    "note": None if note == "" else note,
 }
 
 validate_btn = st.button(

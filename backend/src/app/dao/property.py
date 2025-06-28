@@ -21,6 +21,7 @@ class propertyDao:
             pur_price=property.pur_price,
             tax=property.tax,
             pur_acct_id=property.pur_acct_id,
+            note=property.note,
             journal_id=journal_id,
         )
         
@@ -34,6 +35,7 @@ class propertyDao:
             tax=property_orm.tax,
             pur_price=property_orm.pur_price,
             pur_acct_id=property_orm.pur_acct_id,
+            note=property_orm.note
         )
         
     @classmethod
@@ -108,6 +110,7 @@ class propertyDao:
             p.pur_price = property_orm.pur_price
             p.tax = property_orm.tax
             p.pur_acct_id = property_orm.pur_acct_id
+            p.note = property_orm.note
             p.journal_id = journal_id # update to new journal id
             
             try:

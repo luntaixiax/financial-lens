@@ -27,6 +27,7 @@ class Property(EnhancedBaseModel):
         description="Sales tax, expressed in account curreny, only include if need to record as input tax credit"
     )
     pur_acct_id: str
+    note: str | None = Field(None)
     
     @computed_field
     def pur_cost(self) -> float:

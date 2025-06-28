@@ -41,7 +41,8 @@ def test_validate_property(mock_engine, engine_with_sample_choa):
         property_type=PropertyType.EQUIP,
         pur_dt=date(2024, 1, 3),
         pur_price=10000,
-        pur_acct_id='acct-fbank'
+        pur_acct_id='acct-fbank',
+        note=None
     )
     # successful validation
     PropertyService._validate_property(property)
