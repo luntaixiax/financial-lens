@@ -652,6 +652,8 @@ class PropertyORM(SQLModelWithSort, table=True):
             nullable = False
         )
     )
+    note: str | None = Field(sa_column=Column(Text(), nullable = True))
+    receipts: list[str] | None = Field(sa_column=Column(JSON(), nullable = True))
     
 class PropertyTransactionORM(SQLModelWithSort, table=True):
     __tablename__ = "property_trans"

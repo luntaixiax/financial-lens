@@ -1492,7 +1492,12 @@ def validate_property(property: dict) -> dict:
     )
     
 @message_box
-def add_property(property: dict):
+def add_property(property: dict,  files: list[Tuple[str, bytes]]):
+    #save the files
+    if len(files) > 0:
+        file_ids = upload_file(files)
+        property['receipts'] = file_ids
+        
     post_req(
         prefix='property',
         endpoint='property/add',
@@ -1506,7 +1511,15 @@ def add_property(property: dict):
     list_entry_by_acct.clear()
     
 @message_box
-def update_property(property: dict):
+def update_property(property: dict, files: list[str]):
+    if len(files) > 0:
+        file_ids = upload_file(files)
+        
+        existing_receipts = property['receipts'] or []
+        existing_receipts.extend(file_ids)
+        existing_receipts = list(set(existing_receipts))
+        property['receipts'] = existing_receipts
+    
     put_req(
         prefix='property',
         endpoint='property/update',

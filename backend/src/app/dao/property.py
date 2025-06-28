@@ -21,11 +21,15 @@ class propertyDao:
             pur_price=property.pur_price,
             tax=property.tax,
             pur_acct_id=property.pur_acct_id,
+            note=property.note,
+            receipts=property.receipts,
             journal_id=journal_id,
         )
         
     @classmethod
     def toProperty(cls, property_orm: PropertyORM) -> Property:
+        if property_orm.receipts == 'null':
+            property_orm.receipts = None
         return Property(
             property_id=property_orm.property_id,
             property_name=property_orm.property_name,
@@ -34,6 +38,8 @@ class propertyDao:
             tax=property_orm.tax,
             pur_price=property_orm.pur_price,
             pur_acct_id=property_orm.pur_acct_id,
+            receipts=property_orm.receipts,
+            note=property_orm.note
         )
         
     @classmethod
@@ -108,6 +114,8 @@ class propertyDao:
             p.pur_price = property_orm.pur_price
             p.tax = property_orm.tax
             p.pur_acct_id = property_orm.pur_acct_id
+            p.note = property_orm.note
+            p.receipts = property_orm.receipts
             p.journal_id = journal_id # update to new journal id
             
             try:

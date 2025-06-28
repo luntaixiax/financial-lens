@@ -118,6 +118,13 @@ dds_currency = DropdownSelect.from_enum(
     CurType,
     include_null=False
 )
+repurs = list_repur()
+dds_repurs = DropdownSelect(
+    briefs=repurs,
+    include_null=False,
+    id_key='repur_id',
+    display_keys=['repur_dt', 'num_shares', 'repur_price']
+)
 
 
 base_cur_name = CurType(get_base_currency()).name
@@ -216,9 +223,11 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
     is_reissue = st.toggle(
         label='Reissue of treasury stock?',
         value=False if edit_mode == 'Add' else issue_sel['is_reissue'],
-        disabled=(edit_mode == 'Edit'),
+        disabled=(edit_mode == 'Edit' or len(repurs) == 0),
         on_change=reset_validate
     )
+    if len(repurs) == 0:
+        st.warning('Add at least a repurchase to unlock reissue stock', icon='🤔')
     
     reiss_cols = st.columns(2)
     with reiss_cols[0]:
@@ -232,14 +241,6 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
     
     if is_reissue:  
         with reiss_cols[1]:
-
-            repurs = list_repur()
-            dds_repurs = DropdownSelect(
-                briefs=repurs,
-                include_null=False,
-                id_key='repur_id',
-                display_keys=['repur_dt', 'num_shares', 'repur_price']
-            )
             
             if edit_mode == 'Add':
                 repur_idx = st.selectbox(

@@ -16,7 +16,8 @@ def sample_property() -> Property:
         pur_dt=date(2024, 1, 3),
         pur_price=10000,
         tax=500,
-        pur_acct_id='acct-fbank'
+        pur_acct_id='acct-fbank',
+        note='A computer'
     )
     return property
 

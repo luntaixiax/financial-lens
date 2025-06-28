@@ -24,7 +24,9 @@ class PropertyService:
             pur_dt=date(2024, 1, 3),
             pur_price=10000,
             tax=700,
-            pur_acct_id='acct-fbank'
+            pur_acct_id='acct-fbank',
+            note='A computer',
+            receipts=['A.pdf', 'B.pdf']
         )
         depreciation = PropertyTransaction(
             trans_id='exp-proptrans-1',

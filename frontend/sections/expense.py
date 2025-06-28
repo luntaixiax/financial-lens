@@ -711,6 +711,14 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                             'file_id': receipt['file_id'],
                             'file_hash': receipt['filehash']
                         })
+                        
+                    st.download_button(
+                        label='Download Receipt',
+                        data=receipt['content'],
+                        file_name=receipt['filename'],
+                        type='tertiary',
+                        icon=":material/download:",
+                    )
             
     
     # compile expense (without receipts)
