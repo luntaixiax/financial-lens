@@ -602,7 +602,13 @@ class SharesService:
             )
             
         # remove issue first
-        stockIssueDao.remove(issue_id)
+        try:
+            stockIssueDao.remove(issue_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Issue {issue_id} have dependency cannot be deleted",
+                details=e.details
+            )
         
         # then remove journal
         try:
@@ -626,7 +632,13 @@ class SharesService:
             )
             
         # remove repur first
-        stockRepurchaseDao.remove(repur_id)
+        try:
+            stockRepurchaseDao.remove(repur_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Repurchase {repur_id} have dependency cannot be deleted",
+                details=e.details
+            )
         
         # then remove journal
         try:
@@ -650,7 +662,13 @@ class SharesService:
             )
             
         # remove div first
-        dividendDao.remove(div_id)
+        try:
+            dividendDao.remove(div_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Dividend {div_id} have dependency cannot be deleted",
+                details=e.details
+            )
         
         # then remove journal
         try:

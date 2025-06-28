@@ -60,10 +60,10 @@ class stockIssueDao:
             sql = delete(StockIssueORM).where(
                 StockIssueORM.issue_id == issue_id
             )
-            s.exec(sql)
             
             # commit at same time
             try:
+                s.exec(sql)
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
@@ -230,10 +230,10 @@ class stockRepurchaseDao:
             sql = delete(StockRepurchaseORM).where(
                 StockRepurchaseORM.repur_id == repur_id
             )
-            s.exec(sql)
             
             # commit at same time
             try:
+                s.exec(sql)
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
@@ -355,10 +355,10 @@ class dividendDao:
             sql = delete(DividendORM).where(
                 DividendORM.div_id == div_id
             )
-            s.exec(sql)
             
             # commit at same time
             try:
+                s.exec(sql)
                 s.commit()
             except IntegrityError as e:
                 s.rollback()

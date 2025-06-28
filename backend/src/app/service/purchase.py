@@ -563,7 +563,13 @@ class PurchaseService:
             )
             
         # remove invoice first
-        invoiceDao.remove(invoice_id)
+        try:
+            invoiceDao.remove(invoice_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Invoice {invoice_id} have dependency cannot be deleted",
+                details=e.details
+            )
         
         # then remove journal
         try:
@@ -587,7 +593,13 @@ class PurchaseService:
             )
             
         # remove payment first
-        paymentDao.remove(payment_id)
+        try:
+            paymentDao.remove(payment_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Payment {payment_id} have dependency cannot be deleted",
+                details=e.details
+            )
         
         # then remove journal
         try:

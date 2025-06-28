@@ -45,11 +45,13 @@ class itemDao:
                 p = s.exec(sql).one()
             except NoResultFound as e:
                 raise NotExistError(details=str(e))
-            except IntegrityError as e:
-                raise FKNoDeleteUpdateError(details=str(e))
             
-            s.delete(p)
-            s.commit()
+            try:
+                s.delete(p)
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise FKNoDeleteUpdateError(details=str(e))
             logging.info(f"Removed {p} from Item table")
         
         
@@ -243,29 +245,30 @@ class invoiceDao:
     def remove(cls, invoice_id: str):
         # only remove invoice, not journal, journal will be removed in journalDao
         with Session(get_engine()) as s:
-            # remove invoice items first
-            sql = delete(InvoiceItemORM).where(
-                InvoiceItemORM.invoice_id == invoice_id
-            )
-            s.exec(sql)
-            # remove general invoice items next
-            sql = delete(GeneralInvoiceItemORM).where(
-                GeneralInvoiceItemORM.invoice_id == invoice_id
-            )
-            s.exec(sql)
-            
-            # remove invoice
-            sql = delete(InvoiceORM).where(
-                InvoiceORM.invoice_id == invoice_id
-            )
-            s.exec(sql)
-            
-            # commit at same time
             try:
+                # remove invoice items first
+                sql = delete(InvoiceItemORM).where(
+                    InvoiceItemORM.invoice_id == invoice_id
+                )
+                s.exec(sql)
+                # remove general invoice items next
+                sql = delete(GeneralInvoiceItemORM).where(
+                    GeneralInvoiceItemORM.invoice_id == invoice_id
+                )
+                s.exec(sql)
+                
+                # remove invoice
+                sql = delete(InvoiceORM).where(
+                    InvoiceORM.invoice_id == invoice_id
+                )
+                s.exec(sql)
+                
+                # commit at same time
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
                 raise infer_integrity_error(e, during_creation=False)
+            
             logging.info(f"deleted invoice and items for {invoice_id}")
             
     @classmethod

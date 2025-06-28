@@ -102,19 +102,23 @@ class expenseDao:
     def remove(cls, expense_id: str):
         # only remove expense, not journal, journal will be removed in journalDao
         with Session(get_engine()) as s:
-            # remove expense items first
-            sql = delete(ExpenseItemORM).where(
-                ExpenseItemORM.expense_id == expense_id
-            )
-            s.exec(sql)
-            # remove expense
-            sql = delete(ExpenseORM).where(
-                ExpenseORM.expense_id == expense_id
-            )
-            s.exec(sql)
-            
-            # commit at same time
-            s.commit()
+            try:
+                # remove expense items first
+                sql = delete(ExpenseItemORM).where(
+                    ExpenseItemORM.expense_id == expense_id
+                )
+                s.exec(sql)
+                # remove expense
+                sql = delete(ExpenseORM).where(
+                    ExpenseORM.expense_id == expense_id
+                )
+                s.exec(sql)
+                
+                s.commit()
+            except IntegrityError as e:
+                s.rollback()
+                raise FKNoDeleteUpdateError(details=str(e))
+
             logging.info(f"deleted expense and items for {expense_id}")
         
     @classmethod

@@ -314,7 +314,13 @@ class ExpenseService:
             )
             
         # remove expense first
-        expenseDao.remove(expense_id)
+        try:
+            expenseDao.remove(expense_id)
+        except FKNoDeleteUpdateError as e:
+            raise FKNoDeleteUpdateError(
+                f"Expense {expense_id} have dependency cannot be deleted",
+                details=e.details
+            )
         
         # then remove journal
         try:

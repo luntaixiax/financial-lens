@@ -55,10 +55,10 @@ class propertyDao:
             sql = delete(PropertyORM).where(
                 PropertyORM.property_id == property_id
             )
-            s.exec(sql)
             
             # commit at same time
             try:
+                s.exec(sql)
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
@@ -181,10 +181,10 @@ class propertyTransactionDao:
             sql = delete(PropertyTransactionORM).where(
                 PropertyTransactionORM.trans_id == trans_id
             )
-            s.exec(sql)
             
             # commit at same time
             try:
+                s.exec(sql)
                 s.commit()
             except IntegrityError as e:
                 s.rollback()
