@@ -1,3 +1,4 @@
+import io
 import math
 import time
 import uuid
@@ -7,11 +8,12 @@ import streamlit as st
 import streamlit_shadcn_ui as ui
 import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
-from utils.apis import list_property, get_account, get_property_journal, get_accounts_by_type, \
+from utils.apis import get_file, list_property, get_account, get_property_journal, get_accounts_by_type, \
     validate_property, create_journal_from_new_property, get_all_accounts, get_base_currency, \
     add_property, update_property, delete_property, get_property_stat, get_comp_contact, get_logo
 from utils.enums import PropertyType, PropertyTransactionType, CurType, AcctType, EntryType
 from utils.tools import DropdownSelect, display_number
+from utils.exceptions import NotExistError
 
 st.set_page_config(layout="centered")
 with st.sidebar:
@@ -288,6 +290,50 @@ note = st.text_input(
     placeholder="property note here",
 )
 
+# add receipt section
+receipt_section = st.container(border=True)
+receipt_section.subheader("Manage receipts")
+receipt_section.caption("Anything uploaded here, once click update/add, will append to existing receipts")
+uploaded_files = receipt_section.file_uploader(
+    "Upload Receipts", 
+    accept_multiple_files=True,
+    
+)
+files = []
+for file in uploaded_files:
+    # this must be BufferedReader to work properly
+    bytes_file = io.BufferedReader(file)
+    # this must be files to work properly
+    files.append(('files', bytes_file))    
+
+if edit_mode == 'Edit' and (recpt_ids := existing_prop_item['receipts']) is not None:
+    receipts = []
+    remove_receipts = []
+    for recpt_id in recpt_ids:
+        try:
+            receipt = get_file(file_id = recpt_id)
+        except NotExistError as e:
+            receipt_section.error(f"{e.message}")
+        else:
+            receipts.append(receipt)
+
+            # show receipts
+            with receipt_section.expander(
+                label = f"{receipt['filename']} | {receipt['file_id']}",
+                expanded=False,
+                icon='🖼️'
+            ):
+                try:
+                    st.image(
+                        image=receipt['content'],
+                        caption=receipt['filehash']
+                    )
+                except Exception as e:
+                    st.json({
+                        'file_id': receipt['file_id'],
+                        'file_hash': receipt['filehash']
+                    })
+
 # compile property object
 property_ = {
     "property_name": property_name,
@@ -297,6 +343,7 @@ property_ = {
     "tax": pur_tax,
     "pur_acct_id": pur_acct_id,
     "note": None if note == "" else note,
+    "receipts": existing_prop_item['receipts'] if edit_mode == 'Edit' else None
 }
 
 validate_btn = st.button(
@@ -445,7 +492,7 @@ if edit_mode == 'Add' and st.session_state.get('validated', False):
     st.button(
         label='Add Property',
         on_click=add_property,
-        args=(property_, )
+        args=(property_, files)
     )
     
 elif edit_mode == 'Edit':
@@ -458,7 +505,7 @@ elif edit_mode == 'Edit':
                 label='Update',
                 type='secondary',
                 on_click=update_property,
-                args=(property_, )
+                args=(property_, files)
             )
     with btn_cols[0]:
         st.button(

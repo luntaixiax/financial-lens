@@ -28,6 +28,10 @@ class Property(EnhancedBaseModel):
     )
     pur_acct_id: str
     note: str | None = Field(None)
+    receipts: list[str] | None =  Field(
+        None,
+        description='List of Receipt artifact path (relative)'
+    )
     
     @computed_field
     def pur_cost(self) -> float:
