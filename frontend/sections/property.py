@@ -333,6 +333,13 @@ if edit_mode == 'Edit' and (recpt_ids := existing_prop_item['receipts']) is not 
                         'file_id': receipt['file_id'],
                         'file_hash': receipt['filehash']
                     })
+                st.download_button(
+                    label='Download Receipt',
+                    data=receipt['content'],
+                    file_name=receipt['filename'],
+                    type='tertiary',
+                    icon=":material/download:",
+                )
 
 # compile property object
 property_ = {
