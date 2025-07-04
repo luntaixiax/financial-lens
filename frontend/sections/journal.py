@@ -255,15 +255,25 @@ with metric1_cols[1]:
         key="card2"
     )
 
-metric2_cols = st.columns(len(JournalSrc))
-for i, jrn_src_ in enumerate(JournalSrc):
-    with metric2_cols[i]:
-        ui.metric_card(
-            title=f"{jrn_src_.name}", 
-            content=f"{stat_jrn_by_src.get(jrn_src_.value, [0, 0])[0]:,.0f}", 
-            description=f"${stat_jrn_by_src.get(jrn_src_.value, [0, 0])[1]:,.2f}", 
-            #key="card2"
-        )
+with st.expander(label='Breakdown by Type', expanded=False, icon='📊'):
+    num_metrics = len(JournalSrc)
+    jrn_iter = iter(JournalSrc)
+    metric_per_row = 4
+    rows = -( - num_metrics // metric_per_row)
+    metric2_cols = st.columns(4)
+    for row in range(rows):
+        for col in range(metric_per_row):
+            try:
+                with metric2_cols[col]:
+                    jrn_s = next(jrn_iter)
+                    ui.metric_card(
+                        title=f"{jrn_s.name}", 
+                        content=f"{stat_jrn_by_src.get(jrn_s.value, [0, 0])[0]:,.0f}", 
+                        description=f"${stat_jrn_by_src.get(jrn_s.value, [0, 0])[1]:,.2f}", 
+                        #key="card2"
+                    )
+            except StopIteration:
+                pass
 
 st.divider()
 

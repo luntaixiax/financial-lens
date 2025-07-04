@@ -2304,3 +2304,6 @@ def upload_batch_exp_excel(exp_batch):
         ]
         
     add_expenses(expenses)
+    
+    # clear all cache
+    st.cache_data.clear()

@@ -1,7 +1,7 @@
 from datetime import date
 import logging
 from typing import Tuple
-from sqlmodel import Session, select, delete, case, func as f, and_
+from sqlmodel import Session, select, delete, distinct, case, func as f, and_, or_
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.accounts import Account
 from src.app.model.enums import EntryType, JournalSrc, AcctType
@@ -218,11 +218,14 @@ class journalDao:
             )
             
             # join the two
+            
             jrn_filters = [
                 JournalORM.jrn_date.between(min_dt, max_dt), 
-                JournalORM.note.contains(note_keyword),
                 entry_agg.c.total_base_amount.between(min_amount, max_amount)
             ]
+            # .contains will exclude non-null fields
+            if not(note_keyword == '' or note_keyword is None):
+                jrn_filters.append(JournalORM.note.contains(note_keyword))
             if jrn_ids is not None:
                 jrn_filters.append(JournalORM.journal_id.in_(jrn_ids))
             if jrn_src is not None:
@@ -291,13 +294,16 @@ class journalDao:
             sql = (
                 select(
                     JournalORM.jrn_src,
-                    f.count(JournalORM.journal_id).label('num_journals'),
+                    f.count(distinct(JournalORM.journal_id)).label('num_journals'),
                     f.sum(EntryORM.amount_base).label('total_amount_base')
                 )
                 .join(
                     JournalORM,
                     onclause=JournalORM.journal_id == EntryORM.journal_id,
                     isouter=False
+                )
+                .where(
+                    EntryORM.entry_type == EntryType.DEBIT # either debit or credit
                 )
                 .group_by(JournalORM.jrn_src)
             )

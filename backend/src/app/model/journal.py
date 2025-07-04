@@ -79,7 +79,7 @@ class _JournalBrief(EnhancedBaseModel):
     acct_name_strs: str
     num_entries: int
     total_base_amount: float
-    note: str
+    note: str | None
     
     @computed_field
     def acct_names(self) -> list[str]:
