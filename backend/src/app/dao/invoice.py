@@ -416,9 +416,10 @@ class invoiceDao:
         with Session(get_engine()) as s:
             inv_filters = [
                 InvoiceORM.invoice_dt.between(min_dt, max_dt), 
-                InvoiceORM.subject.contains(subject_keyword),
                 InvoiceORM.entity_type == entity_type
             ]
+            if not(subject_keyword == '' or subject_keyword is None):
+                inv_filters.append(InvoiceORM.subject.contains(subject_keyword))
             if invoice_ids is not None:
                 inv_filters.append(InvoiceORM.invoice_id.in_(invoice_ids))
             if invoice_nums is not None:
