@@ -52,11 +52,11 @@ def get_storage_fs(type_: Literal['files', 'backup'] = 'files') -> S3FileSystem:
     )
     return s3a
 
-def yield_file_fs() -> Generator[S3FileSystem, None, None]:
-    yield get_storage_fs('files')
+def yield_file_fs() -> S3FileSystem:
+    return get_storage_fs('files')
     
-def yield_backup_fs() -> Generator[S3FileSystem, None, None]:
-    yield get_storage_fs('backup')
+def yield_backup_fs() -> S3FileSystem:
+    return get_storage_fs('backup')
 
 if __name__ == '__main__':
     from src.app.dao.orm import SQLModelWithSort

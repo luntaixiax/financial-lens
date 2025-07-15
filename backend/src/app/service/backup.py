@@ -1,12 +1,15 @@
 
 from datetime import datetime
-from src.app.dao.backup import backupDao
+from src.app.dao.backup import dataDao
 
 
 class BackupService:
     
-    def __init__(self, backup_dao: backupDao):
+    def __init__(self, backup_dao: dataDao):
         self.backup_dao = backup_dao
+        
+    def init_db(self):
+        self.backup_dao.init_db()
     
     def list_backup_ids(self) -> list[str]:
         return self.backup_dao.list_backup_ids()

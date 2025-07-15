@@ -8,6 +8,7 @@ import tomli
 from pathlib import Path
 from src.app.model.enums import CurType
 
+
 ENV = os.environ.get("ENV", "prod")
 VAULT_MOUNT_POINT = "finlens"
 VAULT_MOUNT_PATH = {
@@ -18,7 +19,7 @@ VAULT_MOUNT_PATH = {
     'static_server': f"{ENV}/static_server",
 }
 
-def id_generator(prefix: str, length: int = 8, existing_list: list = None) -> str:
+def id_generator(prefix: str, length: int = 8, existing_list: list[str] | None = None) -> str:
     new_id = prefix + str(uuid.uuid4())[:length]
     if existing_list:
         if new_id in existing_list:
@@ -27,13 +28,30 @@ def id_generator(prefix: str, length: int = 8, existing_list: list = None) -> st
 
 
 def get_settings() -> dict:
+    from sqlmodel import Session
     from src.app.service.misc import SettingService
+    from src.app.service.files import FileService
+    from src.app.dao.files import configDao, fileDao
+    from src.app.dao.connection import get_engine, get_storage_fs
+    
+    file_fs = get_storage_fs('files')
+    engine = get_engine('finlens') # TODO: should not hardcode db name
+
+    with Session(engine) as session:
+        file_dao=fileDao(file_fs=file_fs, session=session)
+        file_service = FileService(file_dao=file_dao)
+        config_dao = configDao(file_fs=file_fs)
+        
+        setting_service = SettingService(
+            file_service=file_service,
+            config_dao=config_dao
+        )
     
     return {
         'preferences': {
-            'base_cur': SettingService.get_base_currency(),
-            'default_sales_tax_rate': SettingService.get_default_tax_rate(),
-            'par_share_price': SettingService.get_par_share_price()
+            'base_cur': setting_service.get_base_currency(),
+            'default_sales_tax_rate': setting_service.get_default_tax_rate(),
+            'par_share_price': setting_service.get_par_share_price()
         }
     }
 

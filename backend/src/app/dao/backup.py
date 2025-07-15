@@ -6,6 +6,7 @@ from sqlalchemy import MetaData, JSON, column, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlite3 import Connection as SQLite3Connection
+from sqlalchemy_utils import create_database, database_exists
 from sqlmodel import Session, select, delete
 from src.app.dao.orm import get_class_by_tablename, SQLModelWithSort
 from src.app.utils.tools import get_file_root
@@ -54,12 +55,17 @@ def migrate_database(src_engine: Engine, tgt_engine: Engine):
                     s.exec(stmt.values(row)) # type: ignore
                     s.commit()
 
-class backupDao:
+class dataDao:
     
     def __init__(self, primary_engine: Engine, backup_fs: S3FileSystem, file_fs: S3FileSystem):
         self.primary_engine = primary_engine
         self.backup_fs = backup_fs
         self.file_fs = file_fs
+        
+    def init_db(self):
+        if not database_exists(self.primary_engine.url):
+            create_database(self.primary_engine.url)
+        SQLModelWithSort.metadata.create_all(self.primary_engine)
     
     @classmethod
     def get_backup_folder_path(cls, backup_id: str) -> str:
