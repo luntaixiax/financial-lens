@@ -32,7 +32,7 @@ def get_config_dao(
     return configDao(file_fs=file_fs)
 
 def get_file_dao(
-    session: Session = Depends(yield_engine), 
+    session: Session = Depends(yield_session), 
     file_fs: S3FileSystem = Depends(yield_file_fs)
 ) -> fileDao:
     return fileDao(session=session, file_fs=file_fs)
