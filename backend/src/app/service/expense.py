@@ -1,6 +1,5 @@
 from datetime import date
 import math
-from time import sleep
 from typing import Tuple
 from src.app.utils.tools import get_base_cur
 from src.app.dao.expense import expenseDao
@@ -17,8 +16,13 @@ from src.app.model.journal import Journal, Entry
 
 class ExpenseService:
     
-    @classmethod
-    def create_sample(cls):
+    def __init__(self, expense_dao: expenseDao, acct_service: AcctService, journal_service: JournalService, fx_service: FxService):
+        self.expense_dao = expense_dao
+        self.acct_service = acct_service
+        self.journal_service = journal_service
+        self.fx_service = fx_service
+    
+    def create_sample(self):
         expense1 = Expense(
             expense_id='exp-sample1',
             expense_dt=date(2024, 1, 1),
@@ -81,18 +85,16 @@ class ExpenseService:
             note='Rent for 2024-01-01',
             receipts=None
         )
-        cls.add_expense(expense1)
-        cls.add_expense(expense2)
+        self.add_expense(expense1)
+        self.add_expense(expense2)
         
-    @classmethod
-    def clear_sample(cls):
-        cls.delete_expense('exp-sample1')
-        cls.delete_expense('exp-sample2')
+    def clear_sample(self):
+        self.delete_expense('exp-sample1')
+        self.delete_expense('exp-sample2')
         
-    @classmethod
-    def _validate_expense(cls, expense: Expense) -> Expense:
+    def _validate_expense(self, expense: Expense) -> Expense:
         try:
-            payment_acct: Account = AcctService.get_account(
+            payment_acct: Account = self.acct_service.get_account(
                 expense.payment_acct_id
             )
         except NotExistError as e:
@@ -106,7 +108,7 @@ class ExpenseService:
             # see if expense account id exist
             # validate account id exist
             try:
-                AcctService.get_account(expense_item.expense_acct_id)
+                self.acct_service.get_account(expense_item.expense_acct_id)
             except NotExistError as e:
                 raise FKNotExistError(
                     f"Expense Account {expense_item.expense_acct_id} of Expense Item {expense_item} does not exist",
@@ -114,7 +116,7 @@ class ExpenseService:
                 )
         
         if expense.currency == payment_acct.currency:
-            if not math.isclose(expense.total, expense.payment_amount, rel_tol=1e-6):
+            if not math.isclose(expense.total, expense.payment_amount, rel_tol=1e-6): # type: ignore
                 raise NotMatchWithSystemError(
                     f"Expense currency equals Payment currency ({expense.currency})",
                     details=f"Expense amount: {expense.total}, while payment amount = {expense.payment_amount}"
@@ -122,9 +124,8 @@ class ExpenseService:
                 
         return expense
     
-    @classmethod
-    def create_general_invoice_items_from_expense(cls, expense_id: str, invoice_currency: CurType) -> list[GeneralInvoiceItem]:
-        expense, _ = cls.get_expense_journal(expense_id)
+    def create_general_invoice_items_from_expense(self, expense_id: str, invoice_currency: CurType) -> list[GeneralInvoiceItem]:
+        expense, _ = self.get_expense_journal(expense_id)
         
         ginv_items = []
         for expense_item in expense.expense_items:
@@ -133,7 +134,7 @@ class ExpenseService:
                 acct_id=expense_item.expense_acct_id,
                 currency=expense.currency,
                 amount_pre_tax_raw=expense_item.amount_pre_tax,
-                amount_pre_tax=FxService.convert(
+                amount_pre_tax=self.fx_service.convert(
                     amount=expense_item.amount_pre_tax,
                     src_currency=expense.currency, # convert from expense currency
                     tgt_currency=invoice_currency, # convert to invoice currency
@@ -146,16 +147,15 @@ class ExpenseService:
         return ginv_items
             
     
-    @classmethod
-    def create_journal_from_expense(cls, expense: Expense) -> Journal:
-        cls._validate_expense(expense)
+    def create_journal_from_expense(self, expense: Expense) -> Journal:
+        self._validate_expense(expense)
         
         # create journal entries
         entries = []
         expense_entry_base_amount = 0
         for expense_item in expense.expense_items:
             
-            exp_acct: Account = AcctService.get_account(
+            exp_acct: Account = self.acct_service.get_account(
                 expense_item.expense_acct_id
             )
             
@@ -166,7 +166,7 @@ class ExpenseService:
                 )
             
             # assemble the entry item
-            amount_base=FxService.convert_to_base(
+            amount_base=self.fx_service.convert_to_base(
                 amount=expense_item.amount_pre_tax,
                 src_currency=expense.currency, # expense currency
                 cur_dt=expense.expense_dt, # convert fx at expense date
@@ -184,15 +184,16 @@ class ExpenseService:
             expense_entry_base_amount += amount_base
             
         # add tax (use base currency)
-        tax_amount_base_cur = FxService.convert_to_base(
-            amount=expense.tax_amount, # total tax across all expenses
+        tax_amount_base_cur = self.fx_service.convert_to_base(
+            amount=expense.tax_amount, # total tax across all expenses # type: ignore
             src_currency=expense.currency, # expense currency
             cur_dt=expense.expense_dt, # convert fx at expense date
         )
         tax = Entry(
             entry_type=EntryType.DEBIT, # tax is debit entry
             # tax account is input tax -- predefined
-            acct=AcctService.get_account(SystemAcctNumber.INPUT_TAX),
+            acct=self.acct_service.get_account(SystemAcctNumber.INPUT_TAX),
+            cur_incexp=None,
             amount=tax_amount_base_cur, # amount in raw currency
             # amount in base currency
             amount_base=tax_amount_base_cur,
@@ -201,17 +202,18 @@ class ExpenseService:
         entries.append(tax)
         
         # add payment account (use account currency)
-        payment_acct: Account = AcctService.get_account(
+        payment_acct: Account = self.acct_service.get_account(
             expense.payment_acct_id
         )
-        payment_amount_base=FxService.convert_to_base(
+        payment_amount_base=self.fx_service.convert_to_base(
             amount=expense.payment_amount, # payment amount in payment currency
-            src_currency=payment_acct.currency, # payment currency
+            src_currency=payment_acct.currency, # payment currency # type: ignore
             cur_dt=expense.expense_dt, # convert fx at expense date
         )
         payment = Entry(
             entry_type=EntryType.CREDIT, # payment is credit entry
             acct=payment_acct,
+            cur_incexp=None,
             amount=expense.payment_amount, # should equal to total expense amount
             amount_base=payment_amount_base,
             description='payment for the expense'
@@ -223,7 +225,7 @@ class ExpenseService:
             gain = total_exp_base - payment_amount_base # paid less than owed
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
-                acct=AcctService.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
+                acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
                 cur_incexp=get_base_cur(),
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
@@ -241,20 +243,19 @@ class ExpenseService:
         journal.reduce_entries()
         return journal
     
-    @classmethod
-    def add_expense(cls, expense: Expense):
+    def add_expense(self, expense: Expense):
         
         # see if expense already exist
         try:
-            _expense, _jrn_id  = expenseDao.get(expense.expense_id)
+            _expense, _jrn_id  = self.expense_dao.get(expense.expense_id)
         except NotExistError as e:
             # if not exist, can safely create it
             # validate it first
-            cls._validate_expense(expense)
+            self._validate_expense(expense)
             # add journal first
-            journal = cls.create_journal_from_expense(expense)
+            journal = self.create_journal_from_expense(expense)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of journal does not exist: {journal}',
@@ -263,7 +264,7 @@ class ExpenseService:
             
             # add expense
             try:
-                expenseDao.add(journal_id = journal.journal_id, expense = expense)
+                self.expense_dao.add(journal_id = journal.journal_id, expense = expense)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of expense does not exist: {expense}',
@@ -276,14 +277,13 @@ class ExpenseService:
                 details=f"Expense: {_expense}, journal_id: {_jrn_id}"
             )
             
-    @classmethod
-    def add_expenses(cls, expenses: list[Expense]):
+    def add_expenses(self, expenses: list[Expense]):
         errs = []
         err_exps = []
         dup_exps = []
         for i, expense in enumerate(expenses):
             try:
-                cls.add_expense(expense)
+                self.add_expense(expense)
             except (FKNotExistError, NotMatchWithSystemError, FKNoDeleteUpdateError, OpNotPermittedError) as e:
                 errs.append(e)
                 err_exps.append(expense)
@@ -301,12 +301,11 @@ class ExpenseService:
             )
             
             
-    @classmethod
-    def delete_expense(cls, expense_id: str):
+    def delete_expense(self, expense_id: str):
         # remove journal first
         # get journal
         try:
-            expense, jrn_id  = expenseDao.get(expense_id)
+            expense, jrn_id  = self.expense_dao.get(expense_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Expense id {expense_id} does not exist',
@@ -315,7 +314,7 @@ class ExpenseService:
             
         # remove expense first
         try:
-            expenseDao.remove(expense_id)
+            self.expense_dao.remove(expense_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Expense {expense_id} have dependency cannot be deleted",
@@ -324,33 +323,32 @@ class ExpenseService:
         
         # then remove journal
         try:
-            JournalService.delete_journal(jrn_id)
+            self.journal_service.delete_journal(jrn_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Delete journal failed, some component depends on the journal id {jrn_id}",
                 details=e.details
             )
             
-    @classmethod
-    def update_expense(cls, expense: Expense):
-        cls._validate_expense(expense)
+    def update_expense(self, expense: Expense):
+        self._validate_expense(expense)
         # only delete if validation passed
         # cls.delete_expense(expense.expense_id)
         # cls.add_expense(expense)
         
         # get existing journal id
         try:
-            _expense, jrn_id  = expenseDao.get(expense.expense_id)
+            _expense, jrn_id  = self.expense_dao.get(expense.expense_id)
         except NotExistError as e:
             raise NotExistError(
-                f'Expense id {_expense.expense_id} does not exist',
+                f'Expense id {expense.expense_id} does not exist',
                 details=e.details
             )
         
         # add new journal first
-        journal = cls.create_journal_from_expense(expense)
+        journal = self.create_journal_from_expense(expense)
         try:
-            JournalService.add_journal(journal)
+            self.journal_service.add_journal(journal)
         except FKNotExistError as e:
             raise FKNotExistError(
                 f'Some component of journal does not exist: {journal}',
@@ -359,26 +357,25 @@ class ExpenseService:
         
         # update expense
         try:
-            expenseDao.update(
+            self.expense_dao.update(
                 journal_id=journal.journal_id, # use new journal id
                 expense=expense
             ) # TODO
         except FKNotExistError as e:
             # need to remove the new journal
-            JournalService.delete_journal(journal.journal_id)
+            self.journal_service.delete_journal(journal.journal_id)
             raise FKNotExistError(
                 f"Invoice element does not exist",
                 details=e.details
             )
             
         # remove old journal
-        JournalService.delete_journal(jrn_id)
+        self.journal_service.delete_journal(jrn_id)
         
         
-    @classmethod
-    def get_expense_journal(cls, expense_id: str) -> Tuple[Expense, Journal]:
+    def get_expense_journal(self, expense_id: str) -> Tuple[Expense, Journal]:
         try:
-            expense, jrn_id = expenseDao.get(expense_id)
+            expense, jrn_id = self.expense_dao.get(expense_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Expense id {expense_id} does not exist',
@@ -387,13 +384,13 @@ class ExpenseService:
         
         # get journal
         try:
-            journal = JournalService.get_journal(jrn_id)
+            journal = self.journal_service.get_journal(jrn_id)
         except NotExistError as e:
             # TODO: raise error or add missing journal?
             # if not exist, add journal
-            journal = cls.create_journal_from_expense(expense)
+            journal = self.create_journal_from_expense(expense)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Trying to add journal but failed, some component of journal does not exist: {journal}',
@@ -402,9 +399,8 @@ class ExpenseService:
         
         return expense, journal
         
-    @classmethod
     def list_expense(
-        cls,
+        self,
         limit: int = 50,
         offset: int = 0,
         expense_ids: list[str] | None = None,
@@ -419,7 +415,7 @@ class ExpenseService:
         max_amount: float = 999999999,
         has_receipt: bool | None = None
     ) -> Tuple[list[_ExpenseBrief], int]:
-        return expenseDao.list_expense(
+        return self.expense_dao.list_expense(
             limit=limit,
             offset=offset,
             expense_ids=expense_ids,
@@ -435,9 +431,8 @@ class ExpenseService:
             has_receipt=has_receipt
         )
         
-    @classmethod
-    def summary_expense(cls, start_dt: date, end_dt: date) -> list[_ExpenseSummaryBrief]:
-        return expenseDao.summary_expense(
+    def summary_expense(self, start_dt: date, end_dt: date) -> list[_ExpenseSummaryBrief]:
+        return self.expense_dao.summary_expense(
             start_dt=start_dt,
             end_dt=end_dt
         )

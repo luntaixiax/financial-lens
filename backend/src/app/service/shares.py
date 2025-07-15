@@ -19,8 +19,23 @@ from src.app.model.shares import Dividend, StockIssue, StockRepurchase
 
 class SharesService:
     
-    @classmethod
-    def create_sample(cls):
+    def __init__(
+            self, 
+            stock_issue_dao: stockIssueDao, 
+            stock_repurchase_dao: stockRepurchaseDao, 
+            dividend_dao: dividendDao,
+            acct_service: AcctService, 
+            journal_service: JournalService,
+            fx_service: FxService,
+        ):
+        self.stock_issue_dao = stock_issue_dao
+        self.stock_repurchase_dao = stock_repurchase_dao
+        self.dividend_dao = dividend_dao
+        self.acct_service = acct_service
+        self.journal_service = journal_service
+        self.fx_service = fx_service
+
+    def create_sample(self):
         issue = StockIssue(
             issue_id='sample-issue',
             issue_dt=date(2024, 1, 3),
@@ -48,23 +63,21 @@ class SharesService:
             div_amt=1000,
             note='Pay dividend of $1000'
         )
-        cls.add_issue(issue)
-        cls.add_repur(repur)
-        cls.add_div(div)
+        self.add_issue(issue)
+        self.add_repur(repur)
+        self.add_div(div)
         
-    @classmethod
-    def clear_sample(cls):
-        cls.delete_issue(issue_id='sample-issue')
-        cls.delete_repur(repur_id='sample-repur')
-        cls.delete_div(div_id='sample-div')
+    def clear_sample(self):
+        self.delete_issue(issue_id='sample-issue')
+        self.delete_repur(repur_id='sample-repur')
+        self.delete_div(div_id='sample-div')
         
-    @classmethod
-    def _validate_issue(cls, issue: StockIssue) -> StockIssue:
+    def _validate_issue(self, issue: StockIssue) -> StockIssue:
         # TODO: if reissue, need to check if num_shares <= total repurchased shares
         if issue.is_reissue:
             # check if reissue id exist
             try:
-                repur, jrn = cls.get_repur_journal(issue.reissue_repur_id)
+                repur, jrn = self.get_repur_journal(issue.reissue_repur_id) # type: ignore
             except NotExistError as e:
                 raise NotExistError(
                     message=f'Repurchase id {issue.reissue_repur_id} not found for reissue',
@@ -79,8 +92,8 @@ class SharesService:
                     )
                 
                 # verify if issue # of stock is less than remaining repurchased shares
-                total_reissued_excl_self = stockIssueDao.get_total_reissue_from_repur(
-                    repur_id=issue.reissue_repur_id,
+                total_reissued_excl_self = self.stock_issue_dao.get_total_reissue_from_repur(
+                    repur_id=issue.reissue_repur_id, # type: ignore
                     rep_dt=issue.issue_dt, # reissue on and before this date
                     exclu_issue_id=issue.issue_id  # exclude itself to avoid recursive counting
                 ) # already reissued before given date
@@ -90,12 +103,13 @@ class SharesService:
                 if issue.num_shares > remaining_for_reissue:
                     raise OpNotPermittedError(
                         message=f"You can only reissue remaining repurchased stock for batch {issue.reissue_repur_id}",
-                        details=f"total repurchased={repur.num_shares}, already issued={total_reissued_excl_self}, remaining={remaining_for_reissue} while you ask for {issue.num_shares}"
+                        details=f"total repurchased={repur.num_shares}, already issued={total_reissued_excl_self}, " \
+                        f"remaining={remaining_for_reissue} while you ask for {issue.num_shares}"
                     )
         
         # check if debit_acct_id exists
         try:
-            debit_acct: Account = AcctService.get_account(
+            debit_acct: Account = self.acct_service.get_account(
                 issue.debit_acct_id
             )
         except NotExistError as e:
@@ -111,7 +125,7 @@ class SharesService:
             
         # if the debit account is base currency, it should match the issue amount
         if debit_acct.currency == get_base_cur():
-            if not math.isclose(issue.issue_amt, issue.issue_amt_base):
+            if not math.isclose(issue.issue_amt, issue.issue_amt_base): # type: ignore
                 raise OpNotPermittedError(
                     message=f'Issue amount should equal to issue price x num_shares, if receiving base currency',
                     details=f'({debit_acct.currency}), Issue: {issue}'
@@ -119,11 +133,10 @@ class SharesService:
                 
         return issue
     
-    @classmethod
-    def _validate_repur(cls, repur: StockRepurchase) -> StockRepurchase:
+    def _validate_repur(self, repur: StockRepurchase) -> StockRepurchase:
         # check if credit_acct_id exists
         try:
-            credit_acct: Account = AcctService.get_account(
+            credit_acct: Account = self.acct_service.get_account(
                 repur.credit_acct_id
             )
         except NotExistError as e:
@@ -139,7 +152,7 @@ class SharesService:
             
         # if the credit account is base currency, it should match the repurchase amount
         if credit_acct.currency == get_base_cur():
-            if not math.isclose(repur.repur_amt, repur.repur_amt_base):
+            if not math.isclose(repur.repur_amt, repur.repur_amt_base): # type: ignore
                 raise OpNotPermittedError(
                     message=f'Repurchase amount should equal to repur price x num_shares, if paying base currency',
                     details=f'({credit_acct.currency}), Repurchase: {repur}'
@@ -147,11 +160,10 @@ class SharesService:
         
         return repur
     
-    @classmethod
-    def _validate_div(cls, div: Dividend) -> Dividend:
+    def _validate_div(self, div: Dividend) -> Dividend:
         # check if credit_acct_id exists
         try:
-            credit_acct: Account = AcctService.get_account(
+            credit_acct: Account = self.acct_service.get_account(
                 div.credit_acct_id
             )
         except NotExistError as e:
@@ -167,23 +179,22 @@ class SharesService:
             
         return div
     
-    @classmethod
-    def create_journal_from_issue(cls, issue: StockIssue) -> Journal:
-        cls._validate_issue(issue)
+    def create_journal_from_issue(self, issue: StockIssue) -> Journal:
+        self._validate_issue(issue)
         
         entries = []
-        debit_acct: Account = AcctService.get_account(
+        debit_acct: Account = self.acct_service.get_account(
             issue.debit_acct_id
         )
         # credit common stock / treasury stock
         if issue.is_reissue:
-            repur, _ = cls.get_repur_journal(issue.reissue_repur_id)
+            repur, _ = self.get_repur_journal(issue.reissue_repur_id) # type: ignore
             cost_price = repur.repur_price # using cost method, cost is repurchase price
-            credit_acct = AcctService.get_account(SystemAcctNumber.TREASURY_STOCK)
+            credit_acct = self.acct_service.get_account(SystemAcctNumber.TREASURY_STOCK)
             description=f"Reissue Treasy stock at cost={cost_price}"
         else:
             cost_price = get_par_share_price()
-            credit_acct = AcctService.get_account(SystemAcctNumber.CONTR_CAP)
+            credit_acct = self.acct_service.get_account(SystemAcctNumber.CONTR_CAP)
             description=f"Common stock at par value={cost_price}"
             
         issue_cost_base = finround(cost_price * issue.num_shares)
@@ -197,10 +208,10 @@ class SharesService:
             description=description,
         )
         # credit additional paid in capital
-        issue_premium_base = issue.issue_amt_base - issue_cost_base
+        issue_premium_base = issue.issue_amt_base - issue_cost_base # type: ignore
         add_entry = Entry(
             entry_type=EntryType.CREDIT, # additional paid in stock is credit entry
-            acct=AcctService.get_account(SystemAcctNumber.ADD_PAID_IN),
+            acct=self.acct_service.get_account(SystemAcctNumber.ADD_PAID_IN),
             cur_incexp=None, # balance sheet item should not have currency
             amount=issue_premium_base, # amount in raw currency
             # amount in base currency
@@ -214,9 +225,9 @@ class SharesService:
         # use base currency to record if using expense to debit
         cur_incexp = get_base_cur() if debit_acct.acct_type == AcctType.EXP else None
         if debit_acct.currency != get_base_cur():
-            amount_base=FxService.convert_to_base(
+            amount_base=self.fx_service.convert_to_base(
                 amount=issue.issue_amt,
-                src_currency=debit_acct.currency, # receive currency
+                src_currency=debit_acct.currency, # receive currency # type: ignore
                 cur_dt=issue.issue_dt, # convert fx at issue date
             )
             
@@ -231,10 +242,10 @@ class SharesService:
             )
             
             # if using different currency, additional received is fx gain
-            gain = amount_base - issue.issue_amt_base
+            gain = amount_base - issue.issue_amt_base # type: ignore
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
-                acct=AcctService.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
+                acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
                 cur_incexp=get_base_cur(),
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
@@ -267,32 +278,31 @@ class SharesService:
         journal.reduce_entries()
         return journal
     
-    @classmethod
-    def create_journal_from_repur(cls, repur: StockRepurchase) -> Journal:
-        cls._validate_repur(repur)
+    def create_journal_from_repur(self, repur: StockRepurchase) -> Journal:
+        self._validate_repur(repur)
         
         entries = []
-        credit_acct: Account = AcctService.get_account(
+        credit_acct: Account = self.acct_service.get_account(
             repur.credit_acct_id
         )
         
         # debit the treasury stock account
         treasury_entry = Entry(
             entry_type=EntryType.DEBIT, # repurchase is debit entry to treasury stock
-            acct=AcctService.get_account(SystemAcctNumber.TREASURY_STOCK),
+            acct=self.acct_service.get_account(SystemAcctNumber.TREASURY_STOCK),
             cur_incexp=None, # balance sheet item should not have currency
-            amount=repur.repur_amt_base, # amount in raw currency
+            amount=repur.repur_amt_base, # type: ignore # amount in raw currency
             # amount in base currency
-            amount_base=repur.repur_amt_base,
+            amount_base=repur.repur_amt_base, # type: ignore
             description=f"Treasury stock at price={repur.repur_price}"
         )
         entries.append(treasury_entry)
         
         # credit the account paying the repurchase
         if credit_acct.currency != get_base_cur():
-            amount_base=FxService.convert_to_base(
+            amount_base=self.fx_service.convert_to_base(
                 amount=repur.repur_amt,
-                src_currency=credit_acct.currency, # receive currency
+                src_currency=credit_acct.currency, # receive currency # type: ignore
                 cur_dt=repur.repur_dt, # convert fx at repurchase date
             )
             credit_entry = Entry(
@@ -306,10 +316,10 @@ class SharesService:
             )
             
             # if using different currency, less paid is fx gain
-            gain = repur.repur_amt_base - amount_base
+            gain = repur.repur_amt_base - amount_base # type: ignore
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
-                acct=AcctService.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
+                acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
                 cur_incexp=get_base_cur(),
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
@@ -340,24 +350,23 @@ class SharesService:
         journal.reduce_entries()
         return journal
     
-    @classmethod
-    def create_journal_from_div(cls, div: Dividend) -> Journal:
-        cls._validate_div(div)
+    def create_journal_from_div(self, div: Dividend) -> Journal:
+        self._validate_div(div)
         
         entries = []
-        credit_acct: Account = AcctService.get_account(
+        credit_acct: Account = self.acct_service.get_account(
             div.credit_acct_id
         )
         
         # debit the accum. dividend account
-        amount_base=FxService.convert_to_base(
+        amount_base=self.fx_service.convert_to_base(
             amount=div.div_amt,
-            src_currency=credit_acct.currency, # paying currency
+            src_currency=credit_acct.currency, # paying currency # type: ignore
             cur_dt=div.div_dt, # convert fx at dividend date
         )
         div_entry = Entry(
             entry_type=EntryType.DEBIT, # dividend is debit entry
-            acct=AcctService.get_account(SystemAcctNumber.TREASURY_STOCK),
+            acct=self.acct_service.get_account(SystemAcctNumber.TREASURY_STOCK),
             cur_incexp=None, # balance sheet item should not have currency
             amount=amount_base, # amount in base currency
             # amount in base currency
@@ -388,20 +397,19 @@ class SharesService:
         journal.reduce_entries()
         return journal
     
-    @classmethod
-    def add_issue(cls, issue: StockIssue):
+    def add_issue(self, issue: StockIssue):
         # see if issue already exist
         try:
-            _issue, _jrn_id  = stockIssueDao.get(issue.issue_id)
+            _issue, _jrn_id  = self.stock_issue_dao.get(issue.issue_id)
         except NotExistError as e:
             # if not exist, can safely create it
             # validate it first
-            cls._validate_issue(issue)
+            self._validate_issue(issue)
             
             # add journal first
-            journal = cls.create_journal_from_issue(issue)
+            journal = self.create_journal_from_issue(issue)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of journal does not exist: {journal}',
@@ -410,7 +418,7 @@ class SharesService:
                 
             # add issue
             try:
-                stockIssueDao.add(journal_id = journal.journal_id, stock_issue = issue)
+                self.stock_issue_dao.add(journal_id = journal.journal_id, stock_issue = issue)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of issue does not exist: {issue}',
@@ -428,20 +436,19 @@ class SharesService:
                 details=f"StockIssue: {_issue}, journal_id: {_jrn_id}"
             )
             
-    @classmethod
-    def add_repur(cls, repur: StockRepurchase):
+    def add_repur(self, repur: StockRepurchase):
         # see if repur already exist
         try:
-            _repur, _jrn_id  = stockRepurchaseDao.get(repur.repur_id)
+            _repur, _jrn_id  = self.stock_repurchase_dao.get(repur.repur_id)
         except NotExistError as e:
             # if not exist, can safely create it
             # validate it first
-            cls._validate_repur(repur)
+            self._validate_repur(repur)
             
             # add journal first
-            journal = cls.create_journal_from_repur(repur)
+            journal = self.create_journal_from_repur(repur)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of journal does not exist: {journal}',
@@ -450,7 +457,7 @@ class SharesService:
                 
             # add repur
             try:
-                stockRepurchaseDao.add(journal_id = journal.journal_id, stock_repur = repur)
+                self.stock_repurchase_dao.add(journal_id = journal.journal_id, stock_repur = repur)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of repur does not exist: {repur}',
@@ -468,20 +475,19 @@ class SharesService:
                 details=f"StockRepurchase: {_repur}, journal_id: {_jrn_id}"
             )
             
-    @classmethod
-    def add_div(cls, div: Dividend):
+    def add_div(self, div: Dividend):
         # see if div already exist
         try:
-            _div, _jrn_id  = dividendDao.get(div.div_id)
+            _div, _jrn_id  = self.dividend_dao.get(div.div_id)
         except NotExistError as e:
             # if not exist, can safely create it
             # validate it first
-            cls._validate_div(div)
+            self._validate_div(div)
             
             # add journal first
-            journal = cls.create_journal_from_div(div)
+            journal = self.create_journal_from_div(div)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of journal does not exist: {journal}',
@@ -490,7 +496,7 @@ class SharesService:
                 
             # add div
             try:
-                dividendDao.add(journal_id = journal.journal_id, dividend = div)
+                self.dividend_dao.add(journal_id = journal.journal_id, dividend = div)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of div does not exist: {div}',
@@ -508,10 +514,9 @@ class SharesService:
                 details=f"Dividend: {_div}, journal_id: {_jrn_id}"
             )
             
-    @classmethod
-    def get_issue_journal(cls, issue_id: str) -> Tuple[StockIssue, Journal]:
+    def get_issue_journal(self, issue_id: str) -> Tuple[StockIssue, Journal]:
         try:
-            stock_issue, jrn_id = stockIssueDao.get(issue_id)
+            stock_issue, jrn_id = self.stock_issue_dao.get(issue_id)
         except NotExistError as e:
             raise NotExistError(
                 f'StockIssue id {issue_id} does not exist',
@@ -520,13 +525,13 @@ class SharesService:
         
         # get journal
         try:
-            journal = JournalService.get_journal(jrn_id)
+            journal = self.journal_service.get_journal(jrn_id)
         except NotExistError as e:
             # TODO: raise error or add missing journal?
             # if not exist, add journal
-            journal = cls.create_journal_from_issue(stock_issue)
+            journal = self.create_journal_from_issue(stock_issue)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Trying to add journal but failed, some component of journal does not exist: {journal}',
@@ -535,10 +540,9 @@ class SharesService:
         
         return stock_issue, journal
     
-    @classmethod
-    def get_repur_journal(cls, repur_id: str) -> Tuple[StockRepurchase, Journal]:
+    def get_repur_journal(self, repur_id: str) -> Tuple[StockRepurchase, Journal]:
         try:
-            stock_repur, jrn_id = stockRepurchaseDao.get(repur_id)
+            stock_repur, jrn_id = self.stock_repurchase_dao.get(repur_id)
         except NotExistError as e:
             raise NotExistError(
                 f'StockRepurchase id {repur_id} does not exist',
@@ -547,13 +551,13 @@ class SharesService:
         
         # get journal
         try:
-            journal = JournalService.get_journal(jrn_id)
+            journal = self.journal_service.get_journal(jrn_id)
         except NotExistError as e:
             # TODO: raise error or add missing journal?
             # if not exist, add journal
-            journal = cls.create_journal_from_repur(stock_repur)
+            journal = self.create_journal_from_repur(stock_repur)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Trying to add journal but failed, some component of journal does not exist: {journal}',
@@ -562,10 +566,9 @@ class SharesService:
         
         return stock_repur, journal
     
-    @classmethod
-    def get_div_journal(cls, div_id: str) -> Tuple[Dividend, Journal]:
+    def get_div_journal(self, div_id: str) -> Tuple[Dividend, Journal]:
         try:
-            dividend, jrn_id = dividendDao.get(div_id)
+            dividend, jrn_id = self.dividend_dao.get(div_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Dividend id {div_id} does not exist',
@@ -574,13 +577,13 @@ class SharesService:
         
         # get journal
         try:
-            journal = JournalService.get_journal(jrn_id)
+            journal = self.journal_service.get_journal(jrn_id)
         except NotExistError as e:
             # TODO: raise error or add missing journal?
             # if not exist, add journal
-            journal = cls.create_journal_from_div(dividend)
+            journal = self.create_journal_from_div(dividend)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Trying to add journal but failed, some component of journal does not exist: {journal}',
@@ -589,12 +592,11 @@ class SharesService:
         
         return dividend, journal
     
-    @classmethod
-    def delete_issue(cls, issue_id: str):
+    def delete_issue(self, issue_id: str):
         # remove journal first
         # get journal
         try:
-            issue, jrn_id  = stockIssueDao.get(issue_id)
+            issue, jrn_id  = self.stock_issue_dao.get(issue_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Issue id {issue_id} does not exist',
@@ -603,7 +605,7 @@ class SharesService:
             
         # remove issue first
         try:
-            stockIssueDao.remove(issue_id)
+            self.stock_issue_dao.remove(issue_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Issue {issue_id} have dependency cannot be deleted",
@@ -612,19 +614,18 @@ class SharesService:
         
         # then remove journal
         try:
-            JournalService.delete_journal(jrn_id)
+            self.journal_service.delete_journal(jrn_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Delete journal failed, some component depends on the journal id {jrn_id}",
                 details=e.details
             )
             
-    @classmethod
-    def delete_repur(cls, repur_id: str):
+    def delete_repur(self, repur_id: str):
         # remove journal first
         # get journal
         try:
-            repur, jrn_id  = stockRepurchaseDao.get(repur_id)
+            repur, jrn_id  = self.stock_repurchase_dao.get(repur_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Repurchase id {repur_id} does not exist',
@@ -633,7 +634,7 @@ class SharesService:
             
         # remove repur first
         try:
-            stockRepurchaseDao.remove(repur_id)
+            self.stock_repurchase_dao.remove(repur_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Repurchase {repur_id} have dependency cannot be deleted",
@@ -642,19 +643,18 @@ class SharesService:
         
         # then remove journal
         try:
-            JournalService.delete_journal(jrn_id)
+            self.journal_service.delete_journal(jrn_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Delete journal failed, some component depends on the journal id {jrn_id}",
                 details=e.details
             )
             
-    @classmethod
-    def delete_div(cls, div_id: str):
+    def delete_div(self, div_id: str):
         # remove journal first
         # get journal
         try:
-            div, jrn_id  = dividendDao.get(div_id)
+            div, jrn_id  = self.dividend_dao.get(div_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Dividend id {div_id} does not exist',
@@ -663,7 +663,7 @@ class SharesService:
             
         # remove div first
         try:
-            dividendDao.remove(div_id)
+            self.dividend_dao.remove(div_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Dividend {div_id} have dependency cannot be deleted",
@@ -672,31 +672,30 @@ class SharesService:
         
         # then remove journal
         try:
-            JournalService.delete_journal(jrn_id)
+            self.journal_service.delete_journal(jrn_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Delete journal failed, some component depends on the journal id {jrn_id}",
                 details=e.details
             )
             
-    @classmethod
-    def update_issue(cls, issue: StockIssue):
-        cls._validate_issue(issue)
+    def update_issue(self, issue: StockIssue):
+        self._validate_issue(issue)
         # only delete if validation passed
         
         # get existing journal id
         try:
-            _issue, jrn_id  = stockIssueDao.get(issue.issue_id)
+            _issue, jrn_id  = self.stock_issue_dao.get(issue.issue_id)
         except NotExistError as e:
             raise NotExistError(
-                f'StockIssue id {_issue.issue_id} does not exist',
+                f'StockIssue id {issue.issue_id} does not exist',
                 details=e.details
             )
         
         # add new journal first
-        journal = cls.create_journal_from_issue(issue)
+        journal = self.create_journal_from_issue(issue)
         try:
-            JournalService.add_journal(journal)
+            self.journal_service.add_journal(journal)
         except FKNotExistError as e:
             raise FKNotExistError(
                 f'Some component of journal does not exist: {journal}',
@@ -705,39 +704,38 @@ class SharesService:
         
         # update issue
         try:
-            stockIssueDao.update(
+            self.stock_issue_dao.update(
                 journal_id=journal.journal_id, # use new journal id
                 stock_issue=issue
             )
         except FKNotExistError as e:
             # need to remove the new journal
-            JournalService.delete_journal(journal.journal_id)
+            self.journal_service.delete_journal(journal.journal_id)
             raise FKNotExistError(
                 f"StockIssue element does not exist",
                 details=e.details
             )
         
         # remove old journal
-        JournalService.delete_journal(jrn_id)
+        self.journal_service.delete_journal(jrn_id)
         
-    @classmethod
-    def update_repur(cls, repur: StockRepurchase):
-        cls._validate_repur(repur)
+    def update_repur(self, repur: StockRepurchase):
+        self._validate_repur(repur)
         # only delete if validation passed
         
         # get existing journal id
         try:
-            _repur, jrn_id  = stockRepurchaseDao.get(repur.repur_id)
+            _repur, jrn_id  = self.stock_repurchase_dao.get(repur.repur_id)
         except NotExistError as e:
             raise NotExistError(
-                f'StockRepurchase id {_repur.repur_id} does not exist',
+                f'StockRepurchase id {repur.repur_id} does not exist',
                 details=e.details
             )
         
         # add new journal first
-        journal = cls.create_journal_from_repur(repur)
+        journal = self.create_journal_from_repur(repur)
         try:
-            JournalService.add_journal(journal)
+            self.journal_service.add_journal(journal)
         except FKNotExistError as e:
             raise FKNotExistError(
                 f'Some component of journal does not exist: {journal}',
@@ -746,39 +744,38 @@ class SharesService:
         
         # update repur
         try:
-            stockRepurchaseDao.update(
+            self.stock_repurchase_dao.update(
                 journal_id=journal.journal_id, # use new journal id
                 stock_repur=repur
             )
         except FKNotExistError as e:
             # need to remove the new journal
-            JournalService.delete_journal(journal.journal_id)
+            self.journal_service.delete_journal(journal.journal_id)
             raise FKNotExistError(
                 f"StockRepurchase element does not exist",
                 details=e.details
             )
         
         # remove old journal
-        JournalService.delete_journal(jrn_id)
+        self.journal_service.delete_journal(jrn_id)
         
-    @classmethod
-    def update_div(cls, div: Dividend):
-        cls._validate_div(div)
+    def update_div(self, div: Dividend):
+        self._validate_div(div)
         # only delete if validation passed
         
         # get existing journal id
         try:
-            _div, jrn_id  = dividendDao.get(div.div_id)
+            _div, jrn_id  = self.dividend_dao.get(div.div_id)
         except NotExistError as e:
             raise NotExistError(
-                f'Dividend id {_div.div_id} does not exist',
+                f'Dividend id {div.div_id} does not exist',
                 details=e.details
             )
         
         # add new journal first
-        journal = cls.create_journal_from_div(div)
+        journal = self.create_journal_from_div(div)
         try:
-            JournalService.add_journal(journal)
+            self.journal_service.add_journal(journal)
         except FKNotExistError as e:
             raise FKNotExistError(
                 f'Some component of journal does not exist: {journal}',
@@ -787,42 +784,37 @@ class SharesService:
         
         # update div
         try:
-            dividendDao.update(
+            self.dividend_dao.update(
                 journal_id=journal.journal_id, # use new journal id
                 dividend=div
             )
         except FKNotExistError as e:
             # need to remove the new journal
-            JournalService.delete_journal(journal.journal_id)
+            self.journal_service.delete_journal(journal.journal_id)
             raise FKNotExistError(
                 f"Dividend element does not exist",
                 details=e.details
             )
         
         # remove old journal
-        JournalService.delete_journal(jrn_id)
+        self.journal_service.delete_journal(jrn_id)
     
         
-    @classmethod
-    def list_issues(cls, is_reissue: bool = False) -> list[StockIssue]:
-        return stockIssueDao.list_issues(is_reissue=is_reissue)
+    def list_issues(self, is_reissue: bool = False) -> list[StockIssue]:
+        return self.stock_issue_dao.list_issues(is_reissue=is_reissue)
     
-    @classmethod
-    def list_reissue_from_repur(cls, repur_id: str) -> list[StockIssue]:
-        return stockIssueDao.list_reissue_from_repur(repur_id)
+    def list_reissue_from_repur(self, repur_id: str) -> list[StockIssue]:
+        return self.stock_issue_dao.list_reissue_from_repur(repur_id)
     
-    @classmethod
-    def get_total_reissue_from_repur(cls, repur_id: str, rep_dt: date, exclu_issue_id: str | None = None) -> float:
-        return stockIssueDao.get_total_reissue_from_repur(
+    def get_total_reissue_from_repur(self, repur_id: str, rep_dt: date, exclu_issue_id: str | None = None) -> float:
+        return self.stock_issue_dao.get_total_reissue_from_repur(
             repur_id=repur_id,
             rep_dt=rep_dt,
             exclu_issue_id=exclu_issue_id
         )
     
-    @classmethod
-    def list_repurs(cls) -> list[StockRepurchase]:
-        return stockRepurchaseDao.list_repurs()
+    def list_repurs(self) -> list[StockRepurchase]:
+        return self.stock_repurchase_dao.list_repurs()
     
-    @classmethod
-    def list_divs(cls) -> list[Dividend]:
-        return dividendDao.list_divs()
+    def list_divs(self) -> list[Dividend]:
+        return self.dividend_dao.list_divs()

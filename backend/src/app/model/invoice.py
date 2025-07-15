@@ -9,7 +9,7 @@ from src.app.utils.base import EnhancedBaseModel
 
 class Item(EnhancedBaseModel):
     item_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='item-',
             length=8,
@@ -28,7 +28,7 @@ class InvoiceItem(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     invoice_item_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='invitem-',
             length=8,
@@ -62,23 +62,23 @@ class InvoiceItem(EnhancedBaseModel):
     @computed_field()
     def amount_pre_tax(self) -> float:
         # in item currency
-        return self.amount_pre_discount * (1 - self.discount_rate)
+        return self.amount_pre_discount * (1 - self.discount_rate) # type: ignore
     
     @computed_field()
     def tax_amount(self) -> float:
         # in item currency
-        return self.amount_pre_tax * self.tax_rate
+        return self.amount_pre_tax * self.tax_rate # type: ignore
     
     @computed_field()
     def amount_after_tax(self) -> float:
         # in item currency
-        return self.amount_pre_tax * (1 + self.tax_rate)
+        return self.amount_pre_tax * (1 + self.tax_rate) # type: ignore
     
 class GeneralInvoiceItem(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     ginv_item_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='ginvitem-',
             length=8,
@@ -145,7 +145,7 @@ class Invoice(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     invoice_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='inv-',
             length=8,
@@ -214,7 +214,7 @@ class Invoice(EnhancedBaseModel):
     @computed_field()
     def subtotal_invitems(self) -> float:
         # in item currency (same as invoice currency), all item before shipping
-        return sum(item.amount_pre_tax for item in self.invoice_items)
+        return sum(item.amount_pre_tax for item in self.invoice_items) # type: ignore
     
     @computed_field()
     def subtotal_ginvitems(self) -> float:
@@ -224,16 +224,16 @@ class Invoice(EnhancedBaseModel):
     @computed_field()
     def subtotal(self) -> float:
         # in item currency, all item before shipping
-        return self.subtotal_invitems + self.subtotal_ginvitems
+        return self.subtotal_invitems + self.subtotal_ginvitems # type: ignore
     
     @computed_field()
     def tax_amount(self) -> float:
         # in item currency
-        tax = sum(item.tax_amount for item in self.invoice_items) \
-            + sum(item.tax_amount for item in self.ginvoice_items)
+        tax = (sum(item.tax_amount for item in self.invoice_items) # type: ignore
+            + sum(item.tax_amount for item in self.ginvoice_items)) # type: ignore
         return tax
     
     @computed_field()
     def total(self) -> float:
         # in item currency
-        return self.subtotal + self.tax_amount + self.shipping
+        return self.subtotal + self.tax_amount + self.shipping # type: ignore

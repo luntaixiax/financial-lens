@@ -15,8 +15,15 @@ from src.app.model.property import _PropertyPriceBrief, Property, PropertyTransa
 
 class PropertyService:
     
-    @classmethod
-    def create_sample(cls):
+    def __init__(self, property_dao: propertyDao, property_transaction_dao: propertyTransactionDao, 
+                 fx_service: FxService, acct_service: AcctService, journal_service: JournalService):
+        self.property_dao = property_dao
+        self.property_transaction_dao = property_transaction_dao
+        self.fx_service = fx_service
+        self.acct_service = acct_service
+        self.journal_service = journal_service
+    
+    def create_sample(self):
         property = Property(
             property_id='exp-prop1',
             property_name='Computer',
@@ -35,19 +42,17 @@ class PropertyService:
             trans_type=PropertyTransactionType.DEPRECIATION,
             trans_amount=500
         )
-        cls.add_property(property)
-        cls.add_property_trans(depreciation)
+        self.add_property(property)
+        self.add_property_trans(depreciation)
         
-    @classmethod
-    def clear_sample(cls):
-        cls.delete_property_trans(trans_id='exp-proptrans-1')
-        cls.delete_property(property_id='exp-prop1')
+    def clear_sample(self):
+        self.delete_property_trans(trans_id='exp-proptrans-1')
+        self.delete_property(property_id='exp-prop1')
         
-    @classmethod
-    def _validate_property(cls, property: Property) -> Property:
+    def _validate_property(self, property: Property) -> Property:
         # validate if pur_acct_id is of balance sheet account
         try:
-            pur_acct: Account = AcctService.get_account(
+            pur_acct: Account = self.acct_service.get_account(
                 property.pur_acct_id
             )
         except NotExistError as e:
@@ -63,11 +68,10 @@ class PropertyService:
             
         return property
     
-    @classmethod
-    def _validate_propertytrans(cls, property_trans: PropertyTransaction) -> PropertyTransaction:
+    def _validate_propertytrans(self, property_trans: PropertyTransaction) -> PropertyTransaction:
         # validate if property exist
         try:
-            property, _ = cls.get_property_journal(property_trans.property_id)
+            property, _ = self.get_property_journal(property_trans.property_id)
         except NotExistError as e:
             raise FKNotExistError(
                 f"Property {property_trans.property_id} does not exist",
@@ -82,23 +86,22 @@ class PropertyService:
                 )
         return property_trans
             
-    @classmethod
-    def create_journal_from_property(cls, property: Property) -> Journal:
-        cls._validate_property(property)
+    def create_journal_from_property(self, property: Property) -> Journal:
+        self._validate_property(property)
         
         entries = []
-        pur_acct: Account = AcctService.get_account(
+        pur_acct: Account = self.acct_service.get_account(
             property.pur_acct_id
         )
         # book value of cost
-        amount_base=FxService.convert_to_base(
-            amount=property.pur_cost,
-            src_currency=pur_acct.currency, # purchase currency
+        amount_base=self.fx_service.convert_to_base(
+            amount=property.pur_cost, # type: ignore
+            src_currency=pur_acct.currency, # type: ignore # purchase currency
             cur_dt=property.pur_dt, # convert fx at purchase date
         )
         property_entry = Entry(
             entry_type=EntryType.DEBIT, # pp&e is debit
-            acct=AcctService.get_account(SystemAcctNumber.PPNE),
+            acct=self.acct_service.get_account(SystemAcctNumber.PPNE), 
             cur_incexp=None, # balance sheet item should not have currency
             amount=amount_base, # amount in raw currency
             # amount in base currency
@@ -108,14 +111,14 @@ class PropertyService:
         entries.append(property_entry)
         # sales tax
         if not math.isclose(property.tax, 0):
-            amount_tax=FxService.convert_to_base(
+            amount_tax=self.fx_service.convert_to_base(
                 amount=property.tax,
-                src_currency=pur_acct.currency, # purchase currency
+                src_currency=pur_acct.currency, # type: ignore # purchase currency
                 cur_dt=property.pur_dt, # convert fx at purchase date
             )
             tax_entry = Entry(
                 entry_type=EntryType.DEBIT, # tax is debit
-                acct=AcctService.get_account(SystemAcctNumber.INPUT_TAX),
+                acct=self.acct_service.get_account(SystemAcctNumber.INPUT_TAX),
                 cur_incexp=None, # balance sheet item should not have currency
                 amount=amount_tax, # amount in raw currency
                 # amount in base currency
@@ -148,40 +151,39 @@ class PropertyService:
         journal.reduce_entries()
         return journal
     
-    @classmethod
-    def create_journal_from_property_trans(cls, property_trans: PropertyTransaction) -> Journal:
-        cls._validate_propertytrans(property_trans)
+    def create_journal_from_property_trans(self, property_trans: PropertyTransaction) -> Journal:
+        self._validate_propertytrans(property_trans)
         
         entries = []
-        property, _ = cls.get_property_journal(property_trans.property_id)
-        pur_acct: Account = AcctService.get_account(
+        property, _ = self.get_property_journal(property_trans.property_id)
+        pur_acct: Account = self.acct_service.get_account(
             property.pur_acct_id
         )
-        amount_base=FxService.convert_to_base(
+        amount_base=self.fx_service.convert_to_base(
             amount=property_trans.trans_amount,
-            src_currency=pur_acct.currency, # purchase currency
+            src_currency=pur_acct.currency, # type: ignore # purchase currency
             cur_dt=property_trans.trans_dt, # convert fx at transaction date
         )
         if property_trans.trans_type == PropertyTransactionType.DEPRECIATION:
             # accumulate depreciation/impairment of pp&e is credit
             property_entry_type = EntryType.CREDIT
             gainloss_entry_type = EntryType.DEBIT
-            gainloss_acct = AcctService.get_account(SystemAcctNumber.DEPRECIATION)
+            gainloss_acct = self.acct_service.get_account(SystemAcctNumber.DEPRECIATION)
         elif property_trans.trans_type == PropertyTransactionType.IMPAIRMENT:
             property_entry_type = EntryType.CREDIT
             gainloss_entry_type = EntryType.DEBIT
-            gainloss_acct = AcctService.get_account(SystemAcctNumber.IMPAIRMENT)
+            gainloss_acct = self.acct_service.get_account(SystemAcctNumber.IMPAIRMENT)
         elif property_trans.trans_type == PropertyTransactionType.APPRECIATION:
             # accumulate appreciation of pp&e is debit
             property_entry_type = EntryType.DEBIT
             gainloss_entry_type = EntryType.CREDIT
-            gainloss_acct = AcctService.get_account(SystemAcctNumber.APPRECIATION)
+            gainloss_acct = self.acct_service.get_account(SystemAcctNumber.APPRECIATION)
         else:
             raise NotMatchWithSystemError(f"Property transaction type not supported: {property_trans.trans_type}")
         
         property_entry = Entry(
             entry_type=property_entry_type , 
-            acct=AcctService.get_account(SystemAcctNumber.ACC_ADJ), # accumulative adjustment
+            acct=self.acct_service.get_account(SystemAcctNumber.ACC_ADJ), # accumulative adjustment
             cur_incexp=None, # balance sheet item should not have currency
             amount=amount_base, # amount in raw currency
             # amount in base currency
@@ -210,20 +212,19 @@ class PropertyService:
         journal.reduce_entries()
         return journal
     
-    @classmethod
-    def add_property(cls, property: Property):
+    def add_property(self, property: Property):
         # see if property already exist
         try:
-            _property, _jrn_id  = propertyDao.get(property.property_id)
+            _property, _jrn_id  = self.property_dao.get(property.property_id)
         except NotExistError as e:
             # if not exist, can safely create it
             # validate it first
-            cls._validate_property(property)
+            self._validate_property(property)
             
             # add journal first
-            journal = cls.create_journal_from_property(property)
+            journal = self.create_journal_from_property(property)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of journal does not exist: {journal}',
@@ -232,7 +233,7 @@ class PropertyService:
                 
             # add property
             try:
-                propertyDao.add(journal_id = journal.journal_id, property = property)
+                self.property_dao.add(journal_id = journal.journal_id, property = property)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of property does not exist: {property}',
@@ -250,20 +251,19 @@ class PropertyService:
                 details=f"Property: {_property}, journal_id: {_jrn_id}"
             )
             
-    @classmethod
-    def add_property_trans(cls, property_trans: PropertyTransaction):
+    def add_property_trans(self, property_trans: PropertyTransaction):
         # see if property transaction already exist
         try:
-            _property_trans, _jrn_id  = propertyTransactionDao.get(property_trans.trans_id)
+            _property_trans, _jrn_id  = self.property_transaction_dao.get(property_trans.trans_id)
         except NotExistError as e:
             # if not exist, can safely create it
             # validate it first
-            cls._validate_propertytrans(property_trans)
+            self._validate_propertytrans(property_trans)
             
             # add journal first
-            journal = cls.create_journal_from_property_trans(property_trans)
+            journal = self.create_journal_from_property_trans(property_trans)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of journal does not exist: {journal}',
@@ -272,7 +272,7 @@ class PropertyService:
                 
             # add property
             try:
-                propertyTransactionDao.add(
+                self.property_transaction_dao.add(
                     journal_id = journal.journal_id, 
                     property_trans = property_trans
                 )
@@ -293,10 +293,9 @@ class PropertyService:
                 details=f"Property transaction: {_property_trans}, journal_id: {_jrn_id}"
             )
             
-    @classmethod
-    def get_property_journal(cls, property_id: str) -> Tuple[Property, Journal]:
+    def get_property_journal(self, property_id: str) -> Tuple[Property, Journal]:
         try:
-            property, jrn_id = propertyDao.get(property_id)
+            property, jrn_id = self.property_dao.get(property_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Property id {property_id} does not exist',
@@ -305,13 +304,13 @@ class PropertyService:
         
         # get journal
         try:
-            journal = JournalService.get_journal(jrn_id)
+            journal = self.journal_service.get_journal(jrn_id)
         except NotExistError as e:
             # TODO: raise error or add missing journal?
             # if not exist, add journal
-            journal = cls.create_journal_from_property(property)
+            journal = self.create_journal_from_property(property)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Trying to add journal but failed, some component of journal does not exist: {journal}',
@@ -320,10 +319,9 @@ class PropertyService:
         
         return property, journal
     
-    @classmethod
-    def get_property_trans_journal(cls, trans_id: str) -> Tuple[PropertyTransaction, Journal]:
+    def get_property_trans_journal(self, trans_id: str) -> Tuple[PropertyTransaction, Journal]:
         try:
-            property_trans, jrn_id = propertyTransactionDao.get(trans_id)
+            property_trans, jrn_id = self.property_transaction_dao.get(trans_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Property transaction id {trans_id} does not exist',
@@ -332,13 +330,13 @@ class PropertyService:
         
         # get journal
         try:
-            journal = JournalService.get_journal(jrn_id)
+            journal = self.journal_service.get_journal(jrn_id)
         except NotExistError as e:
             # TODO: raise error or add missing journal?
             # if not exist, add journal
-            journal = cls.create_journal_from_property_trans(property_trans)
+            journal = self.create_journal_from_property_trans(property_trans)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Trying to add journal but failed, some component of journal does not exist: {journal}',
@@ -347,12 +345,11 @@ class PropertyService:
         
         return property_trans, journal
     
-    @classmethod
-    def delete_property(cls, property_id: str):
+    def delete_property(self, property_id: str):
         # remove journal first
         # get journal
         try:
-            property, jrn_id  = propertyDao.get(property_id)
+            property, jrn_id  = self.property_dao.get(property_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Property id {property_id} does not exist',
@@ -361,7 +358,7 @@ class PropertyService:
             
         # remove property first
         try:
-            propertyDao.remove(property_id)
+            self.property_dao.remove(property_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"property {property_id} have dependency cannot be deleted",
@@ -370,19 +367,18 @@ class PropertyService:
         
         # then remove journal
         try:
-            JournalService.delete_journal(jrn_id)
+            self.journal_service.delete_journal(jrn_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Delete journal failed, some component depends on the journal id {jrn_id}",
                 details=e.details
             )
             
-    @classmethod
-    def delete_property_trans(cls, trans_id: str):
+    def delete_property_trans(self, trans_id: str):
         # remove journal first
         # get journal
         try:
-            property, jrn_id  = propertyTransactionDao.get(trans_id)
+            property, jrn_id  = self.property_transaction_dao.get(trans_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Property transaction id {trans_id} does not exist',
@@ -391,7 +387,7 @@ class PropertyService:
             
         # remove property first
         try:
-            propertyTransactionDao.remove(trans_id)
+            self.property_transaction_dao.remove(trans_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Property transaction {trans_id} have dependency cannot be deleted",
@@ -400,31 +396,30 @@ class PropertyService:
             
         # then remove journal
         try:
-            JournalService.delete_journal(jrn_id)
+            self.journal_service.delete_journal(jrn_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Delete journal failed, some component depends on the journal id {jrn_id}",
                 details=e.details
             )
             
-    @classmethod
-    def update_property(cls, property: Property):
-        cls._validate_property(property)
+    def update_property(self, property: Property):
+        self._validate_property(property)
         # only delete if validation passed
         
         # get existing journal id
         try:
-            _property, jrn_id  = propertyDao.get(property.property_id)
+            _property, jrn_id  = self.property_dao.get(property.property_id)
         except NotExistError as e:
             raise NotExistError(
-                f'Property id {_property.property_id} does not exist',
+                f'Property id {property.property_id} does not exist',
                 details=e.details
             )
         
         # add new journal first
-        journal = cls.create_journal_from_property(property)
+        journal = self.create_journal_from_property(property)
         try:
-            JournalService.add_journal(journal)
+            self.journal_service.add_journal(journal)
         except FKNotExistError as e:
             raise FKNotExistError(
                 f'Some component of journal does not exist: {journal}',
@@ -433,29 +428,28 @@ class PropertyService:
         
         # update property
         try:
-            propertyDao.update(
+            self.property_dao.update(
                 journal_id=journal.journal_id, # use new journal id
                 property=property
             )
         except FKNotExistError as e:
             # need to remove the new journal
-            JournalService.delete_journal(journal.journal_id)
+            self.journal_service.delete_journal(journal.journal_id)
             raise FKNotExistError(
                 f"Property element does not exist",
                 details=e.details
             )
         
         # remove old journal
-        JournalService.delete_journal(jrn_id)
+        self.journal_service.delete_journal(jrn_id)
         
-    @classmethod
-    def update_property_trans(cls, property_trans: PropertyTransaction):
-        cls._validate_propertytrans(property_trans)
+    def update_property_trans(self, property_trans: PropertyTransaction):
+        self._validate_propertytrans(property_trans)
         # only delete if validation passed
         
         # get existing journal id
         try:
-            _property_trans, jrn_id  = propertyTransactionDao.get(property_trans.trans_id)
+            _property_trans, jrn_id  = self.property_transaction_dao.get(property_trans.trans_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Property transaction id {property_trans.trans_id} does not exist',
@@ -463,9 +457,9 @@ class PropertyService:
             )
         
         # add new journal first
-        journal = cls.create_journal_from_property_trans(property_trans)
+        journal = self.create_journal_from_property_trans(property_trans)
         try:
-            JournalService.add_journal(journal)
+            self.journal_service.add_journal(journal)
         except FKNotExistError as e:
             raise FKNotExistError(
                 f'Some component of journal does not exist: {journal}',
@@ -474,29 +468,27 @@ class PropertyService:
         
         # update property
         try:
-            propertyTransactionDao.update(
+            self.property_transaction_dao.update(
                 journal_id=journal.journal_id, # use new journal id
                 property_trans=property_trans
             )
         except FKNotExistError as e:
             # need to remove the new journal
-            JournalService.delete_journal(journal.journal_id)
+            self.journal_service.delete_journal(journal.journal_id)
             raise FKNotExistError(
                 f"Property element does not exist",
                 details=e.details
             )
         
         # remove old journal
-        JournalService.delete_journal(jrn_id)
+        self.journal_service.delete_journal(jrn_id)
         
-    @classmethod
-    def list_properties(cls) -> list[Property]:
-        return propertyDao.list_properties()
+    def list_properties(self) -> list[Property]:
+        return self.property_dao.list_properties()
     
-    @classmethod
-    def get_acc_stat(cls, property_id: str, rep_dt: date) -> _PropertyPriceBrief:
+    def get_acc_stat(self, property_id: str, rep_dt: date) -> _PropertyPriceBrief:
         try:
-            stat = propertyTransactionDao.get_acc_stat(
+            stat = self.property_transaction_dao.get_acc_stat(
                 property_id=property_id,
                 rep_dt=rep_dt
             )
@@ -507,7 +499,6 @@ class PropertyService:
             )
         return stat
     
-    @classmethod
-    def list_transactions(cls, property_id: str) -> list[PropertyTransaction]:
-        return propertyTransactionDao.list_transactions(property_id)
+    def list_transactions(self, property_id: str) -> list[PropertyTransaction]:
+        return self.property_transaction_dao.list_transactions(property_id)
     

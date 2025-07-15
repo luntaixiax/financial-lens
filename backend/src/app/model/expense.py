@@ -20,7 +20,7 @@ class ExpenseItem(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     expense_item_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='expitem-',
             length=12,
@@ -46,7 +46,7 @@ class ExpenseItem(EnhancedBaseModel):
     @computed_field()
     def tax_amount_round(self) -> float:
         # in item currency
-        return finround(self.tax_amount)
+        return finround(self.tax_amount) # type: ignore
     
     @computed_field()
     def amount_after_tax(self) -> float:
@@ -56,7 +56,7 @@ class ExpenseItem(EnhancedBaseModel):
     @computed_field()
     def amount_after_tax_round(self) -> float:
         # in item currency
-        return finround(self.amount_after_tax)
+        return finround(self.amount_after_tax) # type: ignore
 
 class _ExpenseBrief(EnhancedBaseModel):
     expense_id: str
@@ -81,7 +81,7 @@ class Expense(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     expense_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='exp-',
             length=11,
@@ -115,11 +115,11 @@ class Expense(EnhancedBaseModel):
     @computed_field()
     def tax_amount(self) -> float:
         # in item currency
-        return taxround(sum(item.tax_amount for item in self.expense_items))
+        return taxround(sum(item.tax_amount for item in self.expense_items)) # type: ignore
     
     @computed_field()
     def total(self) -> float:
         # in item currency
         return taxround(sum(item.amount_pre_tax for item in self.expense_items) 
-                        + sum(item.tax_amount for item in self.expense_items))
+                        + sum(item.tax_amount for item in self.expense_items)) # type: ignore
     

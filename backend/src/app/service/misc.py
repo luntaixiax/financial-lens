@@ -13,7 +13,7 @@ from src.app.model.misc import _CountryBrief, _StateBrief, FileWrapper
 class GeoService:
     
     @classmethod
-    def req(cls, path: str) -> dict:
+    def req(cls, path: str) -> dict: # type: ignore
         secret = get_secret()['stateapi']
         headers = {
             'X-CSCAPI-KEY': secret['apikey']
@@ -53,45 +53,43 @@ class GeoService:
 class SettingService:
     LOGO_FILE_ID = 'settings-logo'
     
-    @classmethod
-    def set_logo(cls, content: str):
+    def __init__(self, file_service: FileService, config_dao: configDao):
+        self.file_service = file_service
+        self.config_dao = config_dao
+    
+    def set_logo(self, content: str):
         logo = FileWrapper(
-            file_id=cls.LOGO_FILE_ID,
+            file_id=self.LOGO_FILE_ID,
             filename='SETTINGS_LOGO.PNG', 
             content=content
         )
         try:
-            FileService.get_file(cls.LOGO_FILE_ID)
+            self.file_service.get_file(self.LOGO_FILE_ID)
         except NotExistError:
-            FileService.add_file(logo)
+            self.file_service.add_file(logo)
         else:
             # if exist, remove current one and replace with new one
-            FileService.delete_file(cls.LOGO_FILE_ID)
-            FileService.add_file(logo)
+            self.file_service.delete_file(self.LOGO_FILE_ID)
+            self.file_service.add_file(logo)
         
-    @classmethod
-    def get_logo(cls) -> FileWrapper:
+    def get_logo(self) -> FileWrapper:
         try:
-            logo = FileService.get_file(cls.LOGO_FILE_ID)
+            logo = self.file_service.get_file(self.LOGO_FILE_ID)
         except NotExistError as e:
             raise NotExistError(message="Logo not set yet! " + e.message, details=e.details)
         return logo
     
-    @classmethod
-    def get_config(cls) -> dict[str, Any]:
-        return configDao.get_config()
+    def get_config(self) -> dict[str, Any]:
+        return self.config_dao.get_config()
     
-    @classmethod
-    def get_config_value(cls, key: str) -> Any:
-        return configDao.get_config_value(key)
+    def get_config_value(self, key: str) -> Any:
+        return self.config_dao.get_config_value(key)
     
-    @classmethod
-    def set_config_value(cls, key: str, value: Any):
-        configDao.set_config_value(key, value)
+    def set_config_value(self, key: str, value: Any):
+        self.config_dao.set_config_value(key, value)
         
-    @classmethod
-    def get_company(cls) -> Tuple[str, Contact]:
-        company = cls.get_config_value('company')
+    def get_company(self) -> Tuple[str, Contact]:
+        company = self.get_config_value('company')
         if company is None:
             raise NotExistError(message="Your Company profile not set yet")
         
@@ -99,77 +97,67 @@ class SettingService:
         contact = Contact.model_validate(company['contact'])
         return name, contact
     
-    @classmethod
-    def set_company(cls, name: str, contact: Contact):
+    def set_company(self, name: str, contact: Contact):
         conf = {
             'name' : name,
             'contact': contact.model_dump()
         }
-        cls.set_config_value('company', conf)
+        self.set_config_value('company', conf)
         
-    @classmethod
-    def is_setup(cls) -> bool:
+    def is_setup(self) -> bool:
         # see if the account has setup yet
         # if yes, no change to base currency
         # if no, should display button to initialize the settings (bootstrapping)
-        return cls.get_config_value('is_setup') or False
+        return self.get_config_value('is_setup') or False
     
-    @classmethod
-    def confirm_setup(cls):
-        cls.set_config_value('is_setup', True)
+    def confirm_setup(self):
+        self.set_config_value('is_setup', True)
     
-    @classmethod
-    def get_base_currency(cls) -> CurType:
-        base_currency = cls.get_config_value('base_currency')
+    def get_base_currency(self) -> CurType:
+        base_currency = self.get_config_value('base_currency')
         if base_currency is None:
             raise NotExistError("Base Currency not set yet")
         return CurType(base_currency)
     
-    @classmethod
-    def set_base_currency(cls, base_currency: CurType):
+    def set_base_currency(self, base_currency: CurType):
         try:
-            base_currency = cls.get_base_currency()
+            base_currency = self.get_base_currency()
         except NotExistError:
-            cls.set_config_value('base_currency', base_currency)
+            self.set_config_value('base_currency', base_currency)
         else:
-            if cls.is_setup():
+            if self.is_setup():
                 raise OpNotPermittedError(f"Account already setup, cannot change base curreny")
             else:
                 # still want to set if setup is not finalized yet
-                cls.set_config_value('base_currency', base_currency)
+                self.set_config_value('base_currency', base_currency)
                 
-    @classmethod
-    def get_default_tax_rate(cls) -> float:
-        default_tax_rate = cls.get_config_value('default_tax_rate')
+    def get_default_tax_rate(self) -> float:
+        default_tax_rate = self.get_config_value('default_tax_rate')
         if default_tax_rate is None:
             raise NotExistError("Default Tax rate not set yet")
         return default_tax_rate
     
-    @classmethod
-    def set_default_tax_rate(cls, default_tax_rate: float):
-        cls.set_config_value('default_tax_rate', default_tax_rate)
+    def set_default_tax_rate(self, default_tax_rate: float):
+        self.set_config_value('default_tax_rate', default_tax_rate)
         
-    @classmethod
-    def get_par_share_price(cls) -> float:
-        par_share_price = cls.get_config_value('par_share_price')
+    def get_par_share_price(self) -> float:
+        par_share_price = self.get_config_value('par_share_price')
         if par_share_price is None:
             raise NotExistError("Par share price not set yet")
         return par_share_price
     
-    @classmethod
-    def set_par_share_price(cls, par_share_price: float):
+    def set_par_share_price(self, par_share_price: float):
         try:
-            par_share_price = cls.get_par_share_price()
+            par_share_price = self.get_par_share_price()
         except NotExistError:
-            cls.set_config_value('par_share_price', par_share_price)
+            self.set_config_value('par_share_price', par_share_price)
         else:
-            if cls.is_setup():
+            if self.is_setup():
                 raise OpNotPermittedError(f"Account already setup, cannot change par share price")
             else:
                 # still want to set if setup is not finalized yet
-                cls.set_config_value('par_share_price', par_share_price)
+                self.set_config_value('par_share_price', par_share_price)
         
-    @classmethod
-    def get_static_server_path(cls) -> str:
+    def get_static_server_path(self) -> str:
         secret = get_secret()['static_server']
         return f"http://{secret['hostname']}:{secret['port']}"

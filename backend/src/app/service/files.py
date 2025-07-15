@@ -4,11 +4,13 @@ from src.app.dao.files import fileDao
 
 class FileService:
     
-    @classmethod
-    def register_file(cls, filename: str) -> str:
+    def __init__(self, file_dao: fileDao):
+        self.file_dao = file_dao
+        
+    def register_file(self, filename: str) -> str:
         # if the file already exist on storage, but just want to register back to DB
         try:
-            file_id = fileDao.register(filename)
+            file_id = self.file_dao.register(filename)
         except NotExistError as e:
             raise NotExistError(
                 message=f"File not exist",
@@ -22,8 +24,7 @@ class FileService:
         
         return file_id
         
-    @classmethod
-    def register_files(cls, filenames: list[str]) -> dict[str, str]:
+    def register_files(self, filenames: list[str]) -> dict[str, str]:
         # return {filename: file_id}
         errs = []
         err_files = []
@@ -31,13 +32,13 @@ class FileService:
         maps = {}
         for i, filename in enumerate(filenames):
             try:
-                file_id = cls.register_file(filename)
+                file_id = self.register_file(filename)
             except (NotExistError, FKNotExistError, NotMatchWithSystemError, FKNoDeleteUpdateError, OpNotPermittedError) as e:
                 errs.append(e)
                 err_files.append(filename)
             except AlreadyExistError as e:
                 dup_files.append(filename)
-                maps[filename] = fileDao.get_file_id_by_name(filename) # must record as well
+                maps[filename] = self.file_dao.get_file_id_by_name(filename) # must record as well
                 
             else:
                 
@@ -54,10 +55,9 @@ class FileService:
         
         return maps
     
-    @classmethod
-    def add_file(cls, file: FileWrapper):
+    def add_file(self, file: FileWrapper):
         try:
-            fileDao.add(file)
+            self.file_dao.add(file)
         except AlreadyExistError as e:
             raise AlreadyExistError(
                 message='File already exist',
@@ -69,10 +69,9 @@ class FileService:
                 details=e.details
             )
             
-    @classmethod
-    def delete_file(cls, file_id: str):
+    def delete_file(self, file_id: str):
         try:
-            fileDao.remove(file_id)
+            self.file_dao.remove(file_id)
         except NotExistError as e:
             raise NotExistError(
                 message=f"File not exist: {file_id}",
@@ -84,10 +83,9 @@ class FileService:
                 details=e.details
             )
             
-    @classmethod
-    def get_file(cls, file_id: str) -> FileWrapper:
+    def get_file(self, file_id: str) -> FileWrapper:
         try:
-            file = fileDao.get(file_id)
+            file = self.file_dao.get(file_id)
         except NotExistError as e:
             raise NotExistError(
                 message=f"File not exist: {file_id}",
@@ -95,10 +93,9 @@ class FileService:
             )
         return file
     
-    @classmethod
-    def get_file_id_by_name(cls, filename: str) -> str:
+    def get_file_id_by_name(self, filename: str) -> str:
         try:
-            return fileDao.get_file_id_by_name(filename)
+            return self.file_dao.get_file_id_by_name(filename)
         except NotExistError as e:
             raise NotExistError(
                 message=f"File not exist: {filename}",

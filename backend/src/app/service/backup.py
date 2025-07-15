@@ -5,27 +5,27 @@ from src.app.dao.backup import backupDao
 
 class BackupService:
     
-    @classmethod
-    def list_backup_ids(cls) -> list[str]:
-        return backupDao.list_backup_ids()
+    def __init__(self, backup_dao: backupDao):
+        self.backup_dao = backup_dao
     
-    @classmethod
-    def backup(cls, backup_id: str | None) -> str:
+    def list_backup_ids(self) -> list[str]:
+        return self.backup_dao.list_backup_ids()
+    
+    def backup(self, backup_id: str | None) -> str:
         # use current timestamp if not given backup id
         backup_id = backup_id or datetime.now().strftime('%Y%m%dT%H%M%S')
         
         # backup database
-        backupDao.backup_database(backup_id)
+        self.backup_dao.backup_database(backup_id)
         # backup files
-        backupDao.backup_files(backup_id)
+        self.backup_dao.backup_files(backup_id)
         
         return backup_id
     
-    @classmethod
-    def restore(cls, backup_id: str):
+    def restore(self, backup_id: str):
         
         # restore files
-        backupDao.restore_files(backup_id)
+        self.backup_dao.restore_files(backup_id)
         # restore database
-        backupDao.restore_database(backup_id)
+        self.backup_dao.restore_database(backup_id)
         

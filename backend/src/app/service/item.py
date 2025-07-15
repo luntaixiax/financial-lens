@@ -1,22 +1,17 @@
-from datetime import date
-from typing import Tuple
-from src.app.service.entity import EntityService
-from src.app.dao.invoice import itemDao, invoiceDao
-from src.app.model.exceptions import OpNotPermittedError, AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, \
-    NotExistError, NotMatchWithSystemError
-from src.app.model.const import SystemAcctNumber
+from src.app.dao.invoice import itemDao
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError, NotMatchWithSystemError
 from src.app.service.acct import AcctService
-from src.app.service.journal import JournalService
-from src.app.service.fx import FxService
 from src.app.model.accounts import Account
-from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
-from src.app.model.invoice import _InvoiceBrief, Invoice, InvoiceItem, Item
-from src.app.model.journal import Journal, Entry
+from src.app.model.enums import AcctType, CurType, EntityType, ItemType, UnitType
+from src.app.model.invoice import Item
 
 class ItemService:
     
-    @classmethod
-    def create_sample(cls):
+    def __init__(self, item_dao: itemDao, acct_service: AcctService):
+        self.item_dao = item_dao
+        self.acct_service = acct_service
+        
+    def create_sample(self):
         item_consult = Item(
             item_id='item-consul',
             name='Item - Consulting',
@@ -48,42 +43,38 @@ class ItemService:
             default_acct_id='acct-cogs'
         )
         
-        cls.add_item(item_consult)
-        cls.add_item(item_meeting)
-        cls.add_item(item_sales)
+        self.add_item(item_consult)
+        self.add_item(item_meeting)
+        self.add_item(item_sales)
         
-    @classmethod
-    def clear_sample(cls):
-        cls.delete_item('item-consul')
-        cls.delete_item('item-meet')
-        cls.delete_item('item-sales')
+    def clear_sample(self):
+        self.delete_item('item-consul')
+        self.delete_item('item-meet')
+        self.delete_item('item-sales')
         
-    @classmethod
-    def _validate_item(cls, item: Item):
+    def _validate_item(self, item: Item):
         # validate the default_acct_id is income/expense account
-        default_item_acct: Account = AcctService.get_account(item.default_acct_id)
+        default_item_acct: Account = self.acct_service.get_account(item.default_acct_id)
         # invoice to customer, the acct type must be of income type
         if not default_item_acct.acct_type in (AcctType.INC, AcctType.EXP):
             raise NotMatchWithSystemError(
                 message=f"Default acct type of sales invoice item must be of Income/Expense type, get {default_item_acct.acct_type}"
             )
         
-    @classmethod
-    def add_item(cls, item: Item):
-        cls._validate_item(item)
+    def add_item(self, item: Item):
+        self._validate_item(item)
         try:
-            itemDao.add(item)
+            self.item_dao.add(item)
         except AlreadyExistError as e:
             raise AlreadyExistError(
                 f'item {item} already exist',
                 details=e.details
             )
             
-    @classmethod
-    def update_item(cls, item: Item):
-        cls._validate_item(item)
+    def update_item(self, item: Item):
+        self._validate_item(item)
         # cannot update unit type and item type
-        _item = cls.get_item(item.item_id)
+        _item = self.get_item(item.item_id)
         if _item.unit != item.unit or _item.item_type != item.item_type:
             raise NotMatchWithSystemError(
                 f"Item unit and type cannot change",
@@ -91,17 +82,16 @@ class ItemService:
             )
         
         try:
-            itemDao.update(item)
+            self.item_dao.update(item)
         except NotExistError as e:
             raise NotExistError(
                 f'item id {item.item_id} not exist',
                 details=e.details
             )
             
-    @classmethod
-    def delete_item(cls, item_id: str):
+    def delete_item(self, item_id: str):
         try:
-            itemDao.remove(item_id)
+            self.item_dao.remove(item_id)
         except NotExistError as e:
             raise NotExistError(
                 f'item id {item_id} not exist',
@@ -113,10 +103,9 @@ class ItemService:
                 details=e.details
             )
             
-    @classmethod
-    def get_item(cls, item_id: str) -> Item:
+    def get_item(self, item_id: str) -> Item:
         try:
-            item = itemDao.get(item_id)
+            item = self.item_dao.get(item_id)
         except NotExistError as e:
             raise NotExistError(
                 f'item id {item_id} not exist',
@@ -124,6 +113,5 @@ class ItemService:
             )
         return item
     
-    @classmethod
-    def list_item(cls, entity_type: EntityType) -> list[Item]:
-        return itemDao.list_item(entity_type=entity_type)
+    def list_item(self, entity_type: EntityType) -> list[Item]:
+        return self.item_dao.list_item(entity_type=entity_type)

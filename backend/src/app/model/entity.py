@@ -38,7 +38,7 @@ class _ContactBrief(EnhancedBaseModel):
     
 class Contact(EnhancedBaseModel):
     contact_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='cont-',
             length=8,
@@ -66,7 +66,7 @@ class Customer(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     cust_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='cust-',
             length=8,
@@ -90,7 +90,7 @@ class Supplier(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     supplier_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='supp-',
             length=8,
