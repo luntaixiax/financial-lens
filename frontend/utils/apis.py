@@ -1924,6 +1924,8 @@ def set_logo(logo: bytes):
         files=[('logo', logo)]
     )
     get_logo.clear()
+    preview_purchase_invoice.clear()
+    preview_sales_invoice.clear()
 
 @st.cache_data
 @message_box

@@ -1,27 +1,28 @@
 
 from datetime import date
 from typing import Tuple
+from src.app.utils.tools import get_base_cur
+from src.app.model.const import SystemAcctNumber
 from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
 from src.app.model.exceptions import FKNoDeleteUpdateError, NotExistError, AlreadyExistError, FKNotExistError
 from src.app.dao.journal import journalDao
 from src.app.model.journal import _AcctFlowAGG, _EntryBrief, _JournalBrief, Entry, Journal
-
+from src.app.service.acct import AcctService
 
 class JournalService:
     
-    @classmethod
-    def create_sample(cls):
-        from src.app.model.const import SystemAcctNumber
-        from src.app.utils.tools import get_base_cur
-        from src.app.service.acct import AcctService
-
+    def __init__(self, journal_dao: journalDao, acct_service: AcctService):
+        self.journal_dao = journal_dao
+        self.acct_service = acct_service
+    
+    def create_sample(self):
         journal1 = Journal(
             journal_id='jrn-1',
             jrn_date=date(2024, 1, 1),
             entries=[
                 Entry(
                     entry_type=EntryType.DEBIT,
-                    acct=AcctService.get_account('acct-meal'),
+                    acct=self.acct_service.get_account('acct-meal'),
                     cur_incexp=get_base_cur(),
                     amount=105.83,
                     amount_base=105.83,
@@ -29,7 +30,7 @@ class JournalService:
                 ),
                 Entry(
                     entry_type=EntryType.DEBIT,
-                    acct=AcctService.get_account('acct-tip'),
+                    acct=self.acct_service.get_account('acct-tip'),
                     cur_incexp=get_base_cur(),
                     amount=13.93,
                     amount_base=13.93,
@@ -37,14 +38,16 @@ class JournalService:
                 ),
                 Entry(
                     entry_type=EntryType.DEBIT,
-                    acct=AcctService.get_account(SystemAcctNumber.INPUT_TAX),
+                    acct=self.acct_service.get_account(SystemAcctNumber.INPUT_TAX),
+                    cur_incexp=None,
                     amount=13.35,
                     amount_base=13.35,
                     description=None
                 ),
                 Entry(
                     entry_type=EntryType.CREDIT,
-                    acct=AcctService.get_account('acct-bank'),
+                    acct=self.acct_service.get_account('acct-bank'),
+                    cur_incexp=None,
                     amount=133.11,
                     amount_base=133.11,
                     description=None
@@ -59,7 +62,7 @@ class JournalService:
             entries=[
                 Entry(
                     entry_type=EntryType.DEBIT,
-                    acct=AcctService.get_account('acct-rental'),
+                    acct=self.acct_service.get_account('acct-rental'),
                     cur_incexp=CurType.JPY,
                     amount=25000,
                     amount_base=250,
@@ -67,7 +70,7 @@ class JournalService:
                 ),
                 Entry(
                     entry_type=EntryType.DEBIT,
-                    acct=AcctService.get_account('acct-tip'),
+                    acct=self.acct_service.get_account('acct-tip'),
                     cur_incexp=CurType.USD,
                     amount=10,
                     amount_base=13.93,
@@ -75,21 +78,24 @@ class JournalService:
                 ),
                 Entry(
                     entry_type=EntryType.DEBIT,
-                    acct=AcctService.get_account(SystemAcctNumber.INPUT_TAX),
+                    acct=self.acct_service.get_account(SystemAcctNumber.INPUT_TAX),
+                    cur_incexp=None,
                     amount=45,
                     amount_base=45,
                     description='HST paid during booking'
                 ),
                 Entry(
                     entry_type=EntryType.CREDIT,
-                    acct=AcctService.get_account('acct-fbank'),
+                    acct=self.acct_service.get_account('acct-fbank'),
+                    cur_incexp=None,
                     amount=25000,
                     amount_base=295,
                     description=None
                 ),
                 Entry(
                     entry_type=EntryType.CREDIT,
-                    acct=AcctService.get_account('acct-credit'),
+                    acct=self.acct_service.get_account('acct-credit'),
+                    cur_incexp=None,
                     amount=13.93,
                     amount_base=13.93,
                     description='pay HST with credit card'
@@ -104,7 +110,7 @@ class JournalService:
             entries=[
                 Entry(
                     entry_type=EntryType.CREDIT,
-                    acct=AcctService.get_account('acct-consul'),
+                    acct=self.acct_service.get_account('acct-consul'),
                     cur_incexp=CurType.USD,
                     amount=5000,
                     amount_base=6700,
@@ -112,7 +118,8 @@ class JournalService:
                 ),
                 Entry(
                     entry_type=EntryType.DEBIT,
-                    acct=AcctService.get_account(SystemAcctNumber.ACCT_RECEIV),
+                    acct=self.acct_service.get_account(SystemAcctNumber.ACCT_RECEIV),
+                    cur_incexp=None,
                     amount=6700,
                     amount_base=6700,
                     description='Record as A/R'
@@ -121,30 +128,27 @@ class JournalService:
             jrn_src=JournalSrc.EXPENSE, # this is non-manual entry journal
             note='sample invoice journal'
         )
-        cls.add_journal(journal1)
-        cls.add_journal(journal2)
-        cls.add_journal(journal3)
+        self.add_journal(journal1)
+        self.add_journal(journal2)
+        self.add_journal(journal3)
         
-    @classmethod
-    def clear_sample(cls):
-        cls.delete_journal('jrn-1')
-        cls.delete_journal('jrn-2')
-        cls.delete_journal('jrn-3')
+    def clear_sample(self):
+        self.delete_journal('jrn-1')
+        self.delete_journal('jrn-2')
+        self.delete_journal('jrn-3')
         
-    @classmethod
-    def add_journal(cls, journal: Journal):
+    def add_journal(self, journal: Journal):
         # add journal and entries
         try:
-            journalDao.add(journal)
+            self.journal_dao.add(journal)
         except AlreadyExistError as e:
             raise e
         except FKNotExistError as e:
             raise e
         
-    @classmethod
-    def get_journal(cls, journal_id: str) -> Journal:
+    def get_journal(self, journal_id: str) -> Journal:
         try:
-            journal = journalDao.get(journal_id)
+            journal = self.journal_dao.get(journal_id)
         except NotExistError as e:
             raise NotExistError(
                 f"Journal/Entry not found: {journal_id}",
@@ -152,10 +156,9 @@ class JournalService:
             )
         return journal
     
-    @classmethod
-    def delete_journal(cls, journal_id: str):
+    def delete_journal(self, journal_id: str):
         try:
-            journalDao.remove(journal_id)
+            self.journal_dao.remove(journal_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError()
         except NotExistError as e:
@@ -164,14 +167,12 @@ class JournalService:
                 details=e.details
             )
         
-    @classmethod
-    def update_journal(cls, journal: Journal):
-        cls.delete_journal(journal_id = journal.journal_id)
-        cls.add_journal(journal)
+    def update_journal(self, journal: Journal):
+        self.delete_journal(journal_id = journal.journal_id)
+        self.add_journal(journal)
         
-    @classmethod
     def list_journal(
-        cls,
+        self,
         limit: int = 50,
         offset: int = 0,
         jrn_ids: list[str] | None = None,
@@ -185,7 +186,7 @@ class JournalService:
         max_amount: float = 999999999,
         num_entries: int | None = None
     ) -> Tuple[list[_JournalBrief], int]:
-        return journalDao.list_journal(
+        return self.journal_dao.list_journal(
             limit = limit,
             offset = offset,
             jrn_ids = jrn_ids,
@@ -200,21 +201,18 @@ class JournalService:
             num_entries = num_entries
         )
         
-    @classmethod
-    def stat_journal_by_src(cls) -> list[Tuple[JournalSrc, int, float]]:
-        return journalDao.stat_journal_by_src()
+    def stat_journal_by_src(self) -> list[Tuple[JournalSrc, int, float]]:
+        return self.journal_dao.stat_journal_by_src()
         
-    @classmethod
-    def list_entry_by_acct(cls, acct_id: str) -> list[_EntryBrief]:
-        return journalDao.list_entry_by_acct(
+    def list_entry_by_acct(self, acct_id: str) -> list[_EntryBrief]:
+        return self.journal_dao.list_entry_by_acct(
             acct_id = acct_id
         )
         
-    @classmethod
-    def get_incexp_flow(cls, acct_id: str, start_dt: date, end_dt: date) -> _AcctFlowAGG:
+    def get_incexp_flow(self, acct_id: str, start_dt: date, end_dt: date) -> _AcctFlowAGG:
         # get total flow amount for income statement accounts
         try:
-            flow = journalDao.sum_acct_flow(
+            flow = self.journal_dao.sum_acct_flow(
                 acct_id = acct_id,
                 start_dt = start_dt,
                 end_dt = end_dt
@@ -225,11 +223,10 @@ class JournalService:
             )
         return flow
         
-    @classmethod
-    def get_blsh_balance(cls, acct_id: str, report_dt: date) -> _AcctFlowAGG:
+    def get_blsh_balance(self, acct_id: str, report_dt: date) -> _AcctFlowAGG:
         # get balance for balance sheet account at report date
         try:
-            bal = journalDao.sum_acct_flow(
+            bal = self.journal_dao.sum_acct_flow(
                 acct_id = acct_id,
                 start_dt = date(1900, 1, 1),
                 end_dt = report_dt
@@ -240,15 +237,14 @@ class JournalService:
             )
         return bal
         
-    @classmethod
-    def get_incexp_flows(cls, start_dt: date, end_dt: date) -> dict[str, _AcctFlowAGG]:
+    def get_incexp_flows(self, start_dt: date, end_dt: date) -> dict[str, _AcctFlowAGG]:
         # get total flow amount for ALL income statement accounts
-        inc = journalDao.agg_accts_flow(
+        inc = self.journal_dao.agg_accts_flow(
             start_dt = start_dt,
             end_dt = end_dt,
             acct_type = AcctType.INC
         )
-        exp = journalDao.agg_accts_flow(
+        exp = self.journal_dao.agg_accts_flow(
             start_dt = start_dt,
             end_dt = end_dt,
             acct_type = AcctType.EXP
@@ -256,20 +252,19 @@ class JournalService:
         return inc | exp
         
         
-    @classmethod
-    def get_blsh_balances(cls, report_dt: date) -> dict[str, _AcctFlowAGG]:
+    def get_blsh_balances(self, report_dt: date) -> dict[str, _AcctFlowAGG]:
         # get balance for ALL balance sheet account at report date
-        ast = journalDao.agg_accts_flow(
+        ast = self.journal_dao.agg_accts_flow(
             start_dt = date(1900, 1, 1),
             end_dt = report_dt,
             acct_type = AcctType.AST
         )
-        liab = journalDao.agg_accts_flow(
+        liab = self.journal_dao.agg_accts_flow(
             start_dt = date(1900, 1, 1),
             end_dt = report_dt,
             acct_type = AcctType.LIB
         )
-        equity = journalDao.agg_accts_flow(
+        equity = self.journal_dao.agg_accts_flow(
             start_dt = date(1900, 1, 1),
             end_dt = report_dt,
             acct_type = AcctType.EQU

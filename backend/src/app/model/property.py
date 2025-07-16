@@ -9,7 +9,7 @@ from src.app.utils.tools import id_generator
 
 class Property(EnhancedBaseModel):
     property_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='prop-',
             length=8,
@@ -39,7 +39,7 @@ class Property(EnhancedBaseModel):
     
 class PropertyTransaction(EnhancedBaseModel):
     trans_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='proptrans-',
             length=8,

@@ -4,6 +4,6 @@ xlsxwriter==3.2.5
 openpyxl==3.1.5
 pydantic==2.10.6
 Requests==2.32.3
-streamlit==1.41.1
+streamlit==1.46.0
 streamlit_nested_layout==0.1.4
 streamlit_shadcn_ui==0.1.18

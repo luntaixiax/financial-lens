@@ -10,7 +10,7 @@ from src.app.utils.tools import finround, id_generator, get_par_share_price
 class StockIssue(EnhancedBaseModel):
     
     issue_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='issue-',
             length=8,
@@ -57,7 +57,7 @@ class StockIssue(EnhancedBaseModel):
 class StockRepurchase(EnhancedBaseModel):
     
     repur_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='repur-',
             length=8,
@@ -86,7 +86,7 @@ class StockRepurchase(EnhancedBaseModel):
 class Dividend(EnhancedBaseModel):
     
     div_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='div-',
             length=8,

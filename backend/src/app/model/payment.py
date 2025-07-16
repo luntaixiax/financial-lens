@@ -10,7 +10,7 @@ class PaymentItem(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     payment_item_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='pmtitem-',
             length=8,
@@ -48,7 +48,7 @@ class Payment(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     payment_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='pmt-',
             length=8,
@@ -86,7 +86,7 @@ class Payment(EnhancedBaseModel):
         # total payment in payment currency (after payment fee)
         if self.entity_type == EntityType.CUSTOMER:
             # net payment received will be lower (we pay fee)
-            return self.gross_payment - self.payment_fee
+            return self.gross_payment - self.payment_fee # type: ignore
         else:
             # net payment paid will be higher (we pay fee)
-            return self.gross_payment + self.payment_fee
+            return self.gross_payment + self.payment_fee # type: ignore

@@ -5,7 +5,7 @@ from src.app.utils.tools import id_generator
 
 class FileWrapper(BaseModel):
     file_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='file-',
             length=12,

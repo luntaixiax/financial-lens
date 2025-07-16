@@ -76,54 +76,50 @@ def sample_expense_rent() -> Expense:
     return expense
 
 @mock.patch("src.app.utils.tools.get_settings")
-@mock.patch("src.app.dao.connection.get_engine")
-def test_expense(mock_engine, mock_settings, settings, engine_with_sample_choa, 
-                 sample_expense_meal, sample_expense_rent, sample_journal_meal):
-    mock_engine.return_value = engine_with_sample_choa
+def test_expense(mock_settings, settings, session_with_sample_choa, 
+                 sample_expense_meal, sample_expense_rent, sample_journal_meal,
+                 test_expense_dao, test_journal_dao):
     mock_settings.return_value = settings
-    
-    from src.app.dao.expense import expenseDao
-    from src.app.dao.journal import journalDao
     
     # add without journal will fail
     with pytest.raises(FKNotExistError):
-        expenseDao.add(journal_id = 'test-jrn', expense = sample_expense_meal)
+        test_expense_dao.add(journal_id = 'test-jrn', expense = sample_expense_meal)
     
     # add sample journal (does not matter which journal to link to, as long as there is one)
-    journalDao.add(sample_journal_meal) # add journal
+    test_journal_dao.add(sample_journal_meal) # add journal
     
     # finally you can add invoice
-    expenseDao.add(
+    test_expense_dao.add(
         journal_id = sample_journal_meal.journal_id, 
         expense = sample_expense_meal
     )
-    expenseDao.add(
+    test_expense_dao.add(
         journal_id = sample_journal_meal.journal_id, 
         expense = sample_expense_rent
     )
     
     # test get expense
-    _expense, _jrn_id = expenseDao.get(sample_expense_meal.expense_id)
+    _expense, _jrn_id = test_expense_dao.get(sample_expense_meal.expense_id)
     assert _jrn_id == sample_journal_meal.journal_id
     assert _expense == sample_expense_meal
-    _expense, _jrn_id = expenseDao.get(sample_expense_rent.expense_id)
+    _expense, _jrn_id = test_expense_dao.get(sample_expense_rent.expense_id)
     assert _jrn_id == sample_journal_meal.journal_id
     assert _expense == sample_expense_rent
     
     # test summary expense
-    expenseDao.summary_expense(date(2000, 1, 1), date(2099, 12, 31))
+    test_expense_dao.summary_expense(date(2000, 1, 1), date(2099, 12, 31))
     
     # test remove invoice
-    expenseDao.remove(sample_expense_meal.expense_id)
+    test_expense_dao.remove(sample_expense_meal.expense_id)
     with pytest.raises(NotExistError):
-        expenseDao.get(sample_expense_meal.expense_id)
-    expenseDao.remove(sample_expense_rent.expense_id)
+        test_expense_dao.get(sample_expense_meal.expense_id)
+    test_expense_dao.remove(sample_expense_rent.expense_id)
     with pytest.raises(NotExistError):
-        expenseDao.get(sample_expense_rent.expense_id)
+        test_expense_dao.get(sample_expense_rent.expense_id)
     
     # test add expense with non-exist account id
     sample_expense_meal.payment_acct_id = 'acct-random'
     with pytest.raises(FKNotExistError):
-        expenseDao.add(journal_id = 'test-jrn', expense = sample_expense_meal)
+        test_expense_dao.add(journal_id = 'test-jrn', expense = sample_expense_meal)
         
-    journalDao.remove(sample_journal_meal.journal_id)
+    test_journal_dao.remove(sample_journal_meal.journal_id)

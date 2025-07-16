@@ -12,7 +12,7 @@ from src.app.utils.base import EnhancedBaseModel
 
 class Chart(EnhancedBaseModel):
     chart_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='choa-',
             length=8,
@@ -72,17 +72,17 @@ class ChartNode(NodeMixin):
         
             
     def find_node_by_name(self, chart_name: str) -> ChartNode:
-        return find_by_attr(self, chart_name, name='name')
+        return find_by_attr(self, chart_name, name='name') # type: ignore
     
     def find_node_by_id(self, chart_id: str) -> ChartNode:
-        return find_by_attr(self, chart_id, name='chart_id')
+        return find_by_attr(self, chart_id, name='chart_id') # type: ignore
             
             
 class Account(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     acct_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='acct-',
             length=8,

@@ -21,8 +21,22 @@ from src.app.model.journal import Journal, Entry
 
 class PurchaseService:
     
-    @classmethod
-    def create_sample(cls):
+    def __init__(
+            self, 
+            invoice_dao: invoiceDao, payment_dao: paymentDao, 
+            item_service: ItemService, entity_service: EntityService,
+            acct_service: AcctService, journal_service: JournalService,
+            fx_service: FxService
+        ):
+        self.invoice_dao = invoice_dao
+        self.payment_dao = payment_dao
+        self.item_service = item_service
+        self.acct_service = acct_service
+        self.journal_service = journal_service
+        self.fx_service = fx_service
+        self.entity_service = entity_service
+        
+    def create_sample(self):
         invoice = Invoice(
             invoice_id='inv-purch',
             invoice_num='INV-PURCHASE-001',
@@ -34,7 +48,8 @@ class PurchaseService:
             currency=CurType.USD,
             invoice_items=[
                 InvoiceItem(
-                    item=ItemService.get_item('item-sales'),
+                    acct_id='',
+                    item=self.item_service.get_item('item-sales'),
                     quantity=2,
                     description="Purchase outsourcing"
                 )
@@ -53,7 +68,7 @@ class PurchaseService:
             shipping=0,
             note="Thanks for business"
         )
-        cls.add_invoice(invoice)
+        self.add_invoice(invoice)
         
         # add payment
         payment = Payment(
@@ -74,33 +89,31 @@ class PurchaseService:
             ref_num='#5432',
             note='payment to supplier'
         )
-        cls.add_payment(payment)
+        self.add_payment(payment)
         
-    @classmethod
-    def clear_sample(cls):
-        cls.delete_payment('pmt-purchase')
-        cls.delete_invoice('inv-purch')
+    def clear_sample(self):
+        self.delete_payment('pmt-purchase')
+        self.delete_invoice('inv-purch')
         
-    @classmethod
-    def create_journal_from_invoice(cls, invoice: Invoice) -> Journal:
-        cls._validate_invoice(invoice)
+    def create_journal_from_invoice(self, invoice: Invoice) -> Journal:
+        self._validate_invoice(invoice)
         
         entries = []
         # create sales invoice entries
         for invoice_item in invoice.invoice_items:
             # get the invoice item account for journal entry line item
             item_acct_id = invoice_item.acct_id # the account id for this entry
-            item_acct: Account = AcctService.get_account(item_acct_id)
+            item_acct: Account = self.acct_service.get_account(item_acct_id)
             
             # assemble the entry item
             entry = Entry(
                 entry_type=EntryType.DEBIT, # expense is debit entry
                 acct=item_acct,
                 cur_incexp=invoice.currency, # income currency is invoice currency
-                amount=invoice_item.amount_pre_tax, # amount in raw currency
+                amount=invoice_item.amount_pre_tax, # type: ignore # amount in raw currency
                 # amount in base currency
-                amount_base=FxService.convert_to_base(
-                    amount=invoice_item.amount_pre_tax,
+                amount_base=self.fx_service.convert_to_base(
+                    amount=invoice_item.amount_pre_tax, # type: ignore
                     src_currency=invoice.currency, # invoice currency
                     cur_dt=invoice.invoice_dt, # convert fx at invoice date
                 ),
@@ -110,15 +123,15 @@ class PurchaseService:
             
         # create general invoice item entries
         for ginvoice_item in invoice.ginvoice_items:
-            gitem_acct: Account = AcctService.get_account(ginvoice_item.acct_id)
+            gitem_acct: Account = self.acct_service.get_account(ginvoice_item.acct_id)
             # amount incured in base currency @ incur date
-            amount_base_incur = FxService.convert_to_base(
+            amount_base_incur = self.fx_service.convert_to_base(
                 amount=ginvoice_item.amount_pre_tax_raw,# amount in incur currency
                 src_currency=ginvoice_item.currency, # incur currency
                 cur_dt=ginvoice_item.incur_dt, # convert fx at incur date
             )
             # amount in base currency @ invoice date (this is the total amount should be credit that make it balance)
-            amount_base_invoice = FxService.convert_to_base(
+            amount_base_invoice = self.fx_service.convert_to_base(
                 amount=ginvoice_item.amount_pre_tax,# amount in invoice currency
                 src_currency=invoice.currency, # invoice currency
                 cur_dt=invoice.invoice_dt, # convert fx at invoice date # TODO
@@ -139,7 +152,7 @@ class PurchaseService:
             gain = amount_base_incur - amount_base_invoice # invoiced less than incurred is gain
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
-                acct=AcctService.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
+                acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
                 cur_incexp=get_base_cur(),
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
@@ -148,15 +161,16 @@ class PurchaseService:
             entries.append(fx_gain)
         
         # add tax (use base currency)
-        tax_amount_base_cur = FxService.convert_to_base(
-            amount=invoice.tax_amount, # total tax across all items
+        tax_amount_base_cur = self.fx_service.convert_to_base(
+            amount=invoice.tax_amount, # type: ignore # total tax across all items
             src_currency=invoice.currency, # invoice currency
             cur_dt=invoice.invoice_dt, # convert fx at invoice date
         )
         tax = Entry(
             entry_type=EntryType.DEBIT, # tax is debit entry
             # tax account is output tax -- predefined
-            acct=AcctService.get_account(SystemAcctNumber.INPUT_TAX),
+            acct=self.acct_service.get_account(SystemAcctNumber.INPUT_TAX),
+            cur_incexp=None,
             amount=tax_amount_base_cur, # amount in raw currency
             # amount in base currency
             amount_base=tax_amount_base_cur,
@@ -168,11 +182,11 @@ class PurchaseService:
         shipping = Entry(
             entry_type=EntryType.DEBIT, # shipping is debit entry
             # shipping account -- predefined
-            acct=AcctService.get_account(SystemAcctNumber.SHIP_CHARGE), # TODO
+            acct=self.acct_service.get_account(SystemAcctNumber.SHIP_CHARGE), # TODO
             cur_incexp=invoice.currency, # shipping currency is invoice currency
             amount=invoice.shipping, # amount in raw currency
             # amount in base currency
-            amount_base = FxService.convert_to_base(
+            amount_base = self.fx_service.convert_to_base(
                 amount=invoice.shipping, # total shipping across all items
                 src_currency=invoice.currency, # invoice currency
                 cur_dt=invoice.invoice_dt, # convert fx at invoice date
@@ -182,15 +196,16 @@ class PurchaseService:
         entries.append(shipping)
         
         # add account payable (use base currency)
-        ap_base_cur = FxService.convert_to_base(
-            amount=invoice.total, # total after tax and shipping
+        ap_base_cur = self.fx_service.convert_to_base(
+            amount=invoice.total, # type: ignore # total after tax and shipping
             src_currency=invoice.currency, # invoice currency
             cur_dt=invoice.invoice_dt, # convert fx at invoice date
         )
         ap = Entry(
             entry_type=EntryType.CREDIT, # A/P is credit entry
             # A/R is output tax -- predefined
-            acct=AcctService.get_account(SystemAcctNumber.ACCT_PAYAB),
+            acct=self.acct_service.get_account(SystemAcctNumber.ACCT_PAYAB),
+            cur_incexp=None,
             amount=ap_base_cur, # amount in base currency
             amount_base=ap_base_cur, # amount in base currency
             description=f'account payable in base currency'
@@ -207,18 +222,17 @@ class PurchaseService:
         journal.reduce_entries()
         return journal
     
-    @classmethod
-    def create_journal_from_payment(cls, payment: Payment) -> Journal:
-        cls._validate_payment(payment)
+    def create_journal_from_payment(self, payment: Payment) -> Journal:
+        self._validate_payment(payment)
         
-        payment_acct = AcctService.get_account(payment.payment_acct_id)
+        payment_acct = self.acct_service.get_account(payment.payment_acct_id)
         entries = []
         
         # AR/AP offset amount, expressed in base currency
         ap_offset_raw_base = 0
         for payment_item in payment.payment_items:
-            _invoice, _jrn_id  = invoiceDao.get(payment_item.invoice_id)
-            amount_base = FxService.convert_to_base(
+            _invoice, _jrn_id  = self.invoice_dao.get(payment_item.invoice_id)
+            amount_base = self.fx_service.convert_to_base(
                 amount=payment_item.payment_amount_raw, # amount deducted in invoice currency
                 src_currency=_invoice.currency, # invoice currency
                 # for A/R, A/P offset by payment, it should reflect amount at invoice date
@@ -228,7 +242,8 @@ class PurchaseService:
         
         ap = Entry(
             entry_type=EntryType.DEBIT, # offset A/P is debit entry
-            acct=AcctService.get_account(SystemAcctNumber.ACCT_PAYAB),
+            acct=self.acct_service.get_account(SystemAcctNumber.ACCT_PAYAB),
+            cur_incexp=None,
             amount=ap_offset_raw_base, # amount in base currency
             amount_base=ap_offset_raw_base, # amount in base currency
             description=f'account payable offset, converting to base currency using fx rate at invoice date'
@@ -236,14 +251,14 @@ class PurchaseService:
         entries.append(ap)
         
         # payment fee entry
-        fee_amount_base = FxService.convert_to_base(
+        fee_amount_base = self.fx_service.convert_to_base(
             amount=payment.payment_fee,
-            src_currency=payment_acct.currency, # payment currency
+            src_currency=payment_acct.currency, # type: ignore # payment currency
             cur_dt=payment.payment_dt, # convert at payment date
         )
         fee = Entry(
             entry_type=EntryType.DEBIT, # fee is expense, debit entry
-            acct=AcctService.get_account(SystemAcctNumber.BANK_FEE), # debit to bank fee
+            acct=self.acct_service.get_account(SystemAcctNumber.BANK_FEE), # debit to bank fee
             cur_incexp=payment_acct.currency, # payment currency
             amount=payment.payment_fee, # in payment currency
             amount_base=fee_amount_base, # converted to base currency
@@ -253,15 +268,16 @@ class PurchaseService:
         
         # bank transfer entry (payment account)
         net_pmt = payment.net_payment
-        pmt_amount_base = FxService.convert_to_base(
-            amount=net_pmt, # total payment before fee
-            src_currency=payment_acct.currency, # payment currency
+        pmt_amount_base = self.fx_service.convert_to_base(
+            amount=net_pmt, # total payment before fee # type: ignore
+            src_currency=payment_acct.currency, # type: ignore # payment currency   
             cur_dt=payment.payment_dt, # convert at payment date
         )
         pmt = Entry(
             entry_type=EntryType.CREDIT, # payment paid is credit entry
             acct=payment_acct, # debit to payment account
-            amount=net_pmt, # in payment currency
+            cur_incexp=None,
+            amount=net_pmt, # in payment currency # type: ignore
             amount_base=pmt_amount_base, # converted to base currency
             description='total payment paid (including fee)'
         )
@@ -271,7 +287,7 @@ class PurchaseService:
         gain = ap_offset_raw_base - (pmt_amount_base - fee_amount_base) # paid less than A/P
         fx_gain = Entry(
             entry_type=EntryType.CREDIT, # fx gain is credit
-            acct=AcctService.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
+            acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
             cur_incexp=get_base_cur(),
             amount=gain, # gain is already expressed in base currency
             amount_base=gain, # gain is already expressed in base currency
@@ -289,24 +305,22 @@ class PurchaseService:
         journal.reduce_entries()
         return journal
     
-    @classmethod
-    def _validate_item(cls, item: Item):
+    def _validate_item(self, item: Item):
         # validate the default_acct_id is income/expense account
-        default_item_acct: Account = AcctService.get_account(item.default_acct_id)
+        default_item_acct: Account = self.acct_service.get_account(item.default_acct_id)
         # invoice to supplier, the acct type must be of expense type
         if not default_item_acct.acct_type in (AcctType.EXP, ):
             raise NotMatchWithSystemError(
                 message=f"Default acct type of purchase invoice item must be of Expense type, get {default_item_acct.acct_type}"
             )
             
-    @classmethod
-    def _validate_invoice(cls, invoice: Invoice) -> Invoice:
+    def _validate_invoice(self, invoice: Invoice) -> Invoice:
         # validate direction
         if not invoice.entity_type == EntityType.SUPPLIER:
             raise OpNotPermittedError('Purchase invoice should only be created for supplier')
         # validate supplier exist
         try:
-            EntityService.get_supplier(invoice.entity_id)
+            self.entity_service.get_supplier(invoice.entity_id)
         except NotExistError as e:
             raise FKNotExistError(
                 f"Supplier id {invoice.entity_id} does not exist",
@@ -317,7 +331,7 @@ class PurchaseService:
         for invoice_item in invoice.invoice_items:
             # validate item exist
             try:
-                item = itemDao.get(invoice_item.item.item_id)
+                item = self.item_service.get_item(invoice_item.item.item_id)
             except NotExistError as e:
                 raise FKNotExistError(
                     f"Item {invoice_item.item} does not exist",
@@ -326,7 +340,7 @@ class PurchaseService:
             else:
                 # validate item
                 try:
-                    cls._validate_item(invoice_item.item)
+                    self._validate_item(invoice_item.item)
                 except NotExistError as e:
                     raise FKNotExistError(
                         f"Account Id {invoice_item.item.default_acct_id} of Item {invoice_item.item} does not exist",
@@ -340,7 +354,7 @@ class PurchaseService:
                     )
             # validate account id exist
             try:
-                item_acct = AcctService.get_account(invoice_item.acct_id)
+                item_acct = self.acct_service.get_account(invoice_item.acct_id)
             except NotExistError as e:
                 raise FKNotExistError(
                     f"Account {invoice_item.acct_id} of Invoice Item {invoice_item} does not exist",
@@ -357,7 +371,7 @@ class PurchaseService:
         for ginvoice_item in invoice.ginvoice_items:
             # validate account id exist
             try:
-                gitem_acct = AcctService.get_account(ginvoice_item.acct_id)
+                gitem_acct = self.acct_service.get_account(ginvoice_item.acct_id)
             except NotExistError as e:
                 raise FKNotExistError(
                     f"Account {ginvoice_item.acct_id} of General Invoice Item {ginvoice_item} does not exist",
@@ -372,15 +386,14 @@ class PurchaseService:
                     
         return invoice
                 
-    @classmethod
-    def _validate_payment(cls, payment: Payment) -> Payment:
+    def _validate_payment(self, payment: Payment) -> Payment:
         # validate direction
         if not payment.entity_type == EntityType.SUPPLIER:
             raise OpNotPermittedError('Purchase payment should only be created for supplier')
         
         # validate payment account id exist
         try:
-            payment_acct = AcctService.get_account(payment.payment_acct_id)
+            payment_acct = self.acct_service.get_account(payment.payment_acct_id)
         except NotExistError as e:
             raise FKNotExistError(
                 f"Account {payment.payment_acct_id} of Payment {payment} does not exist",
@@ -395,7 +408,7 @@ class PurchaseService:
         for payment_item in payment.payment_items:
             # validate invoice exist or not
             try:
-                _invoice, _jrn_id  = invoiceDao.get(payment_item.invoice_id)
+                _invoice, _jrn_id  = self.invoice_dao.get(payment_item.invoice_id)
             except NotExistError as e:
                 raise FKNotExistError(
                     f"Invoice Id {payment_item.invoice_id} of payment item {payment_item} does not exist",
@@ -417,20 +430,19 @@ class PurchaseService:
                     
         return payment
     
-    @classmethod
-    def add_invoice(cls, invoice: Invoice):
+    def add_invoice(self, invoice: Invoice):
         
         # see if invoice already exist
         try:
-            _invoice, _jrn_id  = invoiceDao.get(invoice.invoice_id)
+            _invoice, _jrn_id  = self.invoice_dao.get(invoice.invoice_id)
         except NotExistError as e:
             # if not exist, can safely create it
             # validate it first
-            cls._validate_invoice(invoice)
+            self._validate_invoice(invoice)
             # add journal first
-            journal = cls.create_journal_from_invoice(invoice)
+            journal = self.create_journal_from_invoice(invoice)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of journal does not exist: {journal}',
@@ -439,7 +451,7 @@ class PurchaseService:
             
             # add invoice
             try:
-                invoiceDao.add(journal_id = journal.journal_id, invoice = invoice)
+                self.invoice_dao.add(journal_id = journal.journal_id, invoice = invoice)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of invoice does not exist: {invoice}',
@@ -457,19 +469,18 @@ class PurchaseService:
                 details=f"Invoice: {_invoice}, journal_id: {_jrn_id}"
             )
             
-    @classmethod
-    def add_payment(cls, payment: Payment):
+    def add_payment(self, payment: Payment):
         # see if payment already exist
         try:
-            _payment, _jrn_id  = paymentDao.get(payment.payment_id)
+            _payment, _jrn_id  = self.payment_dao.get(payment.payment_id)
         except NotExistError as e:
             # if not exist, can safely create it
             # validate it first
-            cls._validate_payment(payment)
+            self._validate_payment(payment)
             # add journal first
-            journal = cls.create_journal_from_payment(payment)
+            journal = self.create_journal_from_payment(payment)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of journal does not exist: {journal}',
@@ -478,7 +489,7 @@ class PurchaseService:
             
             # add payment
             try:
-                paymentDao.add(journal_id = journal.journal_id, payment = payment)
+                self.payment_dao.add(journal_id = journal.journal_id, payment = payment)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Some component of payment does not exist: {payment}',
@@ -496,10 +507,9 @@ class PurchaseService:
                 details=f"Payment: {_payment}, journal_id: {_jrn_id}"
             )
             
-    @classmethod
-    def get_invoice_journal(cls, invoice_id: str) -> Tuple[Invoice, Journal]:
+    def get_invoice_journal(self, invoice_id: str) -> Tuple[Invoice, Journal]:
         try:
-            invoice, jrn_id = invoiceDao.get(invoice_id)
+            invoice, jrn_id = self.invoice_dao.get(invoice_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Invoice id {invoice_id} does not exist',
@@ -508,13 +518,13 @@ class PurchaseService:
         
         # get journal
         try:
-            journal = JournalService.get_journal(jrn_id)
+            journal = self.journal_service.get_journal(jrn_id)
         except NotExistError as e:
             # TODO: raise error or add missing journal?
             # if not exist, add journal
-            journal = cls.create_journal_from_invoice(invoice)
+            journal = self.create_journal_from_invoice(invoice)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Trying to add journal but failed, some component of journal does not exist: {journal}',
@@ -523,10 +533,9 @@ class PurchaseService:
         
         return invoice, journal
     
-    @classmethod
-    def get_payment_journal(cls, payment_id: str) -> Tuple[Payment, Journal]:
+    def get_payment_journal(self, payment_id: str) -> Tuple[Payment, Journal]:
         try:
-            payment, jrn_id = paymentDao.get(payment_id)
+            payment, jrn_id = self.payment_dao.get(payment_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Payment id {payment_id} does not exist',
@@ -535,13 +544,13 @@ class PurchaseService:
         
         # get journal
         try:
-            journal = JournalService.get_journal(jrn_id)
+            journal = self.journal_service.get_journal(jrn_id)
         except NotExistError as e:
             # TODO: raise error or add missing journal?
             # if not exist, add journal
-            journal = cls.create_journal_from_payment(payment)
+            journal = self.create_journal_from_payment(payment)
             try:
-                JournalService.add_journal(journal)
+                self.journal_service.add_journal(journal)
             except FKNotExistError as e:
                 raise FKNotExistError(
                     f'Trying to add journal but failed, some component of journal does not exist: {journal}',
@@ -550,12 +559,11 @@ class PurchaseService:
         
         return payment, journal
     
-    @classmethod
-    def delete_invoice(cls, invoice_id: str):
+    def delete_invoice(self, invoice_id: str):
         # remove journal first
         # get journal
         try:
-            invoice, jrn_id  = invoiceDao.get(invoice_id)
+            invoice, jrn_id  = self.invoice_dao.get(invoice_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Invoice id {invoice_id} does not exist',
@@ -564,7 +572,7 @@ class PurchaseService:
             
         # remove invoice first
         try:
-            invoiceDao.remove(invoice_id)
+            self.invoice_dao.remove(invoice_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Invoice {invoice_id} have dependency cannot be deleted",
@@ -573,19 +581,18 @@ class PurchaseService:
         
         # then remove journal
         try:
-            JournalService.delete_journal(jrn_id)
+            self.journal_service.delete_journal(jrn_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Delete journal failed, some component depends on the journal id {jrn_id}",
                 details=e.details
             )
             
-    @classmethod
-    def delete_payment(cls, payment_id: str):
+    def delete_payment(self, payment_id: str):
         # remove journal first
         # get journal
         try:
-            payment, jrn_id  = paymentDao.get(payment_id)
+            payment, jrn_id  = self.payment_dao.get(payment_id)
         except NotExistError as e:
             raise NotExistError(
                 f'Payment id {payment_id} does not exist',
@@ -594,7 +601,7 @@ class PurchaseService:
             
         # remove payment first
         try:
-            paymentDao.remove(payment_id)
+            self.payment_dao.remove(payment_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Payment {payment_id} have dependency cannot be deleted",
@@ -603,33 +610,32 @@ class PurchaseService:
         
         # then remove journal
         try:
-            JournalService.delete_journal(jrn_id)
+            self.journal_service.delete_journal(jrn_id)
         except FKNoDeleteUpdateError as e:
             raise FKNoDeleteUpdateError(
                 f"Delete journal failed, some component depends on the journal id {jrn_id}",
                 details=e.details
             )
         
-    @classmethod
-    def update_invoice(cls, invoice: Invoice):
-        cls._validate_invoice(invoice)
+    def update_invoice(self, invoice: Invoice):
+        self._validate_invoice(invoice)
         # only delete if validation passed
         # cls.delete_invoice(invoice.invoice_id)
         # cls.add_invoice(invoice)
         
         # get existing journal id
         try:
-            _invoice, jrn_id  = invoiceDao.get(invoice.invoice_id)
+            _invoice, jrn_id  = self.invoice_dao.get(invoice.invoice_id)
         except NotExistError as e:
             raise NotExistError(
-                f'Invoice id {_invoice.invoice_id} does not exist',
+                f'Invoice id {invoice.invoice_id} does not exist',
                 details=e.details
             )
         
         # add new journal first
-        journal = cls.create_journal_from_invoice(invoice)
+        journal = self.create_journal_from_invoice(invoice)
         try:
-            JournalService.add_journal(journal)
+            self.journal_service.add_journal(journal)
         except FKNotExistError as e:
             raise FKNotExistError(
                 f'Some component of journal does not exist: {journal}',
@@ -638,41 +644,40 @@ class PurchaseService:
         
         # update invoice
         try:
-            invoiceDao.update(
+            self.invoice_dao.update(
                 journal_id=journal.journal_id, # use new journal id
                 invoice=invoice
             )
         except FKNotExistError as e:
             # need to remove the new journal
-            JournalService.delete_journal(journal.journal_id)
+            self.journal_service.delete_journal(journal.journal_id)
             raise FKNotExistError(
                 f"Invoice element does not exist",
                 details=e.details
             )
         
         # remove old journal
-        JournalService.delete_journal(jrn_id)
+        self.journal_service.delete_journal(jrn_id)
         
-    @classmethod
-    def update_payment(cls, payment: Payment):
-        cls._validate_payment(payment)
+    def update_payment(self, payment: Payment):
+        self._validate_payment(payment)
         # only delete if validation passed
         # cls.delete_payment(payment.payment_id)
         # cls.add_payment(payment)
         
         # get existing journal id
         try:
-            _payment, jrn_id  = paymentDao.get(payment.payment_id)
+            _payment, jrn_id  = self.payment_dao.get(payment.payment_id)
         except NotExistError as e:
             raise NotExistError(
-                f'Payment id {_payment.payment_id} does not exist',
+                f'Payment id {payment.payment_id} does not exist',
                 details=e.details
             )
         
         # add new journal first
-        journal = cls.create_journal_from_payment(payment)
+        journal = self.create_journal_from_payment(payment)
         try:
-            JournalService.add_journal(journal)
+            self.journal_service.add_journal(journal)
         except FKNotExistError as e:
             raise FKNotExistError(
                 f'Some component of journal does not exist: {journal}',
@@ -681,25 +686,24 @@ class PurchaseService:
         
         # update payment
         try:
-            paymentDao.update(
+            self.payment_dao.update(
                 journal_id=journal.journal_id, # use new journal id
                 payment=payment
             )
         except FKNotExistError as e:
             # need to remove the new journal
-            JournalService.delete_journal(journal.journal_id)
+            self.journal_service.delete_journal(journal.journal_id)
             raise FKNotExistError(
                 f"Payment element does not exist",
                 details=e.details
             )
         
         # remove old journal
-        JournalService.delete_journal(jrn_id)
+        self.journal_service.delete_journal(jrn_id)
         
         
-    @classmethod
     def list_invoice(
-        cls,
+        self,
         limit: int = 50,
         offset: int = 0,
         invoice_ids: list[str] | None = None,
@@ -715,7 +719,7 @@ class PurchaseService:
         max_amount: float = 999999999,
         num_invoice_items: int | None = None
     ) -> list[_InvoiceBrief]:
-        return invoiceDao.list_invoice(
+        return self.invoice_dao.list_invoice(
             limit=limit,
             offset=offset,
             entity_type=EntityType.SUPPLIER,
@@ -733,9 +737,8 @@ class PurchaseService:
             num_invoice_items=num_invoice_items
         ) 
             
-    @classmethod
     def list_payment(
-        cls,
+        self,
         limit: int = 50,
         offset: int = 0,
         payment_ids: list[str] | None = None,
@@ -751,7 +754,7 @@ class PurchaseService:
         max_amount: float = 999999999,
         num_invoices: int | None = None
     ) -> list[_PaymentBrief]:
-        return paymentDao.list_payment(
+        return self.payment_dao.list_payment(
             limit=limit,
             offset=offset,
             entity_type=EntityType.SUPPLIER,
@@ -769,16 +772,14 @@ class PurchaseService:
             num_invoices=num_invoices
         )
         
-    @classmethod
-    def get_invoice_balance(cls, invoice_id: str, bal_dt: date) -> _InvoiceBalance:
-        return invoiceDao.get_invoice_balance(
+    def get_invoice_balance(self, invoice_id: str, bal_dt: date) -> _InvoiceBalance:
+        return self.invoice_dao.get_invoice_balance(
             invoice_id=invoice_id,
             bal_dt=bal_dt
         )
         
-    @classmethod
-    def get_invoices_balance_by_entity(cls, entity_id: str, bal_dt: date) -> list[_InvoiceBalance]:
-        return invoiceDao.get_invoices_balance_by_entity(
+    def get_invoices_balance_by_entity(self, entity_id: str, bal_dt: date) -> list[_InvoiceBalance]:
+        return self.invoice_dao.get_invoices_balance_by_entity(
             entity_id=entity_id,
             bal_dt=bal_dt
         )

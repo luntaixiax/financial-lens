@@ -1,6 +1,16 @@
-from fastapi import APIRouter, File, HTTPException, Response, UploadFile, status
-from fastapi.responses import Response
-
+from fastapi import APIRouter, Depends
+from src.app.service.acct import AcctService
+from src.app.service.journal import JournalService
+from src.app.service.entity import EntityService
+from src.app.service.item import ItemService
+from src.app.service.sales import SalesService
+from src.app.service.purchase import PurchaseService
+from src.app.service.expense import ExpenseService
+from src.app.service.property import PropertyService
+from src.app.service.shares import SharesService
+from src.web.dependency.service import get_acct_service, get_journal_service, \
+    get_entity_service, get_item_service, get_sales_service, get_purchase_service, \
+    get_expense_service, get_property_service, get_shares_service
 
 router = APIRouter(prefix="/test", tags=["test"])
 
@@ -9,62 +19,60 @@ def router_test() -> str:
     return "Hello, router tester here"
 
 @router.post("/init_sample")
-def init():
-    from src.app.dao.orm import SQLModelWithSort
-    from src.app.dao.connection import get_engine
-    from src.app.service.acct import AcctService
-    from src.app.service.journal import JournalService
-    from src.app.service.entity import EntityService
-    from src.app.service.item import ItemService
-    from src.app.service.sales import SalesService
-    from src.app.service.purchase import PurchaseService
-    from src.app.service.expense import ExpenseService
-    from src.app.service.property import PropertyService
-    from src.app.service.shares import SharesService
-    
-    SQLModelWithSort.metadata.create_all(get_engine())
+def init_sample(
+    acct_service: AcctService = Depends(get_acct_service),
+    journal_service: JournalService = Depends(get_journal_service),
+    entity_service: EntityService = Depends(get_entity_service),
+    item_service: ItemService = Depends(get_item_service),
+    sales_service: SalesService = Depends(get_sales_service),
+    purchase_service: PurchaseService = Depends(get_purchase_service),
+    expense_service: ExpenseService = Depends(get_expense_service),
+    property_service: PropertyService = Depends(get_property_service),
+    shares_service: SharesService = Depends(get_shares_service)
+):
+
     # create basic account structure *standard
-    AcctService.init()
+    acct_service.init()
     # create additional sample accounts
-    AcctService.create_sample()
+    acct_service.create_sample()
     # create sample journals
-    JournalService.create_sample()
+    journal_service.create_sample()
     # create sample customer
-    EntityService.create_sample()
+    entity_service.create_sample()
     # crete item items
-    ItemService.create_sample()
+    item_service.create_sample()
     # create sample sales invoice
-    SalesService.create_sample()
+    sales_service.create_sample()
     # create sample purchase invoice
-    PurchaseService.create_sample()
+    purchase_service.create_sample()
     # create sample expense
-    ExpenseService.create_sample()
+    expense_service.create_sample()
     # create property sample
-    PropertyService.create_sample()
+    property_service.create_sample()
     # create shares sample
-    SharesService.create_sample()
+    shares_service.create_sample()
     
 
 @router.delete("/clear_sample")
-def init():
-    from src.app.dao.connection import get_engine
-    from src.app.service.acct import AcctService
-    from src.app.service.journal import JournalService
-    from src.app.service.entity import EntityService
-    from src.app.service.item import ItemService
-    from src.app.service.sales import SalesService
-    from src.app.service.purchase import PurchaseService
-    from src.app.service.expense import ExpenseService
-    from src.app.service.property import PropertyService
-    from src.app.service.shares import SharesService
+def clear_sample(
+    acct_service: AcctService = Depends(get_acct_service),
+    journal_service: JournalService = Depends(get_journal_service),
+    entity_service: EntityService = Depends(get_entity_service),
+    item_service: ItemService = Depends(get_item_service),
+    sales_service: SalesService = Depends(get_sales_service),
+    purchase_service: PurchaseService = Depends(get_purchase_service),
+    expense_service: ExpenseService = Depends(get_expense_service),
+    property_service: PropertyService = Depends(get_property_service),
+    shares_service: SharesService = Depends(get_shares_service)
+):
     
-    ExpenseService.clear_sample()
-    SalesService.clear_sample()
-    PurchaseService.clear_sample()
-    ItemService.clear_sample()
-    JournalService.clear_sample()
-    EntityService.clear_sample()
-    PropertyService.clear_sample()
-    AcctService.clear_sample()
-    SharesService.clear_sample()
+    acct_service.clear_sample()
+    journal_service.clear_sample()
+    entity_service.clear_sample()
+    item_service.clear_sample()
+    sales_service.clear_sample()
+    purchase_service.clear_sample()
+    expense_service.clear_sample()
+    property_service.clear_sample()
+    shares_service.clear_sample()
     

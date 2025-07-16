@@ -17,7 +17,8 @@ def sample_property() -> Property:
         pur_price=10000,
         tax=500,
         pur_acct_id='acct-fbank',
-        note='A computer'
+        note='A computer',
+        receipts=None
     )
     return property
 
@@ -41,105 +42,96 @@ def sample_appreciation() -> PropertyTransaction:
         trans_amount=300
     )
     
-@mock.patch("src.app.dao.connection.get_engine")
-def test_property(mock_engine, engine_with_sample_choa, sample_property, sample_journal_meal):
-    mock_engine.return_value = engine_with_sample_choa
-    
-    from src.app.dao.property import propertyDao
-    from src.app.dao.journal import journalDao
+def test_property(session_with_sample_choa, test_property_dao, test_journal_dao, 
+                  sample_property, sample_journal_meal):
     
     # assert property not found, and have correct error type
     with pytest.raises(NotExistError):
-        propertyDao.get(sample_property.property_id)
+        test_property_dao.get(sample_property.property_id)
 
     # add without journal will fail
     with pytest.raises(FKNotExistError):
-        propertyDao.add(journal_id = 'test-jrn', property = sample_property)
+        test_property_dao.add(journal_id = 'test-jrn', property = sample_property)
         
     # add sample journal (does not matter which journal to link to, as long as there is one)
-    journalDao.add(sample_journal_meal) # add journal
+    test_journal_dao.add(sample_journal_meal) # add journal
     
     # then can add property
-    propertyDao.add(journal_id = sample_journal_meal.journal_id, property = sample_property)
+    test_property_dao.add(journal_id = sample_journal_meal.journal_id, property = sample_property)
     
     # test no duplicate add
     with pytest.raises(AlreadyExistError):
-        propertyDao.add(journal_id = sample_journal_meal.journal_id, property = sample_property)
+        test_property_dao.add(journal_id = sample_journal_meal.journal_id, property = sample_property)
     
     # test get property
-    _property, _jrn_id = propertyDao.get(sample_property.property_id)
+    _property, _jrn_id = test_property_dao.get(sample_property.property_id)
     assert _jrn_id == sample_journal_meal.journal_id
     assert _property == sample_property
     
     # test update property
     sample_property.property_name = 'Laptop'
     sample_property.pur_price = 20000
-    propertyDao.update(sample_journal_meal.journal_id, sample_property)
-    _property, _jrn_id = propertyDao.get(sample_property.property_id)
+    test_property_dao.update(sample_journal_meal.journal_id, sample_property)
+    _property, _jrn_id = test_property_dao.get(sample_property.property_id)
     assert _jrn_id == sample_journal_meal.journal_id
     assert _property == sample_property
     
     # delete property
-    propertyDao.remove(sample_property.property_id)
+    test_property_dao.remove(sample_property.property_id)
     with pytest.raises(NotExistError):
-        propertyDao.get(sample_property.property_id)
+        test_property_dao.get(sample_property.property_id)
         
     # delete journal
-    journalDao.remove(sample_journal_meal.journal_id)
+    test_journal_dao.remove(sample_journal_meal.journal_id)
     
     
-@mock.patch("src.app.dao.connection.get_engine")
-def test_property_trans(mock_engine, engine_with_sample_choa, sample_property, sample_depreciation, 
-        sample_journal_meal):
-    mock_engine.return_value = engine_with_sample_choa
-    
-    from src.app.dao.property import propertyDao, propertyTransactionDao
-    from src.app.dao.journal import journalDao
+def test_property_trans(session_with_sample_choa, test_property_trans_dao, test_journal_dao, 
+                        test_property_dao, sample_property, sample_depreciation, sample_journal_meal):
     
     # assert property not found, and have correct error type
     with pytest.raises(NotExistError):
-        propertyTransactionDao.get(sample_depreciation.trans_id)
+        test_property_trans_dao.get(sample_depreciation.trans_id)
         
     # add without journal will fail
     with pytest.raises(FKNotExistError):
-        propertyTransactionDao.add(journal_id = sample_journal_meal.journal_id, property_trans = sample_depreciation)
+        test_property_trans_dao.add(journal_id = sample_journal_meal.journal_id, property_trans = sample_depreciation)
         
     # add sample journal (does not matter which journal to link to, as long as there is one)
-    journalDao.add(sample_journal_meal) # add journal
+    test_journal_dao.add(sample_journal_meal) # add journal
     
     # add without property will also fail
     with pytest.raises(FKNotExistError):
-        propertyTransactionDao.add(journal_id = sample_journal_meal.journal_id, property_trans = sample_depreciation)
+        test_property_trans_dao.add(journal_id = sample_journal_meal.journal_id, property_trans = sample_depreciation)
     
     # add property first
-    propertyDao.add(journal_id = sample_journal_meal.journal_id, property = sample_property)
+    test_property_dao.add(journal_id = sample_journal_meal.journal_id, property = sample_property)
     
     # then we can add transaction
-    propertyTransactionDao.add(journal_id = sample_journal_meal.journal_id, property_trans = sample_depreciation)
+    test_property_trans_dao.add(journal_id = sample_journal_meal.journal_id, property_trans = sample_depreciation)
     
     # test no duplicate add
     with pytest.raises(AlreadyExistError):
-        propertyTransactionDao.add(journal_id = sample_journal_meal.journal_id, property_trans = sample_depreciation)
+        test_property_trans_dao.add(journal_id = sample_journal_meal.journal_id, property_trans = sample_depreciation)
     
     # test get property trans
-    _property_trans, _jrn_id = propertyTransactionDao.get(sample_depreciation.trans_id)
+    _property_trans, _jrn_id = test_property_trans_dao.get(sample_depreciation.trans_id)
     assert _jrn_id == sample_journal_meal.journal_id
     assert _property_trans == sample_depreciation
     
     # test update property trans
     sample_depreciation.trans_type = PropertyTransactionType.APPRECIATION
-    propertyTransactionDao.update(sample_journal_meal.journal_id, sample_depreciation)
-    _property_trans, _jrn_id = propertyTransactionDao.get(sample_depreciation.trans_id)
+    test_property_trans_dao.update(sample_journal_meal.journal_id, sample_depreciation)
+    _property_trans, _jrn_id = test_property_trans_dao.get(sample_depreciation.trans_id)
     assert _jrn_id == sample_journal_meal.journal_id
     assert _property_trans == sample_depreciation
     
     # delete property trans
-    propertyTransactionDao.remove(sample_depreciation.trans_id)
+    test_property_trans_dao.remove(sample_depreciation.trans_id)
     with pytest.raises(NotExistError):
-        propertyTransactionDao.get(sample_depreciation.trans_id)
+        test_property_trans_dao.get(sample_depreciation.trans_id)
     
     # delete property
-    propertyDao.remove(sample_property.property_id)
+    test_property_dao.remove(sample_property.property_id)
     
     # delete journal
-    journalDao.remove(sample_journal_meal.journal_id)
+    test_journal_dao.remove(sample_journal_meal.journal_id)

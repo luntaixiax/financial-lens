@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Tuple
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -10,33 +10,47 @@ from src.app.model.enums import CurType
 from src.app.model.journal import Journal
 from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, Expense
 from src.app.service.expense import ExpenseService
+from src.web.dependency.service import get_expense_service
 
 router = APIRouter(prefix="/expense", tags=["expense"])
 
 @router.post("/validate")
-def validate_expense(expense: Expense) -> Expense:
-    return ExpenseService._validate_expense(expense)
+def validate_expense(
+    expense: Expense, 
+    expense_service: ExpenseService = Depends(get_expense_service)
+) -> Expense:
+    return expense_service._validate_expense(expense)
     
 @router.get(
     "/trial_journal",
     description='use to generate journal during new expense creation'
 )
-def create_journal_from_new_expense(expense: Expense) -> Journal:
-    return ExpenseService.create_journal_from_expense(expense)
+def create_journal_from_new_expense(
+    expense: Expense, 
+    expense_service: ExpenseService = Depends(get_expense_service)
+) -> Journal:
+    return expense_service.create_journal_from_expense(expense)
 
 @router.get(
     "/get_expense_journal/{expense_id}",
     description='get existing expense and journal from database'
 )
-def get_expense_journal(expense_id: str) -> Tuple[Expense, Journal]:
-    return ExpenseService.get_expense_journal(expense_id=expense_id)
+def get_expense_journal(
+    expense_id: str, 
+    expense_service: ExpenseService = Depends(get_expense_service)
+) -> Tuple[Expense, Journal]:
+    return expense_service.get_expense_journal(expense_id=expense_id)
 
 @router.get(
     "/create_invoice_items/{expense_id}",
     description='creating general invoice items from given expense'
 )
-def create_general_invoice_items_from_expense(expense_id: str, invoice_currency: CurType) -> list[GeneralInvoiceItem]:
-    return ExpenseService.create_general_invoice_items_from_expense(
+def create_general_invoice_items_from_expense(
+    expense_id: str, 
+    invoice_currency: CurType, 
+    expense_service: ExpenseService = Depends(get_expense_service)
+) -> list[GeneralInvoiceItem]:
+    return expense_service.create_general_invoice_items_from_expense(
         expense_id=expense_id,
         invoice_currency=invoice_currency
     )
@@ -55,9 +69,10 @@ def list_expense(
     expense_acct_names: list[str] | None = None,
     min_amount: float = -999999999,
     max_amount: float = 999999999,
-    has_receipt: bool | None = None
+    has_receipt: bool | None = None,
+    expense_service: ExpenseService = Depends(get_expense_service),
 ) -> Tuple[list[_ExpenseBrief], int]:
-    return ExpenseService.list_expense(
+    return expense_service.list_expense(
         limit=limit,
         offset=offset,
         expense_ids=expense_ids,
@@ -74,24 +89,40 @@ def list_expense(
     ) 
 
 @router.get("/summary")
-def summary_expense(start_dt: date, end_dt: date) -> list[_ExpenseSummaryBrief]:
-    return ExpenseService.summary_expense(
+def summary_expense(
+    start_dt: date, 
+    end_dt: date, 
+    expense_service: ExpenseService = Depends(get_expense_service)
+) -> list[_ExpenseSummaryBrief]:
+    return expense_service.summary_expense(
         start_dt=start_dt,
         end_dt=end_dt
     )
     
 @router.post("/add")
-def add_expense(expense: Expense):
-    ExpenseService.add_expense(expense=expense)
+def add_expense(
+    expense: Expense, 
+    expense_service: ExpenseService = Depends(get_expense_service)
+):
+    expense_service.add_expense(expense=expense)
     
 @router.post("/batch_add")
-def add_expenses(expenses: list[Expense]):
-    ExpenseService.add_expenses(expenses=expenses)
+def add_expenses(
+    expenses: list[Expense], 
+    expense_service: ExpenseService = Depends(get_expense_service)
+):
+    expense_service.add_expenses(expenses=expenses)
     
 @router.put("/update")
-def update_expense(expense: Expense):
-    ExpenseService.update_expense(expense=expense)
+def update_expense(
+    expense: Expense, 
+    expense_service: ExpenseService = Depends(get_expense_service)
+):
+    expense_service.update_expense(expense=expense)
     
 @router.delete("/delete/{expense_id}")
-def delete_expense(expense_id: str):
-    ExpenseService.delete_expense(expense_id=expense_id)
+def delete_expense(
+    expense_id: str, 
+    expense_service: ExpenseService = Depends(get_expense_service)
+):
+    expense_service.delete_expense(expense_id=expense_id)

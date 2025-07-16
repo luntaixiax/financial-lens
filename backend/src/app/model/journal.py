@@ -14,7 +14,7 @@ class Entry(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     entry_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='entr-',
             length=13,
@@ -106,7 +106,7 @@ class Journal(EnhancedBaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     journal_id: str = Field(
-        default_factory=partial(
+        default_factory=partial( # type: ignore
             id_generator,
             prefix='jrn-',
             length=13,
@@ -139,8 +139,8 @@ class Journal(EnhancedBaseModel):
         for entry in self.entries:
             pk = (entry.acct.acct_id, entry.entry_type, entry.cur_incexp)
             if pk in reduced:
-                _entry = reduced[pk]
-                reduced[pk] = Entry(
+                _entry = reduced[pk] # type: ignore
+                reduced[pk] = Entry( # type: ignore
                     # entry id will be the new one
                     entry_type = entry.entry_type,
                     acct = entry.acct,
@@ -150,7 +150,7 @@ class Journal(EnhancedBaseModel):
                     description = (_entry.description or "") + " | " + (entry.description or "")
                 )
             else:
-                reduced[pk] = entry
+                reduced[pk] = entry # type: ignore
         
         self.entries =  list(reduced.values())
 

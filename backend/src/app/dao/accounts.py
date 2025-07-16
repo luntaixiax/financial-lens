@@ -1,4 +1,5 @@
 import logging
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, select, delete, col
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from anytree import PreOrderIter
@@ -6,25 +7,28 @@ from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, F
 from src.app.model.enums import AcctType
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.dao.orm import ChartOfAccountORM, AcctORM, infer_integrity_error
-from src.app.dao.connection import get_engine
 
 class chartOfAcctDao:
-    @classmethod
-    def save(cls, top_node: ChartNode):
+    
+    def __init__(self, engine: Engine):
+        self.engine = engine
+        
+    def save(self, top_node: ChartNode):
+        # save the whole tree to DB
         # save the whole tree to DB
         logging.info("Saving following Chart of Accounts:\n")
         top_node.print()
             
         # get existing nodes for extra node deletion below
         try:
-            existing_node = cls.load(top_node.chart.acct_type)
+            existing_node = self.load(top_node.chart.acct_type)
         except NotExistError:
             ordered_nodes = [] # no existing node
         else:
             # get the order of chart ids in case need to delete
             ordered_nodes = list(existing_node.descendants)[::-1] + [existing_node]
     
-        with Session(get_engine()) as s:
+        with Session(self.engine) as s:
             # get already existing nodes within same chart type in db
             sql = select(ChartOfAccountORM.chart_id).where(
                 ChartOfAccountORM.acct_type == top_node.chart.acct_type,
@@ -88,10 +92,10 @@ class chartOfAcctDao:
                 raise FKNoDeleteUpdateError(details=str(e))
                 
     
-    @classmethod
-    def load(cls, acct_type: AcctType) -> ChartNode:
+    
+    def load(self, acct_type: AcctType) -> ChartNode:
         # assemble the relevant tree from DB and return the top node
-        with Session(get_engine()) as s:
+        with Session(self.engine) as s:
             def add_childs(node: ChartNode):
                 # find child
                 sql = select(ChartOfAccountORM).where(
@@ -136,15 +140,15 @@ class chartOfAcctDao:
         
         return root_node # return root
         
-    @classmethod
-    def remove(cls, acct_type: AcctType):
+    
+    def remove(self, acct_type: AcctType):
         # remove all charts under same acct type
         try:
-            top_node = cls.load(acct_type)
+            top_node = self.load(acct_type)
         except NotExistError as e:
             return
             
-        with Session(get_engine()) as s:
+        with Session(self.engine) as s:
             # need to delete from bottom node to top node
             for node in list(top_node.descendants)[::-1] + [top_node]:
                 sql = select(ChartOfAccountORM).where(
@@ -163,18 +167,18 @@ class chartOfAcctDao:
                     # the chart to remove have another chart / account belongs to it (FK on delete) 
                     raise FKNoDeleteUpdateError(details=str(e))
             
-    @classmethod
-    def toChart(cls, chart_orm: ChartOfAccountORM) -> Chart:
+    
+    def toChart(self, chart_orm: ChartOfAccountORM) -> Chart:
         return Chart(
             chart_id=chart_orm.chart_id,
             name=chart_orm.node_name,
             acct_type=chart_orm.acct_type,
         )
 
-    @classmethod
-    def get_chart(cls, chart_id: str) -> Chart:
+    
+    def get_chart(self, chart_id: str) -> Chart:
         # get chart orm
-        with Session(get_engine()) as s:
+        with Session(self.engine) as s:
             sql = select(ChartOfAccountORM).where(
                 ChartOfAccountORM.chart_id == chart_id
             )
@@ -183,12 +187,12 @@ class chartOfAcctDao:
             except NoResultFound as e:
                 raise NotExistError(details=str(e))
         
-        return cls.toChart(chart_orm)
+        return self.toChart(chart_orm)
     
-    @classmethod
-    def get_charts(cls, acct_type: AcctType) -> list[Chart]:
+    
+    def get_charts(self, acct_type: AcctType) -> list[Chart]:
         # get chart orm
-        with Session(get_engine()) as s:
+        with Session(self.engine) as s:
             sql = select(ChartOfAccountORM).where(
                 ChartOfAccountORM.acct_type == acct_type
             )
@@ -197,11 +201,11 @@ class chartOfAcctDao:
             except NoResultFound as e:
                 raise NotExistError(details=str(e))
             
-        return [cls.toChart(chart_orm) for chart_orm in chart_orms]
+        return [self.toChart(chart_orm) for chart_orm in chart_orms]
     
-    @classmethod
-    def get_parent_chart(cls, chart_id: str) -> Chart:
-        with Session(get_engine()) as s:
+    
+    def get_parent_chart(self, chart_id: str) -> Chart:
+        with Session(self.engine) as s:
             sql = select(ChartOfAccountORM).where(
                 ChartOfAccountORM.chart_id == (
                     select(ChartOfAccountORM.parent_chart_id)
@@ -216,11 +220,14 @@ class chartOfAcctDao:
             except NoResultFound as e:
                 raise NotExistError(details=str(e))
             
-        return cls.toChart(chart_orm)
+        return self.toChart(chart_orm)
 
 class acctDao:
-    @classmethod
-    def fromAcct(cls, acct: Account) -> AcctORM:
+    
+    def __init__(self, session: Session):
+        self.session = session
+        
+    def fromAcct(self, acct: Account) -> AcctORM:
         return AcctORM(
             acct_id=acct.acct_id,
             acct_name=acct.acct_name,
@@ -229,8 +236,7 @@ class acctDao:
             chart_id=acct.chart.chart_id,
         )
         
-    @classmethod
-    def toAcct(cls, acct_orm: AcctORM, chart: Chart) -> Account:
+    def toAcct(self, acct_orm: AcctORM, chart: Chart) -> Account:
         return Account(
             acct_id=acct_orm.acct_id,
             acct_name=acct_orm.acct_name,
@@ -239,99 +245,83 @@ class acctDao:
             chart=chart
         )
         
-    @classmethod
-    def add(cls, acct: Account):
-        acct_orm = cls.fromAcct(acct)
-        with Session(get_engine()) as s:
-            s.add(acct_orm)
-            
-            try:
-                s.commit()
-            except IntegrityError as e:
-                s.rollback()
-                raise infer_integrity_error(e, during_creation=True)
-            else:
-                logging.info(f"Added {acct_orm} to Account table")
-            
-    @classmethod
-    def remove(cls, acct_id: str):
-        with Session(get_engine()) as s:
-            sql = select(AcctORM).where(AcctORM.acct_id == acct_id)
-            try:
-                p = s.exec(sql).one()
-            except NoResultFound as e:
-                raise NotExistError(details=str(e))    
-            
-            try:
-                s.delete(p)
-                s.commit()
-            except IntegrityError as e:
-                s.rollback()
-                raise FKNoDeleteUpdateError(details=str(e))
-            
-            logging.info(f"Removed {p} from Account table")
+    def add(self, acct: Account):
+        acct_orm = self.fromAcct(acct)
+        self.session.add(acct_orm)
         
-    @classmethod
-    def update(cls, acct: Account):
-        acct_orm = cls.fromAcct(acct)
-        with Session(get_engine()) as s:
-            sql = select(AcctORM).where(AcctORM.acct_id == acct_orm.acct_id)
-            try:
-                p = s.exec(sql).one()
-            except NoResultFound as e:
-                raise NotExistError(details=str(e))
+        try:
+            self.session.commit()
+        except IntegrityError as e:
+            self.session.rollback()
+            raise infer_integrity_error(e, during_creation=True)
             
-            # update
-            if not p == acct_orm:
-                p.acct_name = acct_orm.acct_name
-                p.acct_type = acct_orm.acct_type
-                p.currency = acct_orm.currency
-                p.chart_id = acct_orm.chart_id
+    def remove(self, acct_id: str):
+        sql = select(AcctORM).where(AcctORM.acct_id == acct_id)
+        try:
+            p = self.session.exec(sql).one()
+        except NoResultFound as e:
+            raise NotExistError(details=str(e))    
+        
+        try:
+            self.session.delete(p)
+            self.session.commit()
+        except IntegrityError as e:
+            self.session.rollback()
+            raise FKNoDeleteUpdateError(details=str(e))
+            
+        
+    def update(self, acct: Account):
+        acct_orm = self.fromAcct(acct)
+        sql = select(AcctORM).where(AcctORM.acct_id == acct_orm.acct_id)
+        try:
+            p = self.session.exec(sql).one()
+        except NoResultFound as e:
+            raise NotExistError(details=str(e))
+        
+        # update
+        if not p == acct_orm:
+            p.acct_name = acct_orm.acct_name
+            p.acct_type = acct_orm.acct_type
+            p.currency = acct_orm.currency
+            p.chart_id = acct_orm.chart_id
 
-                try:
-                    s.add(p)
-                    s.commit()
-                except IntegrityError as e:
-                    # if integrity error happened here, must certainly it is because
-                    # updated chart_id does not exist
-                    s.rollback()
-                    raise FKNotExistError(details=str(e))
-                else:
-                    s.refresh(p) # update p to instantly have new values
-                    logging.info(f"Updated to {p} from Account table")
-        
-    @classmethod
-    def get_chart_id_by_acct(cls, acct_id: str) -> str:
-        with Session(get_engine()) as s:
-            sql = select(AcctORM.chart_id).where(
-                AcctORM.acct_id == acct_id
-            )
             try:
-                chart_id = s.exec(sql).one() # get the account
-            except NoResultFound as e:
-                raise NotExistError(details=str(e))
+                self.session.add(p)
+                self.session.commit()
+            except IntegrityError as e:
+                # if integrity error happened here, must certainly it is because
+                # updated chart_id does not exist
+                self.session.rollback()
+                raise FKNotExistError(details=str(e))
+            else:
+                self.session.refresh(p) # update p to instantly have new values
+        
+    def get_chart_id_by_acct(self, acct_id: str) -> str:
+        sql = select(AcctORM.chart_id).where(
+            AcctORM.acct_id == acct_id
+        )
+        try:
+            chart_id = self.session.exec(sql).one() # get the account
+        except NoResultFound as e:
+            raise NotExistError(details=str(e))
         return chart_id
     
-    @classmethod
-    def get(cls, acct_id: str, chart: Chart) -> Account:
-        with Session(get_engine()) as s:
-            sql = select(AcctORM).where(AcctORM.acct_id == acct_id)
-            try:
-                acct_orm = s.exec(sql).one() # get the account
-            except NoResultFound as e:
-                raise NotExistError(details=str(e))
+    def get(self, acct_id: str, chart: Chart) -> Account:
+        sql = select(AcctORM).where(AcctORM.acct_id == acct_id)
+        try:
+            acct_orm = self.session.exec(sql).one() # get the account
+        except NoResultFound as e:
+            raise NotExistError(details=str(e))
             
-        return cls.toAcct(acct_orm, chart)
+        return self.toAcct(acct_orm, chart)
     
-    @classmethod
-    def get_accts_by_chart(cls, chart: Chart) -> list[Account]:
-        with Session(get_engine()) as s:
-            sql = select(AcctORM).where(
-                AcctORM.chart_id == chart.chart_id
-            )
-            try:
-                acct_orms = s.exec(sql).all() # get the accounts
-            except NoResultFound as e:
-                raise NotExistError(details=str(e))
+    def get_accts_by_chart(self, chart: Chart) -> list[Account]:
+        sql = select(AcctORM).where(
+            AcctORM.chart_id == chart.chart_id
+        )
+        try:
+            acct_orms = self.session.exec(sql).all() # get the accounts
+        except NoResultFound as e:
+            raise NotExistError(details=str(e))
             
-        return [cls.toAcct(acct_orm, chart) for acct_orm in acct_orms]
+        return [self.toAcct(acct_orm, chart) for acct_orm in acct_orms]

@@ -2,48 +2,39 @@
 from unittest import mock
 import pytest
 from src.app.model.exceptions import NotExistError, AlreadyExistError, FKNotExistError
-from src.app.model.entity import Address, Contact, Customer
 
-@mock.patch("src.app.dao.connection.get_engine")
-def test_contact(mock_engine, engine, contact1):
-    mock_engine.return_value = engine
-    
-    from src.app.dao.entity import contactDao
+def test_contact(test_contact_dao, contact1):
     
     # assert contact not found, and have correct error type
     with pytest.raises(NotExistError):
-        contactDao.get(contact_id=contact1.contact_id)
+        test_contact_dao.get(contact_id=contact1.contact_id)
     
     # add contact
-    contactDao.add(contact = contact1)
-    _contact = contactDao.get(contact_id=contact1.contact_id)
+    test_contact_dao.add(contact = contact1)
+    _contact = test_contact_dao.get(contact_id=contact1.contact_id)
     assert _contact == contact1
     
     # test no duplicate add
     with pytest.raises(AlreadyExistError):
-        contactDao.add(contact = contact1)
+        test_contact_dao.add(contact = contact1)
     
     # update contact
     contact1.name = 'mynewname'
-    contactDao.update(contact1)
-    _contact = contactDao.get(contact_id=contact1.contact_id)
+    test_contact_dao.update(contact1)
+    _contact = test_contact_dao.get(contact_id=contact1.contact_id)
     assert _contact.name == 'mynewname'
     assert _contact == contact1
     
     # delete contact
-    contactDao.remove(contact1.contact_id)
+    test_contact_dao.remove(contact1.contact_id)
     with pytest.raises(NotExistError):
-        contactDao.get(contact_id=contact1.contact_id)
+        test_contact_dao.get(contact_id=contact1.contact_id)
     
-@mock.patch("src.app.dao.connection.get_engine")
-def test_customer(mock_engine, engine, customer1):
-    mock_engine.return_value = engine
-    
-    from src.app.dao.entity import customerDao, contactDao
+def test_customer(test_customer_dao, test_contact_dao, customer1):
 
     # assert customer not found, and have correct error type
     with pytest.raises(NotExistError):
-        customerDao.get(
+        test_customer_dao.get(
             cust_id=customer1.cust_id,
             bill_contact=customer1.bill_contact,
             ship_contact=customer1.ship_contact,
@@ -52,14 +43,14 @@ def test_customer(mock_engine, engine, customer1):
     # add customer
     # should raise error because contact does not exist:
     with pytest.raises(FKNotExistError):
-        customerDao.add(customer = customer1)
+        test_customer_dao.add(customer = customer1)
         
     # add contact as well
-    contactDao.add(contact = customer1.bill_contact)
+    test_contact_dao.add(contact = customer1.bill_contact)
     # add customer
-    customerDao.add(customer = customer1)
+    test_customer_dao.add(customer = customer1)
     
-    _customer = customerDao.get(
+    _customer = test_customer_dao.get(
         cust_id=customer1.cust_id,
         bill_contact=customer1.bill_contact,
         ship_contact=customer1.ship_contact,
@@ -68,12 +59,12 @@ def test_customer(mock_engine, engine, customer1):
     
     # test no duplicate add
     with pytest.raises(AlreadyExistError):
-        customerDao.add(customer = customer1)
+        test_customer_dao.add(customer = customer1)
     
     # update contact
     customer1.customer_name = 'mynewname'
-    customerDao.update(customer1)
-    _customer = customerDao.get(
+    test_customer_dao.update(customer1)
+    _customer = test_customer_dao.get(
         cust_id=customer1.cust_id,
         bill_contact=customer1.bill_contact,
         ship_contact=customer1.ship_contact,
@@ -82,13 +73,13 @@ def test_customer(mock_engine, engine, customer1):
     assert _customer == customer1
     
     # delete customer
-    customerDao.remove(customer1.cust_id)
+    test_customer_dao.remove(customer1.cust_id)
     with pytest.raises(NotExistError):
-        customerDao.get(
+        test_customer_dao.get(
             cust_id=customer1.cust_id,
             bill_contact=customer1.bill_contact,
             ship_contact=customer1.ship_contact,
         )
     
     # delete contact
-    contactDao.remove(customer1.bill_contact.contact_id)
+    test_contact_dao.remove(customer1.bill_contact.contact_id)

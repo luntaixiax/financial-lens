@@ -1,12 +1,12 @@
-from typing import List, Dict, Tuple
 from sqlmodel import Field, SQLModel, Column, create_engine
-from sqlalchemy import ForeignKey, Boolean, JSON, ARRAY, Integer, String, Text, Date, DECIMAL, inspect, INT, CHAR
+from sqlalchemy import ForeignKey, Boolean, JSON, ARRAY, Integer, String, Text, Date, DECIMAL
 from sqlalchemy_utils import EmailType, PasswordType, PhoneNumberType, ChoiceType
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from datetime import date
 
 from src.app.model.exceptions import FKNoDeleteUpdateError, FKNotExistError, AlreadyExistError
-from src.app.model.enums import AcctType, BankAcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, PropertyTransactionType, PropertyType, UnitType
+from src.app.model.enums import AcctType, BankAcctType, CurType, EntityType, EntryType, ItemType, \
+    JournalSrc, PropertyTransactionType, PropertyType, UnitType
 
 def infer_integrity_error(e: IntegrityError, during_creation: bool = True) ->  FKNoDeleteUpdateError | FKNotExistError | AlreadyExistError | IntegrityError:
     # TODO: enhance this when use other backend engine
@@ -34,7 +34,7 @@ def get_class_by_tablename(tablename):
     :param tablename: String with name of table.
     :return: Class reference or None.
     """
-    for c in SQLModelWithSort._sa_registry.mappers:
+    for c in SQLModelWithSort._sa_registry.mappers: # type: ignore
         if hasattr(c, 'class_') and c.class_.__tablename__ == tablename:
             return c.class_
 
@@ -46,7 +46,7 @@ class SQLModelWithSort(SQLModel):
         return rows
     
 class FileORM(SQLModelWithSort, table=True):
-    __tablename__ = 'file'
+    __tablename__: str = 'file'
     
     file_id: str = Field(
         sa_column=Column(
@@ -58,7 +58,7 @@ class FileORM(SQLModelWithSort, table=True):
     filehash: str = Field(sa_column=Column(String(length = 64), nullable = False, primary_key = False, unique=True))
 
 class FxORM(SQLModelWithSort, table=True):
-    __tablename__ = "currency"
+    __tablename__: str = "currency"
     
     currency: CurType = Field(
         sa_column=Column(
@@ -77,7 +77,7 @@ class FxORM(SQLModelWithSort, table=True):
     
 class ContactORM(SQLModelWithSort, table=True):
     
-    __tablename__ = "contact"
+    __tablename__: str = "contact"
     
     contact_id: str = Field(
         sa_column=Column(
@@ -87,12 +87,12 @@ class ContactORM(SQLModelWithSort, table=True):
     )
     name: str = Field(sa_column=Column(String(length = 50), nullable = False, unique = True))
     email: str = Field(sa_column=Column(EmailType(), nullable = False))
-    phone: str = Field(sa_column=Column(PhoneNumberType(), nullable = True))
+    phone: str | None = Field(sa_column=Column(PhoneNumberType(), nullable = True))
     address: dict | None = Field(sa_column=Column(JSON(), nullable = True))
 
 
 class EntityORM(SQLModelWithSort, table=True):
-    __tablename__ = "entity"
+    __tablename__: str = "entity"
     
     entity_id: str = Field(
         sa_column=Column(
@@ -106,7 +106,7 @@ class EntityORM(SQLModelWithSort, table=True):
         sa_column=Column(ChoiceType(EntityType, impl = Integer()), nullable = False, primary_key = True)
     )
     entity_name: str = Field(sa_column=Column(String(length = 50), nullable = False, primary_key = True))
-    is_business: EntryType = Field(
+    is_business: bool = Field(
         sa_column=Column(
             Boolean(create_constraint=True), 
             default = True, 
@@ -146,7 +146,7 @@ class EntityORM(SQLModelWithSort, table=True):
 
 class ChartOfAccountORM(SQLModelWithSort, table=True):
     
-    __tablename__ = "chart_of_account"
+    __tablename__: str = "chart_of_account"
     
     chart_id: str = Field(
         sa_column=Column(
@@ -213,7 +213,7 @@ class ChartOfAccountORM(SQLModelWithSort, table=True):
     
 class AcctORM(SQLModelWithSort, table=True):
     
-    __tablename__ = "accounts"
+    __tablename__: str = "accounts"
     
     acct_id: str = Field(
         sa_column=Column(String(length = 15), primary_key = True, nullable = False)
@@ -241,19 +241,19 @@ class AcctORM(SQLModelWithSort, table=True):
     
 class JournalORM(SQLModelWithSort, table=True):
     
-    __tablename__ = "journals"
+    __tablename__: str = "journals"
     
     journal_id: str = Field(
         sa_column=Column(String(length = 20), primary_key = True, nullable = False)
     )
     jrn_date: date = Field(sa_column=Column(Date(), nullable = False))
-    jrn_src: JournalSrc | None = Field(
+    jrn_src: JournalSrc = Field(
         sa_column=Column(ChoiceType(JournalSrc, impl = Integer()), nullable = False)
     )
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class EntryORM(SQLModelWithSort, table=True):
-    __tablename__ = "entries"
+    __tablename__: str = "entries"
     
     entry_id: str = Field(
         sa_column=Column(String(length = 20), primary_key = True, nullable = False)
@@ -294,7 +294,7 @@ class EntryORM(SQLModelWithSort, table=True):
     
     
 class ItemORM(SQLModelWithSort, table=True):
-    __tablename__ = "item"
+    __tablename__: str = "item"
     
     item_id: str = Field(
         sa_column=Column(String(length = 13), primary_key = True, nullable = False)
@@ -330,7 +330,7 @@ class ItemORM(SQLModelWithSort, table=True):
 
 
 class InvoiceORM(SQLModelWithSort, table=True):
-    __tablename__ = "invoice"
+    __tablename__: str = "invoice"
     
     invoice_id: str = Field(
         sa_column=Column(String(length = 13), primary_key = True, nullable = False)
@@ -358,8 +358,8 @@ class InvoiceORM(SQLModelWithSort, table=True):
     subject: str = Field(
         sa_column=Column(String(length = 50), primary_key = False, nullable = False)
     )
-    currency: CurType | None = Field(
-        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
+    currency: CurType = Field(
+        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = False)
     )
     shipping: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     journal_id: str = Field(
@@ -378,7 +378,7 @@ class InvoiceORM(SQLModelWithSort, table=True):
     
 
 class InvoiceItemORM(SQLModelWithSort, table=True):
-    __tablename__ = "invoice_item"
+    __tablename__: str = "invoice_item"
     
     invoice_item_id: str = Field(
         sa_column=Column(String(length = 17), primary_key = True, nullable = False)
@@ -425,7 +425,7 @@ class InvoiceItemORM(SQLModelWithSort, table=True):
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
 
 class GeneralInvoiceItemORM(SQLModelWithSort, table=True):
-    __tablename__ = "general_invoice_item"
+    __tablename__: str = "general_invoice_item"
     
     ginv_item_id: str = Field(
         sa_column=Column(String(length = 17), primary_key = True, nullable = False)
@@ -455,8 +455,8 @@ class GeneralInvoiceItemORM(SQLModelWithSort, table=True):
             nullable = False
         )
     )
-    currency: CurType | None = Field(
-        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
+    currency: CurType = Field(
+        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = False)
     )
     amount_pre_tax_raw: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
     amount_pre_tax: float = Field(sa_column=Column(DECIMAL(15, 3 , asdecimal=False), nullable = False, server_default = "0.0"))
@@ -465,14 +465,14 @@ class GeneralInvoiceItemORM(SQLModelWithSort, table=True):
     
 
 class ExpenseORM(SQLModelWithSort, table=True):
-    __tablename__ = "expense"
+    __tablename__: str = "expense"
     
     expense_id: str = Field(
         sa_column=Column(String(length = 15), primary_key = True, nullable = False)
     )
     expense_dt: date = Field(sa_column=Column(Date(), nullable = False))
-    currency: CurType | None = Field(
-        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = True)
+    currency: CurType = Field(
+        sa_column=Column(ChoiceType(CurType, impl = Integer()), nullable = False)
     )
     payment_acct_id: str = Field(
         sa_column=Column(
@@ -505,7 +505,7 @@ class ExpenseORM(SQLModelWithSort, table=True):
     
     
 class ExpenseItemORM(SQLModelWithSort, table=True):
-    __tablename__ = "expense_item"
+    __tablename__: str = "expense_item"
     
     expense_item_id: str = Field(
         sa_column=Column(String(length = 20), primary_key = True, nullable = False)
@@ -539,7 +539,7 @@ class ExpenseItemORM(SQLModelWithSort, table=True):
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class PaymentORM(SQLModelWithSort, table=True):
-    __tablename__ = "payment"
+    __tablename__: str = "payment"
     
     payment_id: str = Field(
         sa_column=Column(String(length = 15), primary_key = True, nullable = False)
@@ -580,7 +580,7 @@ class PaymentORM(SQLModelWithSort, table=True):
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class PaymentItemORM(SQLModelWithSort, table=True):
-    __tablename__ = "payment_item"
+    __tablename__: str = "payment_item"
     
     payment_item_id: str = Field(
         sa_column=Column(String(length = 18), primary_key = True, nullable = False)
@@ -614,7 +614,7 @@ class PaymentItemORM(SQLModelWithSort, table=True):
     
     
 class PropertyORM(SQLModelWithSort, table=True):
-    __tablename__ = "property"
+    __tablename__: str = "property"
     
     property_id: str = Field(
         sa_column=Column(String(length = 14), primary_key = True, nullable = False)
@@ -656,7 +656,7 @@ class PropertyORM(SQLModelWithSort, table=True):
     receipts: list[str] | None = Field(sa_column=Column(JSON(), nullable = True))
     
 class PropertyTransactionORM(SQLModelWithSort, table=True):
-    __tablename__ = "property_trans"
+    __tablename__: str = "property_trans"
     
     trans_id: str = Field(
         sa_column=Column(String(length = 18), primary_key = True, nullable = False)
@@ -693,7 +693,7 @@ class PropertyTransactionORM(SQLModelWithSort, table=True):
     
 
 class StockIssueORM(SQLModelWithSort, table=True):
-    __tablename__ = "stock_issue"
+    __tablename__: str = "stock_issue"
     
     issue_id: str = Field(
         sa_column=Column(String(length = 15), primary_key = True, nullable = False)
@@ -748,7 +748,7 @@ class StockIssueORM(SQLModelWithSort, table=True):
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class StockRepurchaseORM(SQLModelWithSort, table=True):
-    __tablename__ = "stock_repurchase"
+    __tablename__: str = "stock_repurchase"
     
     repur_id: str = Field(
         sa_column=Column(String(length = 15), primary_key = True, nullable = False)
@@ -784,7 +784,7 @@ class StockRepurchaseORM(SQLModelWithSort, table=True):
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class DividendORM(SQLModelWithSort, table=True):
-    __tablename__ = "dividend"
+    __tablename__: str = "dividend"
     
     div_id: str = Field(
         sa_column=Column(String(length = 15), primary_key = True, nullable = False)
