@@ -1,4 +1,3 @@
-from _typeshed import NoneType
 from datetime import date
 from unittest import mock
 from pydantic import ValidationError
