@@ -87,7 +87,8 @@ def get_par_share_price() -> float:
 
 
 def get_vault_resp(mount_point: str, path: str) -> dict:
-    with open(Path.cwd().parent / "secrets.toml", mode="rb") as fp:
+    print(Path(__file__).resolve().parent.parent.parent.parent.parent / "secrets.toml")
+    with open((Path(__file__).resolve().parent.parent.parent.parent.parent / "secrets.toml").resolve(), mode="rb") as fp:
         config = tomli.load(fp)
         
     vault_config = config['vault']

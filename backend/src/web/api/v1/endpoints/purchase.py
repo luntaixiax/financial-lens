@@ -5,6 +5,7 @@ from typing import Any, Tuple
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from src.app.model.exceptions import NotExistError
 from src.app.service.misc import SettingService
 from src.app.model.payment import _PaymentBrief, Payment
 from src.app.model.entity import Address, Contact, Customer, Supplier
@@ -129,11 +130,16 @@ def preview_purchase_invoice(
     
     css_path = setting_service.get_static_server_path()
     
+    try:
+        logo = setting_service.get_logo().content
+    except NotExistError:
+        logo = ""
+    
     data = {
         'css_path': css_path,
         'logo': base64.b64encode(
             bytes(
-                setting_service.get_logo().content, 
+                logo, 
                 encoding='latin-1'
             )
         ).decode("latin-1"),

@@ -6,11 +6,16 @@ from sqlmodel import Session, create_engine
 from functools import lru_cache
 from src.app.utils.tools import get_secret
 
+def get_db_url(db: str) -> str:
+    config = get_secret()['database']
+    db_url = f"{config['driver']}://{config['username']}:{config['password']}@{config['hostname']}:{config['port']}/{db}"
+    return db_url
+
 @lru_cache
 def get_engine(db: str = 'manage') -> Engine:
     config = get_secret()['database']
 
-    db_url = f"{config['driver']}://{config['username']}:{config['password']}@{config['hostname']}:{config['port']}/{db}"
+    db_url = get_db_url(db)
     engine = create_engine(db_url, pool_size=10)
     return engine
 
