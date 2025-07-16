@@ -1,3 +1,4 @@
+from sqlalchemy.engine import Engine
 from sqlmodel import Field, SQLModel, Column, create_engine
 from sqlalchemy import ForeignKey, Boolean, JSON, ARRAY, Integer, String, Text, Date, DECIMAL
 from sqlalchemy_utils import EmailType, PasswordType, PhoneNumberType, ChoiceType
@@ -41,11 +42,43 @@ def get_class_by_tablename(tablename):
 class SQLModelWithSort(SQLModel):
     
     @classmethod
+    def create_table_within_collection(cls, collection: str, engine: Engine):
+        # SQLModelWithSort.metadata.create_all(self.user_engine)
+        # will create all tables defined across all files, even from different db
+        # filter to only create tables labeled under specific collection
+        for table in SQLModelWithSort.metadata.sorted_tables:
+            tb_cls = get_class_by_tablename(table.name)
+            if tb_cls.__collection__ == collection: # type: ignore
+                table.create(bind=engine)
+
+    
+    @classmethod
     def sort_for_backup(cls, rows):
         # sort rows from query, useful in case of backup
         return rows
     
+class UserORM(SQLModelWithSort, table=True):
+    __collection__: str = 'common'
+    __tablename__: str = "users"
+    
+    user_id: str = Field(
+        sa_column=Column(
+            String(length = 15), 
+            primary_key = True, 
+            nullable = False)
+    )
+    username: str = Field(sa_column=Column(String(length = 20),  nullable = False, unique = True))
+    hashed_password: str = Field(sa_column=Column(String(length = 72),  nullable = False))
+    is_admin: bool = Field(
+        sa_column=Column(
+            Boolean(create_constraint=True), 
+            default = False, 
+            nullable = False
+        )
+    )
+    
 class FileORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = 'file'
     
     file_id: str = Field(
@@ -58,6 +91,7 @@ class FileORM(SQLModelWithSort, table=True):
     filehash: str = Field(sa_column=Column(String(length = 64), nullable = False, primary_key = False, unique=True))
 
 class FxORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific' # TODO: move to common
     __tablename__: str = "currency"
     
     currency: CurType = Field(
@@ -76,7 +110,7 @@ class FxORM(SQLModelWithSort, table=True):
     
     
 class ContactORM(SQLModelWithSort, table=True):
-    
+    __collection__: str = 'user_specific'
     __tablename__: str = "contact"
     
     contact_id: str = Field(
@@ -92,6 +126,7 @@ class ContactORM(SQLModelWithSort, table=True):
 
 
 class EntityORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "entity"
     
     entity_id: str = Field(
@@ -145,7 +180,7 @@ class EntityORM(SQLModelWithSort, table=True):
     
 
 class ChartOfAccountORM(SQLModelWithSort, table=True):
-    
+    __collection__: str = 'user_specific'
     __tablename__: str = "chart_of_account"
     
     chart_id: str = Field(
@@ -212,7 +247,7 @@ class ChartOfAccountORM(SQLModelWithSort, table=True):
     
     
 class AcctORM(SQLModelWithSort, table=True):
-    
+    __collection__: str = 'user_specific'
     __tablename__: str = "accounts"
     
     acct_id: str = Field(
@@ -240,7 +275,7 @@ class AcctORM(SQLModelWithSort, table=True):
     )
     
 class JournalORM(SQLModelWithSort, table=True):
-    
+    __collection__: str = 'user_specific'
     __tablename__: str = "journals"
     
     journal_id: str = Field(
@@ -253,6 +288,7 @@ class JournalORM(SQLModelWithSort, table=True):
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class EntryORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "entries"
     
     entry_id: str = Field(
@@ -294,6 +330,7 @@ class EntryORM(SQLModelWithSort, table=True):
     
     
 class ItemORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "item"
     
     item_id: str = Field(
@@ -330,6 +367,7 @@ class ItemORM(SQLModelWithSort, table=True):
 
 
 class InvoiceORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "invoice"
     
     invoice_id: str = Field(
@@ -378,6 +416,7 @@ class InvoiceORM(SQLModelWithSort, table=True):
     
 
 class InvoiceItemORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "invoice_item"
     
     invoice_item_id: str = Field(
@@ -425,6 +464,7 @@ class InvoiceItemORM(SQLModelWithSort, table=True):
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
 
 class GeneralInvoiceItemORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "general_invoice_item"
     
     ginv_item_id: str = Field(
@@ -465,6 +505,7 @@ class GeneralInvoiceItemORM(SQLModelWithSort, table=True):
     
 
 class ExpenseORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "expense"
     
     expense_id: str = Field(
@@ -505,6 +546,7 @@ class ExpenseORM(SQLModelWithSort, table=True):
     
     
 class ExpenseItemORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "expense_item"
     
     expense_item_id: str = Field(
@@ -539,6 +581,7 @@ class ExpenseItemORM(SQLModelWithSort, table=True):
     description: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class PaymentORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "payment"
     
     payment_id: str = Field(
@@ -580,6 +623,7 @@ class PaymentORM(SQLModelWithSort, table=True):
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class PaymentItemORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "payment_item"
     
     payment_item_id: str = Field(
@@ -614,6 +658,7 @@ class PaymentItemORM(SQLModelWithSort, table=True):
     
     
 class PropertyORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "property"
     
     property_id: str = Field(
@@ -656,6 +701,7 @@ class PropertyORM(SQLModelWithSort, table=True):
     receipts: list[str] | None = Field(sa_column=Column(JSON(), nullable = True))
     
 class PropertyTransactionORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "property_trans"
     
     trans_id: str = Field(
@@ -693,6 +739,7 @@ class PropertyTransactionORM(SQLModelWithSort, table=True):
     
 
 class StockIssueORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "stock_issue"
     
     issue_id: str = Field(
@@ -748,6 +795,7 @@ class StockIssueORM(SQLModelWithSort, table=True):
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class StockRepurchaseORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "stock_repurchase"
     
     repur_id: str = Field(
@@ -784,6 +832,7 @@ class StockRepurchaseORM(SQLModelWithSort, table=True):
     note: str | None = Field(sa_column=Column(Text(), nullable = True))
     
 class DividendORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
     __tablename__: str = "dividend"
     
     div_id: str = Field(

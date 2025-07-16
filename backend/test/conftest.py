@@ -38,7 +38,10 @@ def engine():
     if not database_exists(engine.url):
         create_database(engine.url)
         
-    SQLModelWithSort.metadata.create_all(engine)
+    SQLModelWithSort.create_table_within_collection(
+        collection='user_specific',
+        engine=engine
+    )
     
     yield engine
     

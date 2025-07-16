@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from src.app.model.user import UserCreate, User
+from src.app.service.user import UserService
 from src.app.service.backup import BackupService
-from src.web.dependency.service import get_backup_service
+from src.web.dependency.service import get_backup_service, get_user_service
 
 router = APIRouter(prefix="/management", tags=["management"])
 
@@ -10,6 +12,54 @@ def init_db(
 ):
     backup_service.init_db()
     
+@router.post("/create_user")
+def create_user(
+    user: UserCreate,
+    user_service: UserService = Depends(get_user_service)
+):
+    user_service.create_user(user)
+    
+@router.post("/remove_user")
+def remove_user(
+    user_id: str,
+    user_service: UserService = Depends(get_user_service)
+):
+    user_service.remove_user(user_id)
+    
+@router.post("/remove_user_by_name")
+def remove_user_by_name(
+    username: str,
+    user_service: UserService = Depends(get_user_service)
+):
+    user_service.remove_user_by_name(username)
+    
+@router.post("/update_user")
+def update_user(
+    user: UserCreate,
+    user_service: UserService = Depends(get_user_service)
+):
+    user_service.update_user(user)
+    
+@router.get("/get_user")
+def get_user(
+    user_id: str,
+    user_service: UserService = Depends(get_user_service)
+) -> User:
+    return user_service.get_user(user_id)
+
+@router.get("/get_user_by_name")
+def get_user_by_name(
+    username: str,
+    user_service: UserService = Depends(get_user_service)
+) -> User:
+    return user_service.get_user_by_name(username)
+
+@router.get("/list_users")
+def list_users(
+    user_service: UserService = Depends(get_user_service)
+) -> list[User]:
+    return user_service.list_user()
+
 @router.get("/list_backup_ids")
 def list_backup_ids(
     backup_service: BackupService = Depends(get_backup_service)

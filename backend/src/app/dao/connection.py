@@ -12,7 +12,7 @@ def get_db_url(db: str) -> str:
     return db_url
 
 @lru_cache
-def get_engine(db: str = 'manage') -> Engine:
+def get_engine(db: str = 'common') -> Engine:
     config = get_secret()['database']
 
     db_url = get_db_url(db)
@@ -62,8 +62,3 @@ def yield_file_fs() -> S3FileSystem:
     
 def yield_backup_fs() -> S3FileSystem:
     return get_storage_fs('backup')
-
-if __name__ == '__main__':
-    from src.app.dao.orm import SQLModelWithSort
-    
-    SQLModelWithSort.metadata.create_all(get_engine())

@@ -2,12 +2,13 @@ from functools import lru_cache
 import math
 from typing import Literal
 import uuid
+import re
 import hvac
 import os
 import tomli
 from pathlib import Path
 from src.app.model.enums import CurType
-
+from passlib.context import CryptContext
 
 ENV = os.environ.get("ENV", "prod")
 VAULT_MOUNT_POINT = "finlens"
@@ -19,11 +20,17 @@ VAULT_MOUNT_PATH = {
     'static_server': f"{ENV}/static_server",
 }
 
-def id_generator(prefix: str, length: int = 8, existing_list: list[str] | None = None) -> str:
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def id_generator(prefix: str, length: int = 8, existing_list: list[str] | None = None, 
+                 only_alpha_numeric: bool = False) -> str:
     new_id = prefix + str(uuid.uuid4())[:length]
     if existing_list:
         if new_id in existing_list:
-            new_id = id_generator(prefix, length, existing_list)
+            new_id = id_generator(prefix, length, existing_list, only_alpha_numeric)
+    if only_alpha_numeric:
+        new_id = re.sub(r'[^a-zA-Z0-9]', '', new_id)
     return new_id
 
 
@@ -87,7 +94,6 @@ def get_par_share_price() -> float:
 
 
 def get_vault_resp(mount_point: str, path: str) -> dict:
-    print(Path(__file__).resolve().parent.parent.parent.parent.parent / "secrets.toml")
     with open((Path(__file__).resolve().parent.parent.parent.parent.parent / "secrets.toml").resolve(), mode="rb") as fp:
         config = tomli.load(fp)
         

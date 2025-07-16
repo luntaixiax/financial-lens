@@ -1,4 +1,5 @@
 from fastapi import Depends
+from src.app.dao.user import userDao
 from src.app.dao.files import configDao, fileDao
 from src.app.dao.fx import fxDao
 from src.app.dao.entity import contactDao, customerDao, supplierDao
@@ -10,6 +11,7 @@ from src.app.dao.invoice import itemDao, invoiceDao
 from src.app.dao.payment import paymentDao
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.dao.backup import dataDao
+from src.app.service.user import UserService
 from src.app.service.shares import SharesService
 from src.app.service.reporting import ReportingService
 from src.app.service.property import PropertyService
@@ -28,8 +30,12 @@ from src.web.dependency.dao import get_acct_dao, get_chart_of_acct_dao, \
     get_backup_dao, get_contact_dao, get_customer_dao, get_dividend_dao, get_expense_dao, \
     get_file_dao, get_fx_dao, get_item_dao, get_journal_dao, get_property_dao, \
     get_property_transaction_dao, get_stock_issue_dao, get_stock_repurchase_dao, \
-    get_supplier_dao, get_config_dao, get_payment_dao, get_invoice_dao
+    get_supplier_dao, get_config_dao, get_payment_dao, get_invoice_dao, get_user_dao
 
+def get_user_service(
+    user_dao: userDao = Depends(get_user_dao)
+) -> UserService:
+    return UserService(user_dao=user_dao)
 
 def get_backup_service(
     backup_dao: dataDao = Depends(get_backup_dao)

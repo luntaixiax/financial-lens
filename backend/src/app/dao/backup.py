@@ -57,15 +57,30 @@ def migrate_database(src_engine: Engine, tgt_engine: Engine):
 
 class dataDao:
     
-    def __init__(self, primary_engine: Engine, backup_fs: S3FileSystem, file_fs: S3FileSystem):
-        self.primary_engine = primary_engine
+    def __init__(self, user_engine: Engine, common_engine: Engine, 
+                 backup_fs: S3FileSystem, file_fs: S3FileSystem):
+        self.user_engine = user_engine # use for actual user data
+        self.common_engine = common_engine # used for user registry and fx data
         self.backup_fs = backup_fs
         self.file_fs = file_fs
         
     def init_db(self):
-        if not database_exists(self.primary_engine.url):
-            create_database(self.primary_engine.url)
-        SQLModelWithSort.metadata.create_all(self.primary_engine)
+        # common db points to common collection
+        if not database_exists(self.common_engine.url):
+            create_database(self.common_engine.url)
+        SQLModelWithSort.create_table_within_collection(
+            collection='common',
+            engine=self.common_engine
+        )
+        
+        # user db points to user_specific collection
+        if not database_exists(self.user_engine.url):
+            create_database(self.user_engine.url)
+        SQLModelWithSort.create_table_within_collection(
+            collection='user_specific',
+            engine=self.user_engine
+        )
+        
     
     @classmethod
     def get_backup_folder_path(cls, backup_id: str) -> str:
@@ -131,7 +146,7 @@ class dataDao:
             tgt_engine = sqlalchemy.create_engine(f'sqlite:///{cur_path.as_posix()}')
                             
             migrate_database(
-                src_engine = self.primary_engine,
+                src_engine = self.user_engine,
                 tgt_engine = tgt_engine
             )
             
@@ -179,7 +194,7 @@ class dataDao:
             )
             
             src_engine = sqlalchemy.create_engine(f'sqlite:///{cur_path.as_posix()}')
-            tgt_engine = self.primary_engine
+            tgt_engine = self.user_engine
             
             # drop all existing tables
             drop_tables(tgt_engine)
