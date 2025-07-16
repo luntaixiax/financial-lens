@@ -18,6 +18,7 @@ VAULT_MOUNT_PATH = {
     'backup_server' : f"{ENV}/backup_server",
     'stateapi' : f"{ENV}/stateapi",
     'static_server': f"{ENV}/static_server",
+    'auth': f"{ENV}/auth",
 }
 
 
@@ -135,13 +136,18 @@ def get_secret() -> dict:
         mount_point = VAULT_MOUNT_POINT,
         path = VAULT_MOUNT_PATH['static_server']
     )
+    auth = get_vault_resp(
+        mount_point = VAULT_MOUNT_POINT,
+        path = VAULT_MOUNT_PATH['auth'],
+    )
     
     return {
         'database' : database,
         'storage_server' : storage_server,
         'backup_server' : backup_server,
         'stateapi' : stateapi,
-        'static_server': static_server
+        'static_server': static_server,
+        'auth': auth
     }
 
 def get_file_root(type_: Literal['files', 'backup'] = 'files') -> str:

@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
-from src.app.model.user import UserCreate, User
+from fastapi.security import OAuth2PasswordRequestForm
+from src.app.model.user import Token, UserCreate, User, UserMeta
 from src.app.service.user import UserService
 from src.app.service.backup import BackupService
-from src.web.dependency.service import get_backup_service, get_user_service
+from src.app.service.auth import AuthService
+from src.web.dependency.service import get_auth_service, get_backup_service, get_user_service
 
 router = APIRouter(prefix="/management", tags=["management"])
 
@@ -59,6 +61,17 @@ def list_users(
     user_service: UserService = Depends(get_user_service)
 ) -> list[User]:
     return user_service.list_user()
+
+
+@router.post("/login", response_model=Token)
+def login(
+    user_credentials: OAuth2PasswordRequestForm = Depends(),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> Token:
+    return auth_service.login(
+        username=user_credentials.username, 
+        password=user_credentials.password
+    )
 
 @router.get("/list_backup_ids")
 def list_backup_ids(

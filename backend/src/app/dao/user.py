@@ -1,7 +1,7 @@
 from sqlmodel import Session, select
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.dao.orm import UserORM
-from src.app.model.user import User, UserCreate
+from src.app.model.user import User, UserCreate, UserInternalRead
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
 
 class userDao:
@@ -95,6 +95,17 @@ class userDao:
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         return self.toUser(p)
+    
+    def get_internal_user_by_name(self, username: str) -> UserInternalRead:
+        sql = select(UserORM).where(UserORM.username == username)
+        try:
+            p = self.session.exec(sql).one()
+        except NoResultFound as e:
+            raise NotExistError(details=str(e))
+        return UserInternalRead(
+            **self.toUser(p).dict(),
+            hashed_password=p.hashed_password
+        )
     
     def list_user(self) -> list[User]:
         sql = select(UserORM)

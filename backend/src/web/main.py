@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse, JSONResponse
 from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
-    FKNoDeleteUpdateError, NotMatchWithSystemError, OpNotPermittedError
+    FKNoDeleteUpdateError, NotMatchWithSystemError, OpNotPermittedError, PermissionDeniedError
 from src.web.api.v1.api import api_router
 
 BASE_PATH = Path(__file__).resolve().parent
@@ -30,6 +30,16 @@ app.include_router(api_router, prefix="/api/v1")
 #     StaticFiles(directory=BASE_PATH / "static"),
 #     name="static",
 # )
+
+@app.exception_handler(PermissionDeniedError)
+async def permission_denied_error_handler(_: Request, exc: PermissionDeniedError) -> JSONResponse:
+    return JSONResponse(
+        status_code = 403,
+        content = {
+            "message": exc.message,
+            "details": exc.details
+        },
+    )
 
 # Already Exist Error
 @app.exception_handler(AlreadyExistError)

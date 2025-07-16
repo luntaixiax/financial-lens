@@ -3,8 +3,15 @@ from pydantic import Field, computed_field
 from src.app.utils.tools import id_generator, pwd_context
 from src.app.utils.base import EnhancedBaseModel
 
-
-class User(EnhancedBaseModel):
+class Token(EnhancedBaseModel):
+    access_token: str
+    token_type: str
+    
+class UserMeta(EnhancedBaseModel):
+    username: str
+    is_admin: bool = Field(default=False)
+    
+class User(UserMeta):
     
     user_id: str = Field(
         default_factory=partial( # type: ignore
@@ -16,7 +23,13 @@ class User(EnhancedBaseModel):
         frozen=True,
     )
     username: str = Field(max_length=20)
-    is_admin: bool = Field(default=False)
+    
+    
+class UserInternalRead(User):
+    hashed_password: str
+    
+    def verify_password(self, password: str) -> bool:
+        return pwd_context.verify(password, self.hashed_password) # type: ignore
     
 class UserCreate(User):
     password: str = Field(min_length=8, max_length=20)
@@ -25,5 +38,3 @@ class UserCreate(User):
     def hashed_password(self) -> str:
         return pwd_context.hash(self.password)
     
-    def verify_password(self, password: str) -> bool:
-        return pwd_context.verify(password, self.hashed_password) # type: ignore

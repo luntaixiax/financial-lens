@@ -1,4 +1,5 @@
 from fastapi import Depends
+from src.app.service.auth import AuthService
 from src.app.dao.user import userDao
 from src.app.dao.files import configDao, fileDao
 from src.app.dao.fx import fxDao
@@ -36,6 +37,11 @@ def get_user_service(
     user_dao: userDao = Depends(get_user_dao)
 ) -> UserService:
     return UserService(user_dao=user_dao)
+
+def get_auth_service(
+    user_dao: userDao = Depends(get_user_dao)
+) -> AuthService:
+    return AuthService(user_dao=user_dao)
 
 def get_backup_service(
     backup_dao: dataDao = Depends(get_backup_dao)
