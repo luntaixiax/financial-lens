@@ -38,14 +38,14 @@ def session_with_basic_choa(test_session, test_acct_service, settings):
             test_acct_service.delete_coa(acct_type)
             
 @pytest.fixture(scope='module')
-def session_with_sample_choa(test_session, test_acct_service, settings):
+def session_with_sample_choa(session_with_basic_choa, test_acct_service, settings):
    with mock.patch("src.app.utils.tools.get_settings") as mock_settings:
         mock_settings.return_value = settings
         
         print("Adding sample Acct and COA...")
         test_acct_service.create_sample()
         
-        yield test_session
+        yield session_with_basic_choa
         
             
 @pytest.fixture

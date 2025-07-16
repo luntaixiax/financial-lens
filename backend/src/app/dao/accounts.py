@@ -1,4 +1,5 @@
 import logging
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, select, delete, col
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from anytree import PreOrderIter
@@ -9,10 +10,11 @@ from src.app.dao.orm import ChartOfAccountORM, AcctORM, infer_integrity_error
 
 class chartOfAcctDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, engine: Engine):
+        self.engine = engine
         
     def save(self, top_node: ChartNode):
+        # save the whole tree to DB
         # save the whole tree to DB
         logging.info("Saving following Chart of Accounts:\n")
         top_node.print()
@@ -26,45 +28,46 @@ class chartOfAcctDao:
             # get the order of chart ids in case need to delete
             ordered_nodes = list(existing_node.descendants)[::-1] + [existing_node]
     
-        # get already existing nodes within same chart type in db
-        sql = select(ChartOfAccountORM.chart_id).where(
-            ChartOfAccountORM.acct_type == top_node.chart.acct_type,
-        )
-        db_chart_ids = self.session.exec(sql).all()
-        
-        # for nodes that already exist and newly created in the given node
-        kept_chart_ids = []
-        for node in PreOrderIter(top_node):
-            # get parent id
-            parent_chart_id = None
-            if node.parent:
-                # if has parent, not root node
-                parent_chart_id = node.parent.chart.chart_id
-            
-            # whether the node already exist in the db
-            sql = select(ChartOfAccountORM).where(
-                ChartOfAccountORM.chart_id == node.chart.chart_id
+        with Session(self.engine) as s:
+            # get already existing nodes within same chart type in db
+            sql = select(ChartOfAccountORM.chart_id).where(
+                ChartOfAccountORM.acct_type == top_node.chart.acct_type,
             )
-            try:
-                old_node_orm = self.session.exec(sql).one()
-            except NoResultFound:
-                # no existing node exist, will create one
-                new_node_orm = ChartOfAccountORM(
-                    chart_id = node.chart.chart_id,
-                    node_name = node.chart.name,
-                    acct_type = node.chart.acct_type,
-                    parent_chart_id = parent_chart_id
-                )
-                self.session.add(new_node_orm)
+            db_chart_ids = s.exec(sql).all()
+            
+            # for nodes that already exist and newly created in the given node
+            kept_chart_ids = []
+            for node in PreOrderIter(top_node):
+                # get parent id
+                parent_chart_id = None
+                if node.parent:
+                    # if has parent, not root node
+                    parent_chart_id = node.parent.chart.chart_id
                 
-            else:
-                # otherwise update the nodes
-                old_node_orm.node_name = node.chart.name
-                old_node_orm.acct_type = node.chart.acct_type
-                old_node_orm.parent_chart_id = parent_chart_id
-                self.session.add(old_node_orm)
-                # add existing node to seen nodes
-                kept_chart_ids.append(node.chart.chart_id)
+                # whether the node already exist in the db
+                sql = select(ChartOfAccountORM).where(
+                    ChartOfAccountORM.chart_id == node.chart.chart_id
+                )
+                try:
+                    old_node_orm = s.exec(sql).one()
+                except NoResultFound:
+                    # no existing node exist, will create one
+                    new_node_orm = ChartOfAccountORM(
+                        chart_id = node.chart.chart_id,
+                        node_name = node.chart.name,
+                        acct_type = node.chart.acct_type,
+                        parent_chart_id = parent_chart_id
+                    )
+                    s.add(new_node_orm)
+                    
+                else:
+                    # otherwise update the nodes
+                    old_node_orm.node_name = node.chart.name
+                    old_node_orm.acct_type = node.chart.acct_type
+                    old_node_orm.parent_chart_id = parent_chart_id
+                    s.add(old_node_orm)
+                    # add existing node to seen nodes
+                    kept_chart_ids.append(node.chart.chart_id)
                     
             # but also need to remove nodes that be "deleted" -- in db but not in top_node (within same chart type)
             chart_ids_to_rm = list(set(db_chart_ids).difference(kept_chart_ids))
@@ -77,13 +80,13 @@ class chartOfAcctDao:
                         sql = select(ChartOfAccountORM).where(
                             ChartOfAccountORM.chart_id == node.chart_id
                         )
-                        p = self.session.exec(sql).one() # get the chart of account
-                        self.session.delete(p)
+                        p = s.exec(sql).one() # get the chart of account
+                        s.delete(p)
             
             try:
-                self.session.commit() # submit all in one commit
+                s.commit() # submit all in one commit
             except IntegrityError as e:
-                self.session.rollback()
+                s.rollback()
                 # if error, can only be the following scenario:
                 # the chart to remove have another chart / account belongs to it (FK on delete) 
                 raise FKNoDeleteUpdateError(details=str(e))
@@ -92,47 +95,48 @@ class chartOfAcctDao:
     
     def load(self, acct_type: AcctType) -> ChartNode:
         # assemble the relevant tree from DB and return the top node
-        def add_childs(node: ChartNode):
-            # find child
+        with Session(self.engine) as s:
+            def add_childs(node: ChartNode):
+                # find child
+                sql = select(ChartOfAccountORM).where(
+                    ChartOfAccountORM.acct_type == acct_type,
+                    ChartOfAccountORM.parent_chart_id == node.chart.chart_id
+                )
+                child_node_orms = s.exec(sql).all()
+                for child_node_orm in child_node_orms:
+                    # iterate over current child nodes
+                    child_node = ChartNode(
+                        chart = Chart(
+                            chart_id = child_node_orm.chart_id,
+                            name = child_node_orm.node_name,
+                            acct_type = child_node_orm.acct_type,
+                        ),
+                        parent = node # link to current node
+                    )
+                    add_childs(child_node)
+            
+            # find root node
+            # find immediate children node
             sql = select(ChartOfAccountORM).where(
                 ChartOfAccountORM.acct_type == acct_type,
-                ChartOfAccountORM.parent_chart_id == node.chart.chart_id
+                ChartOfAccountORM.parent_chart_id == None
             )
-            child_node_orms = self.session.exec(sql).all()
-            for child_node_orm in child_node_orms:
-                # iterate over current child nodes
-                child_node = ChartNode(
-                    chart = Chart(
-                        chart_id = child_node_orm.chart_id,
-                        name = child_node_orm.node_name,
-                        acct_type = child_node_orm.acct_type,
-                    ),
-                    parent = node # link to current node
-                )
-                add_childs(child_node)
-        
-        # find root node
-        # find immediate children node
-        sql = select(ChartOfAccountORM).where(
-            ChartOfAccountORM.acct_type == acct_type,
-            ChartOfAccountORM.parent_chart_id == None
-        )
-        try:
-            root_node_orm = self.session.exec(sql).one()
-        except NoResultFound as e:
-            raise NotExistError(details=str(e)) # top node not exist
+            try:
+                root_node_orm = s.exec(sql).one()
+            except NoResultFound as e:
+                raise NotExistError(details=str(e)) # top node not exist
+                
+            root_node = ChartNode(
+                chart = Chart(
+                    chart_id = root_node_orm.chart_id,
+                    name = root_node_orm.node_name,
+                    acct_type = root_node_orm.acct_type,
+                ),
+                parent = None
+            )
             
-        root_node = ChartNode(
-            chart = Chart(
-                chart_id = root_node_orm.chart_id,
-                name = root_node_orm.node_name,
-                acct_type = root_node_orm.acct_type,
-            ),
-            parent = None
-        )
-        
-        # recursively add root node
-        add_childs(root_node)
+            # recursively add root node
+            add_childs(root_node)
         
         return root_node # return root
         
@@ -144,23 +148,24 @@ class chartOfAcctDao:
         except NotExistError as e:
             return
             
-        # need to delete from bottom node to top node
-        for node in list(top_node.descendants)[::-1] + [top_node]:
-            sql = select(ChartOfAccountORM).where(
-                ChartOfAccountORM.chart_id == node.chart_id
-            )
-            p = self.session.exec(sql).one() # get the chart of account
-            
-            # need to delete (commit) one at a time
-            # because there are FK on same column
-            try:
-                self.session.delete(p)
-                self.session.commit() # submit all in one commit
-            except IntegrityError as e:
-                self.session.rollback()
-                # if error, can only be the following scenario:
-                # the chart to remove have another chart / account belongs to it (FK on delete) 
-                raise FKNoDeleteUpdateError(details=str(e))
+        with Session(self.engine) as s:
+            # need to delete from bottom node to top node
+            for node in list(top_node.descendants)[::-1] + [top_node]:
+                sql = select(ChartOfAccountORM).where(
+                    ChartOfAccountORM.chart_id == node.chart_id
+                )
+                p = s.exec(sql).one() # get the chart of account
+                
+                # need to delete (commit) one at a time
+                # because there are FK on same column
+                try:
+                    s.delete(p)
+                    s.commit() # submit all in one commit
+                except IntegrityError as e:
+                    s.rollback()
+                    # if error, can only be the following scenario:
+                    # the chart to remove have another chart / account belongs to it (FK on delete) 
+                    raise FKNoDeleteUpdateError(details=str(e))
             
     
     def toChart(self, chart_orm: ChartOfAccountORM) -> Chart:
@@ -173,45 +178,47 @@ class chartOfAcctDao:
     
     def get_chart(self, chart_id: str) -> Chart:
         # get chart orm
-
-        sql = select(ChartOfAccountORM).where(
-            ChartOfAccountORM.chart_id == chart_id
-        )
-        try:
-            chart_orm = self.session.exec(sql).one() # get the account
-        except NoResultFound as e:
-            raise NotExistError(details=str(e))
+        with Session(self.engine) as s:
+            sql = select(ChartOfAccountORM).where(
+                ChartOfAccountORM.chart_id == chart_id
+            )
+            try:
+                chart_orm = s.exec(sql).one() # get the account
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
         
         return self.toChart(chart_orm)
     
     
     def get_charts(self, acct_type: AcctType) -> list[Chart]:
         # get chart orm
-        sql = select(ChartOfAccountORM).where(
-            ChartOfAccountORM.acct_type == acct_type
-        )
-        try:
-            chart_orms = self.session.exec(sql).all() # get the charts
-        except NoResultFound as e:
-            raise NotExistError(details=str(e))
+        with Session(self.engine) as s:
+            sql = select(ChartOfAccountORM).where(
+                ChartOfAccountORM.acct_type == acct_type
+            )
+            try:
+                chart_orms = s.exec(sql).all() # get the charts
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
             
         return [self.toChart(chart_orm) for chart_orm in chart_orms]
     
     
     def get_parent_chart(self, chart_id: str) -> Chart:
-        sql = select(ChartOfAccountORM).where(
-            ChartOfAccountORM.chart_id == (
-                select(ChartOfAccountORM.parent_chart_id)
-                .where(
-                    ChartOfAccountORM.chart_id == chart_id
+        with Session(self.engine) as s:
+            sql = select(ChartOfAccountORM).where(
+                ChartOfAccountORM.chart_id == (
+                    select(ChartOfAccountORM.parent_chart_id)
+                    .where(
+                        ChartOfAccountORM.chart_id == chart_id
+                    )
                 )
             )
-        )
-        
-        try:
-            chart_orm = self.session.exec(sql).one() # get the chart
-        except NoResultFound as e:
-            raise NotExistError(details=str(e))
+            
+            try:
+                chart_orm = s.exec(sql).one() # get the chart
+            except NoResultFound as e:
+                raise NotExistError(details=str(e))
             
         return self.toChart(chart_orm)
 

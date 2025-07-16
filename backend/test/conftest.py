@@ -73,9 +73,9 @@ def test_invoice_dao(test_session):
     return invoiceDao(test_session) 
 
 @pytest.fixture(scope='session')
-def test_journal_dao(test_session):
+def test_journal_dao(test_session, engine):
     from src.app.dao.journal import journalDao
-    return journalDao(test_session)
+    return journalDao(test_session, engine)
     
 @pytest.fixture(scope='session')
 def test_acct_dao(test_session):
@@ -83,14 +83,49 @@ def test_acct_dao(test_session):
     return acctDao(test_session)
 
 @pytest.fixture(scope='session')
-def test_chart_of_acct_dao(test_session):
+def test_chart_of_acct_dao(engine):
     from src.app.dao.accounts import chartOfAcctDao
-    return chartOfAcctDao(test_session)
+    return chartOfAcctDao(engine)
+
+@pytest.fixture(scope='session')
+def test_expense_dao(test_session):
+    from src.app.dao.expense import expenseDao
+    return expenseDao(test_session)
+
+@pytest.fixture(scope='session')
+def test_payment_dao(test_session):
+    from src.app.dao.payment import paymentDao
+    return paymentDao(test_session)
+
+@pytest.fixture(scope='session')
+def test_property_dao(test_session):
+    from src.app.dao.property import propertyDao
+    return propertyDao(test_session)
+
+@pytest.fixture(scope='session')
+def test_property_trans_dao(test_session):
+    from src.app.dao.property import propertyTransactionDao
+    return propertyTransactionDao(test_session)
+
+@pytest.fixture(scope='session')
+def test_stock_issue_dao(test_session):
+    from src.app.dao.shares import stockIssueDao
+    return stockIssueDao(test_session)
+
+@pytest.fixture(scope='session')
+def test_stock_repurchase_dao(test_session):
+    from src.app.dao.shares import stockRepurchaseDao
+    return stockRepurchaseDao(test_session)
+
+@pytest.fixture(scope='session')
+def test_stock_dividend_dao(test_session):
+    from src.app.dao.shares import dividendDao
+    return dividendDao(test_session)
 
 ### Service objects ###
 
 @pytest.fixture(scope='session')
-def acct_service(test_acct_dao, test_chart_of_acct_dao):
+def test_acct_service(test_acct_dao, test_chart_of_acct_dao):
     from src.app.service.acct import AcctService
     
     return AcctService(

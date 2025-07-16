@@ -55,9 +55,9 @@ def get_acct_dao(
     return acctDao(session=session)
 
 def get_chart_of_acct_dao(
-    session: Session = Depends(yield_session)
+    engine: Engine = Depends(yield_engine)
 ) -> chartOfAcctDao:
-    return chartOfAcctDao(session=session)
+    return chartOfAcctDao(engine=engine)
 
 def get_contact_dao(
     session: Session = Depends(yield_session)
@@ -90,9 +90,10 @@ def get_invoice_dao(
     return invoiceDao(session=session)
 
 def get_journal_dao(
-    session: Session = Depends(yield_session)
+    session: Session = Depends(yield_session),
+    engine: Engine = Depends(yield_engine)
 ) -> journalDao:
-    return journalDao(session=session)
+    return journalDao(session=session, engine=engine)
 
 def get_payment_dao(
     session: Session = Depends(yield_session)

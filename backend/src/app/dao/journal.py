@@ -1,6 +1,7 @@
 from datetime import date
 import logging
 from typing import Tuple
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, select, delete, distinct, case, func as f, and_, or_
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from src.app.model.enums import EntryType, JournalSrc, AcctType
@@ -11,8 +12,9 @@ from src.app.model.exceptions import AlreadyExistError, OpNotPermittedError, Not
 
 class journalDao:
         
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, engine: Engine):
         self.session = session
+        self.engine = engine
         
     def fromEntry(self, journal_id: str, entry: Entry) -> EntryORM:
         return EntryORM(
@@ -30,7 +32,7 @@ class journalDao:
         
         # TODO: optimize it to not use acctDao
         chart_id = acctDao(self.session).get_chart_id_by_acct(entry_orm.acct_id)
-        chart = chartOfAcctDao(self.session).get_chart(chart_id)
+        chart = chartOfAcctDao(self.engine).get_chart(chart_id)
         acct = acctDao(self.session).get(entry_orm.acct_id, chart)
         return Entry(
             entry_id=entry_orm.entry_id,
