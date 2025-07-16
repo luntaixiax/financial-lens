@@ -13,48 +13,39 @@ from src.app.model.invoice import GeneralInvoiceItem, Invoice, InvoiceItem, Item
 
 
 @pytest.fixture(scope='module')
-def engine_with_basic_choa(engine, settings):
-    with mock.patch("src.app.dao.connection.get_engine")  as mock_engine, \
-        mock.patch("src.app.utils.tools.get_settings") as mock_settings:
-        mock_engine.return_value = engine
+def session_with_basic_choa(test_session, test_acct_service, settings):
+    with mock.patch("src.app.utils.tools.get_settings") as mock_settings:
         mock_settings.return_value = settings
+    
+        test_acct_service.init()
         
-        from src.app.service.acct import AcctService
-        
-        print("Initializing Acct and COA...")
-        AcctService.init()
-        
-        yield engine
+        yield test_session
         
         print("Tearing down Acct and COA...")
         # clean up (delete all accounts)
         for acct_type in AcctType:
-            charts = AcctService.get_charts(acct_type)
+            charts = test_acct_service.get_charts(acct_type)
             for chart in charts:
-                accts = AcctService.get_accounts_by_chart(chart)
+                accts = test_acct_service.get_accounts_by_chart(chart)
                 for acct in accts:
-                    AcctService.delete_account(
+                    test_acct_service.delete_account(
                         acct_id=acct.acct_id,
                         ignore_nonexist=True,
                         restrictive=False
                     )
                     
             # clean up (delete all chart of accounts)
-            AcctService.delete_coa(acct_type)
+            test_acct_service.delete_coa(acct_type)
             
 @pytest.fixture(scope='module')
-def engine_with_sample_choa(engine_with_basic_choa, settings):
-   with mock.patch("src.app.dao.connection.get_engine")  as mock_engine, \
-        mock.patch("src.app.utils.tools.get_settings") as mock_settings:
-        mock_engine.return_value = engine_with_basic_choa
+def session_with_sample_choa(test_session, test_acct_service, settings):
+   with mock.patch("src.app.utils.tools.get_settings") as mock_settings:
         mock_settings.return_value = settings
         
-        from src.app.service.acct import AcctService
-        
         print("Adding sample Acct and COA...")
-        AcctService.create_sample()
+        test_acct_service.create_sample()
         
-        yield engine_with_basic_choa
+        yield test_session
         
             
 @pytest.fixture
@@ -65,6 +56,7 @@ def contact1() -> Contact:
         phone='123456789',
         address=Address(
             address1='00 XX St E',
+            address2=None,
             suite_no=1234,
             city='Toronto',
             state='ON',
@@ -79,7 +71,8 @@ def customer1(contact1) -> Customer:
         customer_name = 'LTX Company',
         is_business=True,
         bill_contact=contact1,
-        ship_same_as_bill=True
+        ship_same_as_bill=True,
+        ship_contact=None
     )
     
 
@@ -146,15 +139,10 @@ def sample_accounts(asset_node: ChartNode) -> list[Account]:
 
 
 @pytest.fixture
-def sample_journal_meal(engine_with_sample_choa, settings) -> Generator[Journal, None, None]:
+def sample_journal_meal(session_with_sample_choa, settings, test_acct_service) -> Generator[Journal, None, None]:
         
-    with mock.patch("src.app.dao.connection.get_engine")  as mock_engine, \
-        mock.patch("src.app.utils.tools.get_settings") as mock_settings:
-        mock_engine.return_value = engine_with_sample_choa
+    with mock.patch("src.app.utils.tools.get_settings") as mock_settings:
         mock_settings.return_value = settings
-        
-        
-        from src.app.service.acct import AcctService
         
         journal = Journal(
             journal_id='jrn-sample',
@@ -162,7 +150,7 @@ def sample_journal_meal(engine_with_sample_choa, settings) -> Generator[Journal,
             entries=[
                 Entry(
                     entry_type=EntryType.DEBIT,
-                    acct=AcctService.get_account('acct-meal'),
+                    acct=test_acct_service.get_account('acct-meal'),
                     cur_incexp=get_base_cur(),
                     amount=105.83,
                     amount_base=105.83,
@@ -170,7 +158,7 @@ def sample_journal_meal(engine_with_sample_choa, settings) -> Generator[Journal,
                 ),
                 Entry(
                     entry_type=EntryType.DEBIT,
-                    acct=AcctService.get_account('acct-tip'),
+                    acct=test_acct_service.get_account('acct-tip'),
                     cur_incexp=get_base_cur(),
                     amount=13.93,
                     amount_base=13.93,
@@ -178,14 +166,16 @@ def sample_journal_meal(engine_with_sample_choa, settings) -> Generator[Journal,
                 ),
                 Entry(
                     entry_type=EntryType.DEBIT,
-                    acct=AcctService.get_account(SystemAcctNumber.INPUT_TAX),
+                    acct=test_acct_service.get_account(SystemAcctNumber.INPUT_TAX),
+                    cur_incexp=None,
                     amount=13.35,
                     amount_base=13.35,
                     description=None
                 ),
                 Entry(
                     entry_type=EntryType.CREDIT,
-                    acct=AcctService.get_account('acct-bank'),
+                    acct=test_acct_service.get_account('acct-bank'),
+                    cur_incexp=None,
                     amount=133.11,
                     amount_base=133.11,
                     description=None
@@ -220,64 +210,69 @@ def sample_items() -> list[Item]:
     return [item_consult, item_meeting]
 
 @pytest.fixture
-def sample_invoice(engine_with_sample_choa, sample_items, customer1) -> Generator[Invoice, None, None]:
-    with mock.patch("src.app.dao.connection.get_engine") as mock_engine:
-        mock_engine.return_value = engine_with_sample_choa
+def sample_invoice(
+    session_with_sample_choa, 
+    test_item_dao, 
+    test_customer_dao, 
+    test_contact_dao, 
+    sample_items, 
+    customer1
+) -> Generator[Invoice, None, None]:
+    
+    # add customer
+    test_contact_dao.add(contact = customer1.bill_contact)
+    test_customer_dao.add(customer1)
+    
+    # add items
+    for item in sample_items:
+        test_item_dao.add(item)
+    
+    # create invoice
+    invoice = Invoice(
+        invoice_id='inv-sample',
+        invoice_num='INV-001',
+        invoice_dt=date(2024, 1, 1),
+        due_dt=date(2024, 1, 5),
+        entity_id=customer1.cust_id,
+        entity_type=EntityType.CUSTOMER,
+        subject='General Consulting - Jan 2024',
+        currency=CurType.USD,
+        invoice_items=[
+            InvoiceItem(
+                acct_id='',
+                item=sample_items[0],
+                quantity=5,
+                description="Programming"
+            ),
+            InvoiceItem(
+                acct_id='',
+                item=sample_items[1],
+                quantity=10,
+                description="Meeting Around",
+                discount_rate=0.05,
+            )
+        ],
+        ginvoice_items=[
+            GeneralInvoiceItem(
+                incur_dt=date(2023, 12, 10),
+                acct_id='acct-meal',
+                currency=CurType.EUR,
+                amount_pre_tax_raw=100,
+                amount_pre_tax=120,
+                tax_rate=0.05,
+                description='Meal for business trip'
+            )
+        ],
+        shipping=10,
+        note="Thanks for business"
+    )
+    
+    
+    yield invoice
+    
+    # delete items
+    for item in sample_items:
+        test_item_dao.remove(item.item_id)
         
-        from src.app.dao.invoice import itemDao
-        from src.app.dao.entity import customerDao, contactDao
-        
-        # add customer
-        contactDao.add(contact = customer1.bill_contact)
-        customerDao.add(customer1)
-        
-        # add items
-        for item in sample_items:
-            itemDao.add(item)
-        
-        # create invoice
-        invoice = Invoice(
-            invoice_id='inv-sample',
-            invoice_num='INV-001',
-            invoice_dt=date(2024, 1, 1),
-            due_dt=date(2024, 1, 5),
-            entity_id=customer1.cust_id,
-            entity_type=EntityType.CUSTOMER,
-            subject='General Consulting - Jan 2024',
-            currency=CurType.USD,
-            invoice_items=[
-                InvoiceItem(
-                    item=sample_items[0],
-                    quantity=5,
-                    description="Programming"
-                ),
-                InvoiceItem(
-                    item=sample_items[1],
-                    quantity=10,
-                    description="Meeting Around",
-                    discount_rate=0.05,
-                )
-            ],
-            ginvoice_items=[
-                GeneralInvoiceItem(
-                    incur_dt=date(2023, 12, 10),
-                    acct_id='acct-meal',
-                    currency=CurType.EUR,
-                    amount_pre_tax_raw=100,
-                    amount_pre_tax=120,
-                    tax_rate=0.05,
-                    description='Meal for business trip'
-                )
-            ],
-            shipping=10,
-            note="Thanks for business"
-        )
-        
-        
-        yield invoice
-        
-        # delete items
-        for item in sample_items:
-            itemDao.remove(item.item_id)
-        customerDao.remove(customer1.cust_id)
-        contactDao.remove(customer1.bill_contact.contact_id)
+    test_customer_dao.remove(customer1.cust_id)
+    test_contact_dao.remove(customer1.bill_contact.contact_id)

@@ -3,14 +3,13 @@ import pytest
 import os
 
 @pytest.mark.skip(reason="not testing it online")
-def test_backup():
-    from src.app.dao.backup import dataDao
+def test_backup(test_data_dao):
     
     backup_id=datetime.now().strftime('%Y%m%dT%H%M%S')
     
-    dataDao.backup_database(backup_id)
-    dataDao.backup_files(backup_id)
-    dataDao.restore_database(backup_id)
-    dataDao.restore_files(backup_id)
+    test_data_dao.backup_database(backup_id)
+    test_data_dao.backup_files(backup_id)
+    test_data_dao.restore_database(backup_id)
+    test_data_dao.restore_files(backup_id)
     
-    print(dataDao.list_backup_ids())
+    print(test_data_dao.list_backup_ids())
