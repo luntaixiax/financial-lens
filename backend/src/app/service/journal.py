@@ -4,7 +4,7 @@ from typing import Tuple
 from src.app.utils.tools import get_base_cur
 from src.app.model.const import SystemAcctNumber
 from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
-from src.app.model.exceptions import FKNoDeleteUpdateError, NotExistError, AlreadyExistError, FKNotExistError
+from src.app.model.exceptions import FKNoDeleteUpdateError, NotExistError, AlreadyExistError, FKNotExistError, OpNotPermittedError
 from src.app.dao.journal import journalDao
 from src.app.model.journal import _AcctFlowAGG, _EntryBrief, _JournalBrief, Entry, Journal
 from src.app.service.acct import AcctService
@@ -137,7 +137,20 @@ class JournalService:
         self.delete_journal('jrn-2')
         self.delete_journal('jrn-3')
         
+    def validate_journal(self, journal: Journal):
+        base_cur = get_base_cur()
+        # validate journal and entries
+        for entry in journal.entries:
+            if not entry.acct.is_balance_sheet:
+                if entry.cur_incexp == base_cur:
+                    if not entry.amount == entry.amount_base:
+                        raise OpNotPermittedError(
+                            message=f"Balance sheet account {entry.acct.acct_name} currency is base currency {base_cur}, Amount not equal to base amount",
+                            details=f"Amount={entry.amount}, Base Amount={entry.amount_base}"
+                        )
+        
     def add_journal(self, journal: Journal):
+        self.validate_journal(journal)
         # add journal and entries
         try:
             self.journal_dao.add(journal)
@@ -147,6 +160,7 @@ class JournalService:
             raise e
         
     def get_journal(self, journal_id: str) -> Journal:
+        
         try:
             journal = self.journal_dao.get(journal_id)
         except NotExistError as e:
@@ -154,6 +168,8 @@ class JournalService:
                 f"Journal/Entry not found: {journal_id}",
                 details=e.details
             )
+        else:
+            self.validate_journal(journal)
         return journal
     
     def delete_journal(self, journal_id: str):
@@ -168,6 +184,7 @@ class JournalService:
             )
         
     def update_journal(self, journal: Journal):
+        self.validate_journal(journal)
         self.delete_journal(journal_id = journal.journal_id)
         self.add_journal(journal)
         
