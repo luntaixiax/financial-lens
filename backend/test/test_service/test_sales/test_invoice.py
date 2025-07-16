@@ -7,24 +7,19 @@ from src.app.model.enums import CurType, EntityType, ItemType, JournalSrc, UnitT
 from src.app.model.invoice import GeneralInvoiceItem, Invoice, InvoiceItem, Item
 from src.app.model.const import SystemAcctNumber
 
-@mock.patch("src.app.dao.connection.get_engine")
-def test_create_journal_from_invoice(mock_engine, engine_with_sample_choa, sample_invoice):
-    mock_engine.return_value = engine_with_sample_choa
+def test_create_journal_from_invoice(session_with_sample_choa, sample_invoice, 
+                                     test_sales_service, test_fx_service, test_entity_service):
     
-    from src.app.service.sales import SalesService
-    from src.app.service.fx import FxService
-    from src.app.service.entity import EntityService
+    test_entity_service.create_sample()
     
-    EntityService.create_sample()
-    
-    journal = SalesService.create_journal_from_invoice(sample_invoice)
+    journal = test_sales_service.create_journal_from_invoice(sample_invoice)
     
     # should not be manual journal
     assert journal.jrn_src == JournalSrc.SALES
     # should be non-redudant, i.e, similar entries have been combined
     assert not journal.is_redundant
     # total amount from invoice should be same to total amount from journal (base currency)
-    total_invoice = FxService.convert_to_base(
+    total_invoice = test_fx_service.convert_to_base(
         amount=sample_invoice.total, # total billable
         src_currency=sample_invoice.currency, # invoice currency
         cur_dt=sample_invoice.invoice_dt, # convert fx at invoice date
@@ -39,14 +34,10 @@ def test_create_journal_from_invoice(mock_engine, engine_with_sample_choa, sampl
     ]
     assert len(gain_entries) == 1
     
-    EntityService.clear_sample()
+    test_entity_service.clear_sample()
     
     
-@mock.patch("src.app.dao.connection.get_engine")
-def test_validate_item(mock_engine, engine_with_sample_choa):
-    mock_engine.return_value = engine_with_sample_choa
-    
-    from src.app.service.sales import SalesService
+def test_validate_item(session_with_sample_choa, test_sales_service):
     
     # test validate item
     # 1. add item with non-exist account
@@ -61,7 +52,7 @@ def test_validate_item(mock_engine, engine_with_sample_choa):
         default_acct_id='acct-random'
     )
     with pytest.raises(NotExistError):
-        SalesService._validate_item(item)
+        test_sales_service._validate_item(item)
     
     # 2. add item with existing, but non income expense account
     item = Item(
@@ -75,15 +66,10 @@ def test_validate_item(mock_engine, engine_with_sample_choa):
         default_acct_id='acct-bank'
     )
     with pytest.raises(NotMatchWithSystemError):
-        SalesService._validate_item(item)
+        test_sales_service._validate_item(item)
     
 
-@mock.patch("src.app.dao.connection.get_engine")
-def test_item(mock_engine, engine_with_sample_choa):
-    mock_engine.return_value = engine_with_sample_choa
-    
-    from src.app.service.sales import SalesService
-    from src.app.service.item import ItemService
+def test_item(session_with_sample_choa, test_item_service): 
     
     item_consult = Item(
         item_id='item-consul',
@@ -96,46 +82,41 @@ def test_item(mock_engine, engine_with_sample_choa):
         default_acct_id='acct-consul'
     )
     # test add item
-    ItemService.add_item(item_consult)
+    test_item_service.add_item(item_consult)
     with pytest.raises(AlreadyExistError):
         # should get error if trying to add one more time
-        ItemService.add_item(item_consult)
+        test_item_service.add_item(item_consult)
     
     # test get item
-    _item = ItemService.get_item(item_consult.item_id)
+    _item = test_item_service.get_item(item_consult.item_id)
     assert _item == item_consult
     with pytest.raises(NotExistError):
-        ItemService.get_item('item-random')
+        test_item_service.get_item('item-random')
         
     # test update account
     item_consult.currency = CurType.JPY
-    ItemService.update_item(item_consult)
-    _item = ItemService.get_item(item_consult.item_id)
+    test_item_service.update_item(item_consult)
+    _item = test_item_service.get_item(item_consult.item_id)
     assert _item == item_consult
     # test update not allowed change field
     item_consult.unit = UnitType.DAY
     with pytest.raises(NotMatchWithSystemError):
-        ItemService.update_item(item_consult)
+        test_item_service.update_item(item_consult)
     item_consult.item_type = ItemType.GOOD
     with pytest.raises(NotMatchWithSystemError):
-        ItemService.update_item(item_consult)
+        test_item_service.update_item(item_consult)
     item_consult.unit = UnitType.HOUR
     item_consult.item_type = ItemType.SERVICE
         
     # test delete item
     with pytest.raises(NotExistError):
-        ItemService.delete_item('item-random')
-    ItemService.delete_item(item_consult.item_id)
+        test_item_service.delete_item('item-random')
+    test_item_service.delete_item(item_consult.item_id)
     with pytest.raises(NotExistError):
-        ItemService.get_item(item_consult.item_id)
-    
-@mock.patch("src.app.dao.connection.get_engine")
-def test_validate_invoice(mock_engine, engine_with_sample_choa):
-    mock_engine.return_value = engine_with_sample_choa
-    
-    from src.app.service.sales import SalesService
-    from src.app.service.entity import EntityService
-    from src.app.dao.invoice import itemDao
+        test_item_service.get_item(item_consult.item_id)
+
+
+def test_validate_invoice(session_with_sample_choa, test_sales_service, test_entity_service, test_item_service):
     
     # create items
     item_consult = Item(
@@ -170,11 +151,13 @@ def test_validate_invoice(mock_engine, engine_with_sample_choa):
         currency=CurType.USD,
         invoice_items=[
             InvoiceItem(
+                acct_id='',
                 item=item_consult,
                 quantity=5,
                 description="Programming"
             ),
             InvoiceItem(
+                acct_id='',
                 item=item_meeting,
                 quantity=10,
                 description="Meeting Around",
@@ -197,109 +180,103 @@ def test_validate_invoice(mock_engine, engine_with_sample_choa):
     )
     with pytest.raises(FKNotExistError):
         # customer not exist
-        SalesService._validate_invoice(invoice)
+        test_sales_service._validate_invoice(invoice)
     
     # create the customer
-    EntityService.create_sample()
+    test_entity_service.create_sample()
     invoice.entity_id = 'cust-sample'
     
     with pytest.raises(FKNotExistError):
         # item not exist
-        SalesService._validate_invoice(invoice)
+        test_sales_service._validate_invoice(invoice)
         
     # add items
-    itemDao.add(item_consult)
-    itemDao.add(item_meeting)    
+    test_item_service.add_item(item_consult)
+    test_item_service.add_item(item_meeting)    
     
     # no problem this time
-    SalesService._validate_invoice(invoice)
+    test_sales_service._validate_invoice(invoice)
     
     # test with changed item
     invoice.invoice_items[0].item.unit_price = 200
     with pytest.raises(NotMatchWithSystemError):
-        SalesService._validate_invoice(invoice)
+        test_sales_service._validate_invoice(invoice)
     invoice.invoice_items[0].item.unit_price = 100 # change back
     
     # test with wrong account type
     invoice.invoice_items[0].acct_id = 'acct-rental'
     with pytest.raises(NotMatchWithSystemError):
-        SalesService._validate_invoice(invoice)
+        test_sales_service._validate_invoice(invoice)
     invoice.invoice_items[0].acct_id = 'acct-consul'
     # should not raise error
-    invoice.ginvoice_items[0].acct_id = 'acct-consul'
-    SalesService._validate_invoice(invoice)
+    invoice.ginvoice_items[0].acct_id = 'acct-consul' 
+    test_sales_service._validate_invoice(invoice)
     invoice.ginvoice_items[0].acct_id = 'acct-meal'
     
     # test with non-exist account
     invoice.invoice_items[0].acct_id = 'acct-random'
     with pytest.raises(FKNotExistError):
-        SalesService._validate_invoice(invoice)
+        test_sales_service._validate_invoice(invoice)
     invoice.ginvoice_items[0].acct_id = 'acct-random'
     with pytest.raises(FKNotExistError):
-        SalesService._validate_invoice(invoice)
+        test_sales_service._validate_invoice(invoice)
     
     # clean up
-    EntityService.clear_sample()
-    itemDao.remove(item_consult.item_id)
-    itemDao.remove(item_meeting.item_id)
+    test_entity_service.clear_sample()
+    test_item_service.delete_item(item_consult.item_id)
+    test_item_service.delete_item(item_meeting.item_id)
     
     
-@mock.patch("src.app.dao.connection.get_engine")
-def test_invoice(mock_engine, engine_with_sample_choa, sample_invoice):
-    mock_engine.return_value = engine_with_sample_choa
+def test_invoice(session_with_sample_choa, sample_invoice, test_sales_service, test_entity_service, test_journal_service):
     
-    from src.app.service.sales import SalesService
-    from src.app.service.entity import EntityService
-    from src.app.service.journal import JournalService
-    
-    EntityService.create_sample()
+    test_entity_service.create_sample()
     
     # test add invoice
-    SalesService.add_invoice(sample_invoice)
+    test_sales_service.add_invoice(sample_invoice)
     with pytest.raises(AlreadyExistError):
-        SalesService.add_invoice(sample_invoice)
+        test_sales_service.add_invoice(sample_invoice)
     
-    _invoice, _journal = SalesService.get_invoice_journal(sample_invoice.invoice_id)
+    _invoice, _journal = test_sales_service.get_invoice_journal(sample_invoice.invoice_id)
     assert _invoice == sample_invoice
     
-    _journal_ = JournalService.get_journal(_journal.journal_id)
+    _journal_ = test_journal_service.get_journal(_journal.journal_id)
     assert _journal_ == _journal
     
     with pytest.raises(NotExistError):
-        SalesService.get_invoice_journal('random-invoice')
+        test_sales_service.get_invoice_journal('random-invoice')
         
     # test list invoices
-    invoices = SalesService.list_invoice()
+    invoices = test_sales_service.list_invoice()
     assert len(invoices) == 1
-    invoices = SalesService.list_invoice(currency=CurType.USD)
+    invoices = test_sales_service.list_invoice(currency=CurType.USD)
     assert len(invoices) == 1
-    invoices = SalesService.list_invoice(currency=CurType.AUD)
+    invoices = test_sales_service.list_invoice(currency=CurType.AUD)
     assert len(invoices) == 0
-    invoices = SalesService.list_invoice(num_invoice_items=2)
+    invoices = test_sales_service.list_invoice(num_invoice_items=2)
     assert len(invoices) == 1
-    invoices = SalesService.list_invoice(num_invoice_items=3)
+    invoices = test_sales_service.list_invoice(num_invoice_items=3)
     assert len(invoices) == 0
     
     # test update invoice
-    _invoice, _journal = SalesService.get_invoice_journal(sample_invoice.invoice_id)
+    _invoice, _journal = test_sales_service.get_invoice_journal(sample_invoice.invoice_id)
     _jrn_id = _journal.journal_id # original journal id before updating
     ## update1 -- valid invoice level update
     sample_invoice.invoice_dt = date(2024, 1, 2)
     sample_invoice.invoice_items[0].quantity = 8
-    SalesService.update_invoice(sample_invoice)
-    _invoice, _journal = SalesService.get_invoice_journal(sample_invoice.invoice_id)
+    test_sales_service.update_invoice(sample_invoice)
+    _invoice, _journal = test_sales_service.get_invoice_journal(sample_invoice.invoice_id)
     assert _invoice == sample_invoice
-    _journal_ = JournalService.get_journal(_journal.journal_id)
+    _journal_ = test_journal_service.get_journal(_journal.journal_id)
     assert _journal_ == _journal
     with pytest.raises(NotExistError):
         # original journal should be deleted
-        JournalService.get_journal(_jrn_id)
+        test_journal_service.get_journal(_jrn_id)
     
     # test delete invoice
     with pytest.raises(NotExistError):
-        SalesService.delete_invoice('random-invoice')
-    SalesService.delete_invoice(sample_invoice.invoice_id)
+        test_sales_service.delete_invoice('random-invoice')
+    test_sales_service.delete_invoice(sample_invoice.invoice_id)
     with pytest.raises(NotExistError):
-        SalesService.get_invoice_journal(sample_invoice.invoice_id)
+        test_sales_service.get_invoice_journal(sample_invoice.invoice_id)
         
-    EntityService.clear_sample()
+    test_entity_service.clear_sample()

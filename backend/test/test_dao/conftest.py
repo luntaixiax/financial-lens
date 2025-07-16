@@ -10,42 +10,6 @@ from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemTy
 from src.app.model.entity import Address, Contact, Customer
 from src.app.model.journal import Entry, Journal
 from src.app.model.invoice import GeneralInvoiceItem, Invoice, InvoiceItem, Item
-
-
-@pytest.fixture(scope='module')
-def session_with_basic_choa(test_session, test_acct_service, settings):
-    with mock.patch("src.app.utils.tools.get_settings") as mock_settings:
-        mock_settings.return_value = settings
-    
-        test_acct_service.init()
-        
-        yield test_session
-        
-        print("Tearing down Acct and COA...")
-        # clean up (delete all accounts)
-        for acct_type in AcctType:
-            charts = test_acct_service.get_charts(acct_type)
-            for chart in charts:
-                accts = test_acct_service.get_accounts_by_chart(chart)
-                for acct in accts:
-                    test_acct_service.delete_account(
-                        acct_id=acct.acct_id,
-                        ignore_nonexist=True,
-                        restrictive=False
-                    )
-                    
-            # clean up (delete all chart of accounts)
-            test_acct_service.delete_coa(acct_type)
-            
-@pytest.fixture(scope='module')
-def session_with_sample_choa(session_with_basic_choa, test_acct_service, settings):
-   with mock.patch("src.app.utils.tools.get_settings") as mock_settings:
-        mock_settings.return_value = settings
-        
-        print("Adding sample Acct and COA...")
-        test_acct_service.create_sample()
-        
-        yield session_with_basic_choa
         
             
 @pytest.fixture

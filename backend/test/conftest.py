@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from unittest import mock
 import pytest
 import sqlalchemy
 from sqlalchemy import event
@@ -49,8 +50,50 @@ def test_session(engine):
     with Session(engine) as session:
         yield session
         
+@pytest.fixture(scope='module')
+def session_with_basic_choa(test_session, test_acct_service, settings):
+    with mock.patch("src.app.utils.tools.get_settings") as mock_settings:
+        mock_settings.return_value = settings
+        
+        from src.app.model.enums import AcctType
 
+        print("Init basic Acct and COA...")
+        test_acct_service.init()
+        
+        yield test_session
+        
+        print("Tearing down Acct and COA...")
+        # clean up (delete all accounts)
+        for acct_type in AcctType:
+            charts = test_acct_service.get_charts(acct_type)
+            for chart in charts:
+                accts = test_acct_service.get_accounts_by_chart(chart)
+                for acct in accts:
+                    test_acct_service.delete_account(
+                        acct_id=acct.acct_id,
+                        ignore_nonexist=True,
+                        restrictive=False
+                    )
+                    
+            # clean up (delete all chart of accounts)
+            test_acct_service.delete_coa(acct_type)
+            
+@pytest.fixture(scope='module')
+def session_with_sample_choa(session_with_basic_choa, test_acct_service, settings):
+   with mock.patch("src.app.utils.tools.get_settings") as mock_settings:
+        mock_settings.return_value = settings
+        
+        print("Adding sample Acct and COA...")
+        test_acct_service.create_sample()
+        
+        yield session_with_basic_choa
+        
 #### DAO objects####
+
+@pytest.fixture(scope='session')
+def test_fx_dao(test_session):
+    from src.app.dao.fx import fxDao
+    return fxDao(test_session)
 
 @pytest.fixture(scope='session')
 def test_contact_dao(test_session):
@@ -61,6 +104,11 @@ def test_contact_dao(test_session):
 def test_customer_dao(test_session):
     from src.app.dao.entity import customerDao
     return customerDao(test_session)
+
+@pytest.fixture(scope='session')
+def test_supplier_dao(test_session):
+    from src.app.dao.entity import supplierDao
+    return supplierDao(test_session)
 
 @pytest.fixture(scope='session')
 def test_item_dao(test_session):
@@ -125,10 +173,97 @@ def test_stock_dividend_dao(test_session):
 ### Service objects ###
 
 @pytest.fixture(scope='session')
+def test_entity_service(test_contact_dao, test_customer_dao, test_supplier_dao):
+    from src.app.service.entity import EntityService
+    
+    return EntityService(
+        contact_dao=test_contact_dao,
+        customer_dao=test_customer_dao,
+        supplier_dao=test_supplier_dao,
+    )
+
+@pytest.fixture(scope='session')
 def test_acct_service(test_acct_dao, test_chart_of_acct_dao):
     from src.app.service.acct import AcctService
     
     return AcctService(
         acct_dao=test_acct_dao,
         chart_of_acct_dao=test_chart_of_acct_dao,
+    )
+    
+@pytest.fixture(scope='session')
+def test_journal_service(test_journal_dao, test_acct_service):
+    from src.app.service.journal import JournalService
+    
+    return JournalService(
+        journal_dao=test_journal_dao,
+        acct_service=test_acct_service,
+    )
+    
+@pytest.fixture(scope='session')
+def test_fx_service(test_fx_dao):
+    from src.app.service.fx import FxService
+    
+    return FxService(
+        fx_dao=test_fx_dao,
+    )
+    
+@pytest.fixture(scope='session')
+def test_expense_service(test_expense_dao, test_fx_service, test_acct_service, test_journal_service):
+    from src.app.service.expense import ExpenseService
+    
+    return ExpenseService(
+        expense_dao=test_expense_dao,
+        fx_service=test_fx_service,
+        acct_service=test_acct_service,
+        journal_service=test_journal_service,
+    )
+    
+@pytest.fixture(scope='session')
+def test_property_service(test_property_dao, test_property_trans_dao, test_fx_service, test_acct_service, test_journal_service):
+    from src.app.service.property import PropertyService
+    
+    return PropertyService(
+        property_dao=test_property_dao,
+        property_transaction_dao=test_property_trans_dao,
+        fx_service=test_fx_service,
+        acct_service=test_acct_service,
+        journal_service=test_journal_service,
+    )
+    
+@pytest.fixture(scope='session')
+def test_sales_service(test_invoice_dao, test_payment_dao, test_fx_service, 
+        test_acct_service, test_journal_service, test_item_service, test_entity_service):
+    from src.app.service.sales import SalesService
+    
+    return SalesService(
+        invoice_dao=test_invoice_dao,
+        payment_dao=test_payment_dao,
+        fx_service=test_fx_service,
+        acct_service=test_acct_service,
+        journal_service=test_journal_service,
+        item_service=test_item_service,
+        entity_service=test_entity_service,
+    )
+    
+@pytest.fixture(scope='session')
+def test_item_service(test_item_dao, test_acct_service):
+    from src.app.service.item import ItemService
+    
+    return ItemService(
+        item_dao=test_item_dao,
+        acct_service=test_acct_service,    
+    )
+
+@pytest.fixture(scope='session')
+def test_shares_service(test_stock_issue_dao, test_stock_repurchase_dao, test_stock_dividend_dao, test_fx_service, test_acct_service, test_journal_service):
+    from src.app.service.shares import SharesService
+    
+    return SharesService(
+        stock_issue_dao=test_stock_issue_dao,
+        stock_repurchase_dao=test_stock_repurchase_dao,
+        dividend_dao=test_stock_dividend_dao,
+        fx_service=test_fx_service,
+        acct_service=test_acct_service,
+        journal_service=test_journal_service,
     )
