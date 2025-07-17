@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlite3 import Connection as SQLite3Connection
 from sqlalchemy_utils import create_database, database_exists, drop_database
 from sqlmodel import Session, select, delete
-from src.app.dao.connection import get_db_url, get_engine
+from src.app.dao.connection import get_db_url, get_engine, UserDaoAccess
 from src.app.model.exceptions import NotExistError
 from src.app.dao.orm import get_class_by_tablename, SQLModelWithSort
 from src.app.utils.tools import get_file_root
@@ -97,12 +97,8 @@ class initDao:
 
 class backupDao:
     
-    def __init__(self, common_engine: Engine, user_engine: Engine,
-                 backup_fs: S3FileSystem, file_fs: S3FileSystem):
-        self.common_engine = common_engine # used for user registry and fx data
-        self.user_engine = user_engine # used for user specific data
-        self.backup_fs = backup_fs
-        self.file_fs = file_fs
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
     
     @classmethod
     def get_backup_folder_path(cls, backup_id: str) -> str:
@@ -113,7 +109,7 @@ class backupDao:
         return 'backup-data.db'
     
     def list_backup_ids(self) -> list[str]:
-        bk_fs = self.backup_fs
+        bk_fs = self.dao_access.backup_fs
         file_root = Path(get_file_root('backup'))
         files = bk_fs.ls(file_root, detail=True)
         ids = []
@@ -126,10 +122,10 @@ class backupDao:
         # backup all files, e.g., receipts
         # create backup folder
         bk_root = Path(self.get_backup_folder_path(backup_id)) / 'bk_files'
-        bk_fs = self.backup_fs
+        bk_fs = self.dao_access.backup_fs
         bk_fs.mkdirs(bk_root, exist_ok=True)
         
-        fs = self.file_fs
+        fs = self.dao_access.file_fs
         
         with tempfile.TemporaryDirectory() as tmpdirname:
             # download files from fs to local temp dir first
@@ -150,7 +146,7 @@ class backupDao:
         # read all data from src database and save to a sqlite database as backup
         
         # create backup folder
-        bk_fs = self.backup_fs
+        bk_fs = self.dao_access.backup_fs
         bk_fs.mkdirs(self.get_backup_folder_path(backup_id), exist_ok=True)
         
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -168,7 +164,7 @@ class backupDao:
             tgt_engine = sqlalchemy.create_engine(f'sqlite:///{cur_path.as_posix()}')
                             
             migrate_database(
-                src_engine = self.user_engine,
+                src_engine = self.dao_access.user_engine,
                 tgt_engine = tgt_engine
             )
             
@@ -181,9 +177,9 @@ class backupDao:
     def restore_files(self, backup_id: str):
         # read all files (e.g., receipts) from backup storage and save/overwrite current fs
         bk_root = Path(self.get_backup_folder_path(backup_id)) / 'bk_files'
-        bk_fs = self.backup_fs
+        bk_fs = self.dao_access.backup_fs
         
-        fs = self.file_fs
+        fs = self.dao_access.file_fs
         
         with tempfile.TemporaryDirectory() as tmpdirname:
             
@@ -205,7 +201,7 @@ class backupDao:
     def restore_database(self, backup_id: str):
         # read all data from backup sqlite database (source) and overwrite the target database
         
-        bk_fs = self.backup_fs
+        bk_fs = self.dao_access.backup_fs
         
         with tempfile.TemporaryDirectory() as tmpdirname:
             cur_path = Path(tmpdirname) / self.get_backup_db_fname()
@@ -216,7 +212,7 @@ class backupDao:
             )
             
             src_engine = sqlalchemy.create_engine(f'sqlite:///{cur_path.as_posix()}')
-            tgt_engine = self.user_engine
+            tgt_engine = self.dao_access.user_engine
             
             # drop all existing tables
             drop_tables(tgt_engine)

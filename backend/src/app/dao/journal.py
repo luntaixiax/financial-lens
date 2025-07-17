@@ -9,12 +9,12 @@ from src.app.dao.orm import AcctORM, EntryORM, JournalORM, infer_integrity_error
 from src.app.model.journal import _AcctFlowAGG, _EntryBrief, _JournalBrief, Entry, Journal
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.model.exceptions import AlreadyExistError, OpNotPermittedError, NotExistError
+from src.app.dao.connection import UserDaoAccess
 
 class journalDao:
         
-    def __init__(self, session: Session, engine: Engine):
-        self.session = session
-        self.engine = engine
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromEntry(self, journal_id: str, entry: Entry) -> EntryORM:
         return EntryORM(
@@ -31,9 +31,9 @@ class journalDao:
     def toEntry(self, entry_orm: EntryORM) -> Entry:
         
         # TODO: optimize it to not use acctDao
-        chart_id = acctDao(self.session).get_chart_id_by_acct(entry_orm.acct_id)
-        chart = chartOfAcctDao(self.engine).get_chart(chart_id)
-        acct = acctDao(self.session).get(entry_orm.acct_id, chart)
+        chart_id = acctDao(self.dao_access).get_chart_id_by_acct(entry_orm.acct_id)
+        chart = chartOfAcctDao(self.dao_access).get_chart(chart_id)
+        acct = acctDao(self.dao_access).get(entry_orm.acct_id, chart)
         return Entry(
             entry_id=entry_orm.entry_id,
             entry_type=entry_orm.entry_type,
@@ -66,11 +66,11 @@ class journalDao:
     def add(self, journal: Journal):
         # add journal first
         journal_orm = self.fromJournal(journal)
-        self.session.add(journal_orm)
+        self.dao_access.user_session.add(journal_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise AlreadyExistError(details=str(e))
         
         # add individual entries
@@ -79,14 +79,14 @@ class journalDao:
                 journal_id=journal.journal_id,
                 entry=entry
             )
-            self.session.add(entry_orm)
+            self.dao_access.user_session.add(entry_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             # remove journal as well
-            self.session.delete(journal_orm)
-            self.session.commit()
+            self.dao_access.user_session.delete(journal_orm)
+            self.dao_access.user_session.commit()
             raise infer_integrity_error(e, during_creation=True)
     
     def get(self, journal_id: str) -> Journal:
@@ -95,7 +95,7 @@ class journalDao:
             EntryORM.journal_id == journal_id
         )
         try:
-            entry_orms = self.session.exec(sql).all()
+            entry_orms = self.dao_access.user_session.exec(sql).all()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
 
@@ -104,7 +104,7 @@ class journalDao:
             JournalORM.journal_id == journal_id
         )
         try:
-            journal_orm = self.session.exec(sql).one() # get the journal
+            journal_orm = self.dao_access.user_session.exec(sql).one() # get the journal
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -119,22 +119,22 @@ class journalDao:
         sql = delete(EntryORM).where(
             EntryORM.journal_id == journal_id
         )
-        self.session.exec(sql) # type: ignore
+        self.dao_access.user_session.exec(sql) # type: ignore
         # remove journal
         sql = select(JournalORM).where(
             JournalORM.journal_id == journal_id
         )
         try:
-            j = self.session.exec(sql).one()
+            j = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
         # commit at same time
         try:
-            self.session.delete(j)
-            self.session.commit()
+            self.dao_access.user_session.delete(j)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=False)
             
     def update(self, journal: Journal):
@@ -255,8 +255,8 @@ class journalDao:
         )
         
         try:
-            jrns = self.session.exec(sql).all()
-            num_records = self.session.exec(count_sql).one()
+            jrns = self.dao_access.user_session.exec(sql).all()
+            num_records = self.dao_access.user_session.exec(count_sql).one()
         except NoResultFound as e:
             return [], 0
             
@@ -291,7 +291,7 @@ class journalDao:
             .group_by(JournalORM.jrn_src)
         )
         try:
-            stats = self.session.exec(sql).all()
+            stats = self.dao_access.user_session.exec(sql).all()
         except NoResultFound as e:
             return []
             
@@ -361,7 +361,7 @@ class journalDao:
             )
         )
         try:
-            flow = self.session.exec(sql).one()
+            flow = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -437,7 +437,7 @@ class journalDao:
         )
         
         try:
-            flows = self.session.exec(sql).all()
+            flows = self.dao_access.user_session.exec(sql).all()
         except NoResultFound as e:
             return {}
         
@@ -502,6 +502,6 @@ class journalDao:
             .order_by(JournalORM.jrn_date.desc(), EntryORM.entry_id.desc()) # type: ignore
         )
         
-        entries = self.session.exec(sql).all()
+        entries = self.dao_access.user_session.exec(sql).all()
             
         return [_EntryBrief.model_validate(entry._mapping) for entry in entries]

@@ -7,11 +7,12 @@ from src.app.model.exceptions import FKNoDeleteUpdateError, FKNotExistError, Not
 from src.app.dao.orm import DividendORM, StockIssueORM, StockRepurchaseORM
 from src.app.model.shares import Dividend, StockIssue, StockRepurchase
 from src.app.dao.orm import infer_integrity_error
+from src.app.dao.connection import UserDaoAccess
 
 class stockIssueDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromStockIssue(self, journal_id: str, stock_issue: StockIssue) -> StockIssueORM:
         return StockIssueORM(
@@ -42,11 +43,11 @@ class stockIssueDao:
         
     def add(self, journal_id: str, stock_issue: StockIssue):
         stock_issue_orm = self.fromStockIssue(journal_id, stock_issue)
-        self.session.add(stock_issue_orm)
+        self.dao_access.user_session.add(stock_issue_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
         
     def remove(self, issue_id: str):
@@ -57,10 +58,10 @@ class stockIssueDao:
         
         # commit at same time
         try:
-            self.session.exec(sql) # type: ignore
-            self.session.commit()
+            self.dao_access.user_session.exec(sql) # type: ignore
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNoDeleteUpdateError(str(e))
             
     def get(self, issue_id: str) -> Tuple[StockIssue, str]:
@@ -70,7 +71,7 @@ class stockIssueDao:
             StockIssueORM.issue_id == issue_id
         )
         try:
-            stock_issue_orm = self.session.exec(sql).one() # get the stock_issue
+            stock_issue_orm = self.dao_access.user_session.exec(sql).one() # get the stock_issue
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -85,7 +86,7 @@ class stockIssueDao:
             StockIssueORM.issue_id == stock_issue.issue_id,
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -106,21 +107,21 @@ class stockIssueDao:
         p.journal_id = journal_id # update to new journal id
         
         try:
-            self.session.add(p)
-            self.session.commit()
+            self.dao_access.user_session.add(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNotExistError(
                 details=str(e)
             )
         else:
-            self.session.refresh(p) # update p to instantly have new values
+            self.dao_access.user_session.refresh(p) # update p to instantly have new values
                 
     def list_issues(self, is_reissue: bool = False) -> list[StockIssue]:
         # get stock_issue
         sql = select(StockIssueORM).where(StockIssueORM.is_reissue == is_reissue)
         try:
-            stock_issue_orms = self.session.exec(sql).all() # get the issues
+            stock_issue_orms = self.dao_access.user_session.exec(sql).all() # get the issues
         except NoResultFound as e:
             return []
         
@@ -137,7 +138,7 @@ class stockIssueDao:
             StockIssueORM.reissue_repur_id == repur_id
         )
         try:
-            stock_issue_orms = self.session.exec(sql).all() # get the issues   
+            stock_issue_orms = self.dao_access.user_session.exec(sql).all() # get the issues   
         except NoResultFound as e:
             return []
         
@@ -158,15 +159,15 @@ class stockIssueDao:
             StockIssueORM.issue_dt <= rep_dt,
             StockIssueORM.issue_id != exclu_issue_id
         )
-        total_reissue = self.session.exec(sql).one() # get the issues
+        total_reissue = self.dao_access.user_session.exec(sql).one() # get the issues
             
         return total_reissue or 0 # type: ignore
     
     
 class stockRepurchaseDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromStockRepur(self, journal_id: str, stock_repur: StockRepurchase) -> StockRepurchaseORM:
         return StockRepurchaseORM(
@@ -193,11 +194,11 @@ class stockRepurchaseDao:
         
     def add(self, journal_id: str, stock_repur: StockRepurchase):
         stock_repur_orm = self.fromStockRepur(journal_id, stock_repur)
-        self.session.add(stock_repur_orm)
+        self.dao_access.user_session.add(stock_repur_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
         
     def remove(self, repur_id: str):
@@ -208,10 +209,10 @@ class stockRepurchaseDao:
         
         # commit at same time
         try:
-            self.session.exec(sql) # type: ignore
-            self.session.commit()
+            self.dao_access.user_session.exec(sql) # type: ignore
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNoDeleteUpdateError(str(e))
             
     def get(self, repur_id: str) -> Tuple[StockRepurchase, str]:
@@ -221,7 +222,7 @@ class stockRepurchaseDao:
             StockRepurchaseORM.repur_id == repur_id
         )
         try:
-            stock_repur_orm = self.session.exec(sql).one() # get the stock_repur
+            stock_repur_orm = self.dao_access.user_session.exec(sql).one() # get the stock_repur
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -236,7 +237,7 @@ class stockRepurchaseDao:
             StockRepurchaseORM.repur_id == stock_repur.repur_id,
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -255,21 +256,21 @@ class stockRepurchaseDao:
         p.journal_id = journal_id # update to new journal id
         
         try:
-            self.session.add(p)
-            self.session.commit()
+            self.dao_access.user_session.add(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNotExistError(
                 details=str(e)
             )
         else:
-            self.session.refresh(p) # update p to instantly have new values
+            self.dao_access.user_session.refresh(p) # update p to instantly have new values
                 
     def list_repurs(self) -> list[StockRepurchase]:
         # get stock_repur
         sql = select(StockRepurchaseORM)
         try:
-            stock_repur_orms = self.session.exec(sql).all() # get the repurchases
+            stock_repur_orms = self.dao_access.user_session.exec(sql).all() # get the repurchases
         except NoResultFound as e:
             return []
         
@@ -281,8 +282,8 @@ class stockRepurchaseDao:
     
 class dividendDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromDiv(self, journal_id: str, dividend: Dividend) -> DividendORM:
         return DividendORM(
@@ -305,11 +306,11 @@ class dividendDao:
         
     def add(self, journal_id: str, dividend: Dividend):
         div_orm = self.fromDiv(journal_id, dividend)
-        self.session.add(div_orm)
+        self.dao_access.user_session.add(div_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
         
     def remove(self, div_id: str):
@@ -320,10 +321,10 @@ class dividendDao:
         
         # commit at same time
         try:
-            self.session.exec(sql) # type: ignore
-            self.session.commit()
+            self.dao_access.user_session.exec(sql) # type: ignore
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNoDeleteUpdateError(str(e))
             
     def get(self, div_id: str) -> Tuple[Dividend, str]:
@@ -333,7 +334,7 @@ class dividendDao:
             DividendORM.div_id == div_id
         )
         try:
-            div_orm = self.session.exec(sql).one() # get the dividend
+            div_orm = self.dao_access.user_session.exec(sql).one() # get the dividend
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -348,7 +349,7 @@ class dividendDao:
             DividendORM.div_id == dividend.div_id,
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -365,21 +366,21 @@ class dividendDao:
         p.journal_id = journal_id # update to new journal id
         
         try:
-            self.session.add(p)
-            self.session.commit()
+            self.dao_access.user_session.add(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNotExistError(
                 details=str(e)
             )
         else:
-            self.session.refresh(p) # update p to instantly have new values
+            self.dao_access.user_session.refresh(p) # update p to instantly have new values
                 
     def list_divs(self) -> list[Dividend]:
         # get dividend
         sql = select(DividendORM)
         try:
-            div_orms = self.session.exec(sql).all() # get the dividends
+            div_orms = self.dao_access.user_session.exec(sql).all() # get the dividends
         except NoResultFound as e:
             return []
         

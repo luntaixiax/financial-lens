@@ -8,12 +8,13 @@ from src.app.model.enums import CurType, EntryType
 from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, ExpInfo
 from src.app.dao.orm import AcctORM, EntryORM, ExpenseItemORM, ExpenseORM, infer_integrity_error
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, FKNoDeleteUpdateError
+from src.app.dao.connection import UserDaoAccess
 
 
 class expenseDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
     
     def fromExpenseItem(self, expense_id: str, expense_item: ExpenseItem) -> ExpenseItemORM:
         return ExpenseItemORM(
@@ -75,11 +76,11 @@ class expenseDao:
         # add expense first
         expense_orm = self.fromExpense(journal_id, expense)
         
-        self.session.add(expense_orm)
+        self.dao_access.user_session.add(expense_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
         
         # add expense items
@@ -88,13 +89,13 @@ class expenseDao:
                 expense_id=expense.expense_id,
                 expense_item=expense_item
             )
-            self.session.add(expense_item_orm)
+            self.dao_access.user_session.add(expense_item_orm)
         
         # commit all items
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
         
     
@@ -105,16 +106,16 @@ class expenseDao:
             sql = delete(ExpenseItemORM).where(
                 ExpenseItemORM.expense_id == expense_id
             )
-            self.session.exec(sql) # type: ignore
+            self.dao_access.user_session.exec(sql) # type: ignore
             # remove expense
             sql = delete(ExpenseORM).where(
                 ExpenseORM.expense_id == expense_id
             )
-            self.session.exec(sql) # type: ignore
+            self.dao_access.user_session.exec(sql) # type: ignore
             
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNoDeleteUpdateError(details=str(e))
         
     
@@ -125,7 +126,7 @@ class expenseDao:
             ExpenseItemORM.expense_id == expense_id
         )
         try:
-            expense_item_orms = self.session.exec(sql).all()
+            expense_item_orms = self.dao_access.user_session.exec(sql).all()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
 
@@ -134,7 +135,7 @@ class expenseDao:
             ExpenseORM.expense_id == expense_id
         )
         try:
-            expense_orm = self.session.exec(sql).one() # get the expense
+            expense_orm = self.dao_access.user_session.exec(sql).one() # get the expense
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -154,7 +155,7 @@ class expenseDao:
             ExpenseORM.expense_id == expense.expense_id,
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -174,21 +175,21 @@ class expenseDao:
         p.journal_id = journal_id # update to new journal id
         
         try:
-            self.session.add(p)
-            self.session.commit()
+            self.dao_access.user_session.add(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNotExistError(
                 details=str(e)
             )
         else:
-            self.session.refresh(p) # update p to instantly have new values
+            self.dao_access.user_session.refresh(p) # update p to instantly have new values
             
         # remove existing expense items
         sql = delete(ExpenseItemORM).where(
             ExpenseItemORM.expense_id == expense.expense_id
         )
-        self.session.exec(sql) # type: ignore
+        self.dao_access.user_session.exec(sql) # type: ignore
         
         # add new expense items
         # add individual expense items
@@ -197,11 +198,11 @@ class expenseDao:
                 expense_id=expense.expense_id,
                 expense_item=expense_item
             )
-            self.session.add(expense_item_orm)
+            self.dao_access.user_session.add(expense_item_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback() # will rollback both item removal and new item add
+            self.dao_access.user_session.rollback() # will rollback both item removal and new item add
             raise FKNotExistError(
                 details=str(e)
             )
@@ -365,8 +366,8 @@ class expenseDao:
         )
         
         try:
-            expenses = self.session.exec(expense_joined).all()
-            num_records = self.session.exec(count_sql).one()
+            expenses = self.dao_access.user_session.exec(expense_joined).all()
+            num_records = self.dao_access.user_session.exec(count_sql).one()
         except NoResultFound as e:
             return [], 0
             
@@ -458,7 +459,7 @@ class expenseDao:
         )
         
         try:
-            expenses = self.session.exec(expense_summary).all()
+            expenses = self.dao_access.user_session.exec(expense_summary).all()
         except NoResultFound as e:
             return []
             
