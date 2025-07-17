@@ -33,4 +33,7 @@ class UserCreate(User):
     @computed_field
     def hashed_password(self) -> str:
         return pwd_context.hash(self.password)
-    
+
+class UserRegister(EnhancedBaseModel):
+    username: str = Field(max_length=20)
+    password: str = Field(min_length=8, max_length=20)

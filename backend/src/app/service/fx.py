@@ -1,7 +1,7 @@
 from datetime import date
 from currency_converter import CurrencyConverter, ECB_URL
+from src.app.service.misc import SettingService
 from src.app.model.exceptions import NotExistError
-from src.app.utils.tools import get_base_cur
 from src.app.dao.fx import fxDao
 from src.app.model.enums import CurType
 
@@ -16,8 +16,9 @@ class FxService:
         CurType.CUP: 25.41
     }
     
-    def __init__(self, fx_dao: fxDao):
+    def __init__(self, fx_dao: fxDao, setting_service: SettingService):
         self.fx_dao = fx_dao
+        self.setting_service = setting_service
             
     def pull(self, cur_dt: date, overwrite: bool = False):
         # fresh new run -- pull all at one time
@@ -99,7 +100,7 @@ class FxService:
         
     def get(self, currency: CurType, cur_dt: date) -> float:
         # convert using user defined base currency
-        base_cur = get_base_cur()
+        base_cur = self.setting_service.get_base_currency()
         if base_cur == currency:
             return 1.0
         base_fx = self._get(base_cur, cur_dt=cur_dt)

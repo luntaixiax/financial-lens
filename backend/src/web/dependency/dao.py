@@ -84,7 +84,7 @@ def get_backup_dao(
     return backupDao(dao_access=dao_access)
 
 def get_fx_dao(
-    dao_access: UserDaoAccess = Depends(get_user_dao_access)
+    dao_access: CommonDaoAccess = Depends(get_common_dao_access)
 ) -> fxDao:
     return fxDao(dao_access=dao_access)
 

@@ -7,8 +7,8 @@ import hvac
 import os
 import tomli
 from pathlib import Path
-from src.app.model.enums import CurType
 from passlib.context import CryptContext
+
 
 ENV = os.environ.get("ENV", "prod")
 VAULT_MOUNT_POINT = "finlens"
@@ -35,33 +35,43 @@ def id_generator(prefix: str, length: int = 8, existing_list: list[str] | None =
     return new_id
 
 
-def get_settings() -> dict:
-    from sqlmodel import Session
-    from src.app.service.misc import SettingService
-    from src.app.service.files import FileService
-    from src.app.dao.files import configDao, fileDao
-    from src.app.dao.connection import get_engine, get_storage_fs
+# def get_settings(user: User) -> dict:
+#     from sqlmodel import Session
+#     from src.app.service.misc import SettingService
+#     from src.app.service.files import FileService
+#     from src.app.dao.files import configDao, fileDao
+#     from src.app.dao.connection import UserDaoAccess, get_engine, get_storage_fs
     
-    file_fs = get_storage_fs('files')
-    engine = get_engine('finlens') # TODO: should not hardcode db name
-
-    with Session(engine) as session:
-        file_dao=fileDao(file_fs=file_fs, session=session)
-        file_service = FileService(file_dao=file_dao)
-        config_dao = configDao(file_fs=file_fs)
+#     common_engine = get_engine('common')
+#     user_engine=get_engine(user.user_id)
+    
+#     with Session(common_engine) as common_session, Session(user_engine) as user_session:
+#         dao_access = UserDaoAccess(
+#             common_engine=common_engine,
+#             common_session=common_session,
+#             user_engine=user_engine,
+#             user_session=user_session,
+#             file_fs=get_storage_fs('files'),
+#             backup_fs=get_storage_fs('backup'),
+#             user=user
+#         )
+#         file_dao=fileDao(dao_access=dao_access)
+#         file_service = FileService(file_dao=file_dao)
+#         config_dao = configDao(dao_access=dao_access)
         
-        setting_service = SettingService(
-            file_service=file_service,
-            config_dao=config_dao
-        )
+#         setting_service = SettingService(
+#             file_service=file_service,
+#             config_dao=config_dao
+#         )
     
-    return {
-        'preferences': {
-            'base_cur': setting_service.get_base_currency(),
-            'default_sales_tax_rate': setting_service.get_default_tax_rate(),
-            'par_share_price': setting_service.get_par_share_price()
-        }
-    }
+#         settings = {
+#             'preferences': {
+#                 'base_cur': setting_service.get_base_currency(),
+#                 'default_sales_tax_rate': setting_service.get_default_tax_rate(),
+#                 'par_share_price': setting_service.get_par_share_price()
+#             }
+#         }
+#     return settings
 
 @lru_cache()
 def get_amount_precision() -> int:
@@ -78,20 +88,6 @@ def taxround(x: float) -> float:
     if round(abs(expoN) - abs(math.floor(expoN)), 9) < 0.5: # must round here to prevent error
         return math.floor(expoN) / 10 ** precision
     return math.ceil(expoN) / 10 ** precision
-
-@lru_cache()
-def get_base_cur() -> CurType:
-    settings = get_settings()
-    return settings['preferences']['base_cur']
-
-def get_default_tax_rate() -> float:
-    settings = get_settings()
-    return settings['preferences']['default_sales_tax_rate']
-
-@lru_cache() # TODO: should not change
-def get_par_share_price() -> float:
-    settings = get_settings()
-    return settings['preferences']['par_share_price']
 
 
 def get_vault_resp(mount_point: str, path: str) -> dict:

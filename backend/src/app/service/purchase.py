@@ -2,7 +2,6 @@ from datetime import date
 import math
 from typing import Tuple
 from src.app.dao.payment import paymentDao
-from src.app.utils.tools import get_base_cur
 from src.app.model.payment import _PaymentBrief, Payment, PaymentItem
 from src.app.service.item import ItemService
 from src.app.service.entity import EntityService
@@ -17,6 +16,7 @@ from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from src.app.model.invoice import _InvoiceBalance, _InvoiceBrief, GeneralInvoiceItem, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
+from src.app.service.misc import SettingService
 
 
 class PurchaseService:
@@ -26,7 +26,8 @@ class PurchaseService:
             invoice_dao: invoiceDao, payment_dao: paymentDao, 
             item_service: ItemService, entity_service: EntityService,
             acct_service: AcctService, journal_service: JournalService,
-            fx_service: FxService
+            fx_service: FxService,
+            setting_service: SettingService
         ):
         self.invoice_dao = invoice_dao
         self.payment_dao = payment_dao
@@ -35,6 +36,8 @@ class PurchaseService:
         self.journal_service = journal_service
         self.fx_service = fx_service
         self.entity_service = entity_service
+        self.setting_service = setting_service
+        self.base_cur = setting_service.get_base_currency()
         
     def create_sample(self):
         invoice = Invoice(
@@ -153,7 +156,7 @@ class PurchaseService:
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
                 acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
-                cur_incexp=get_base_cur(),
+                cur_incexp=self.base_cur,
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
                 description='fx gain' if gain >=0 else 'fx loss'
@@ -288,7 +291,7 @@ class PurchaseService:
         fx_gain = Entry(
             entry_type=EntryType.CREDIT, # fx gain is credit
             acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
-            cur_incexp=get_base_cur(),
+            cur_incexp=self.base_cur,
             amount=gain, # gain is already expressed in base currency
             amount_base=gain, # gain is already expressed in base currency
             description='fx gain' if gain >=0 else 'fx loss'

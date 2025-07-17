@@ -49,7 +49,7 @@ class SQLModelWithSort(SQLModel):
         for table in SQLModelWithSort.metadata.sorted_tables:
             tb_cls = get_class_by_tablename(table.name)
             if tb_cls.__collection__ == collection: # type: ignore
-                table.create(bind=engine)
+                table.create(bind=engine, checkfirst=True) # only create if not exist
 
     
     @classmethod
@@ -77,21 +77,8 @@ class UserORM(SQLModelWithSort, table=True):
         )
     )
     
-class FileORM(SQLModelWithSort, table=True):
-    __collection__: str = 'user_specific'
-    __tablename__: str = 'file'
-    
-    file_id: str = Field(
-        sa_column=Column(
-            String(length = 18), 
-            primary_key = True, 
-            nullable = False)
-    )
-    filename: str = Field(sa_column=Column(String(length = 200), nullable = False, primary_key = False, unique=True))
-    filehash: str = Field(sa_column=Column(String(length = 64), nullable = False, primary_key = False, unique=True))
-
 class FxORM(SQLModelWithSort, table=True):
-    __collection__: str = 'user_specific' # TODO: move to common
+    __collection__: str = 'common'
     __tablename__: str = "currency"
     
     currency: CurType = Field(
@@ -107,6 +94,19 @@ class FxORM(SQLModelWithSort, table=True):
     rate: float = Field(
         sa_column=Column(DECIMAL(15, 5, asdecimal=False), nullable = False)
     )
+    
+class FileORM(SQLModelWithSort, table=True):
+    __collection__: str = 'user_specific'
+    __tablename__: str = 'file'
+    
+    file_id: str = Field(
+        sa_column=Column(
+            String(length = 18), 
+            primary_key = True, 
+            nullable = False)
+    )
+    filename: str = Field(sa_column=Column(String(length = 200), nullable = False, primary_key = False, unique=True))
+    filehash: str = Field(sa_column=Column(String(length = 64), nullable = False, primary_key = False, unique=True))
     
     
 class ContactORM(SQLModelWithSort, table=True):

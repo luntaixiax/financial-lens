@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
-from src.app.model.user import Token, UserCreate, User
+from src.app.model.user import Token, UserCreate, User, UserRegister
 from src.app.service.user import UserService
 from src.app.service.backup import BackupService, InitService
 from src.app.service.auth import AuthService
@@ -12,17 +12,34 @@ router = APIRouter(prefix="/management", tags=["management"])
 @router.post("/init_db")
 def init_db(
     init_service: InitService = Depends(get_init_service),
-    admin_user: User = Depends(get_admin_user)
 ):
     init_service.init_common_db()
     
-@router.post("/create_user")
-def create_user(
-    user: UserCreate,
+@router.post("/create_admin_user")
+def create_admin_user(
+    user: UserRegister,
     user_service: UserService = Depends(get_user_service),
-    admin_user: User = Depends(get_admin_user)
+    admin_user: User = Depends(get_admin_user) # this for existing admin access, not the user to create
 ):
-    user_service.create_user(user)
+    user_ = UserCreate(
+        username=user.username,
+        is_admin=True,
+        password=user.password
+    )
+    user_service.create_user(user_)
+    
+@router.post("/register")
+def register(
+    user: UserRegister,
+    user_service: UserService = Depends(get_user_service),
+):
+    # everyone can register, but only open to normal user
+    user_ = UserCreate(
+        username=user.username,
+        is_admin=False,
+        password=user.password
+    )
+    user_service.create_user(user_)
     
 @router.post("/remove_user")
 def remove_user(

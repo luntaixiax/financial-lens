@@ -41,12 +41,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('contact_id'),
     sa.UniqueConstraint('name')
     )
-    op.create_table('currency',
-    sa.Column('currency', ChoiceType(CurType, impl = Integer()), nullable=False),
-    sa.Column('cur_dt', sa.Date(), nullable=False),
-    sa.Column('rate', sa.DECIMAL(precision=15, scale=5, asdecimal=False), nullable=False),
-    sa.PrimaryKeyConstraint('currency', 'cur_dt')
-    )
     op.create_table('file',
     sa.Column('file_id', sa.String(length=18), nullable=False),
     sa.Column('filename', sa.String(length=200), nullable=False),
@@ -295,7 +289,6 @@ def downgrade() -> None:
     op.drop_table('accounts')
     op.drop_table('journals')
     op.drop_table('file')
-    op.drop_table('currency')
     op.drop_table('contact')
     op.drop_table('chart_of_account')
     # ### end Alembic commands ###

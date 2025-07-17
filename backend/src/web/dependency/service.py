@@ -58,25 +58,31 @@ def get_setting_service(
 
 def get_fx_service(
     fx_dao: fxDao = Depends(get_fx_dao),
+    setting_service: SettingService = Depends(get_setting_service)
 ) -> FxService:
-    return FxService(fx_dao=fx_dao)
+    # FX dao is common, but service is user specific
+    return FxService(fx_dao=fx_dao, setting_service=setting_service)
 
 def get_acct_service(
     acct_dao: acctDao = Depends(get_acct_dao),
-    chart_of_acct_dao: chartOfAcctDao = Depends(get_chart_of_acct_dao)
+    chart_of_acct_dao: chartOfAcctDao = Depends(get_chart_of_acct_dao),
+    setting_service: SettingService = Depends(get_setting_service)
 ) -> AcctService:
     return AcctService(
         acct_dao=acct_dao, 
-        chart_of_acct_dao=chart_of_acct_dao
+        chart_of_acct_dao=chart_of_acct_dao,
+        setting_service=setting_service
     )
     
 def get_journal_service(
     journal_dao: journalDao = Depends(get_journal_dao),
-    acct_service: AcctService = Depends(get_acct_service)
+    acct_service: AcctService = Depends(get_acct_service),
+    setting_service: SettingService = Depends(get_setting_service)
 ) -> JournalService:
     return JournalService(
         journal_dao=journal_dao, 
-        acct_service=acct_service
+        acct_service=acct_service,
+        setting_service=setting_service
     )
 
 def get_entity_service(
@@ -94,22 +100,24 @@ def get_expense_service(
     expense_dao: expenseDao = Depends(get_expense_dao),
     acct_service: AcctService = Depends(get_acct_service),
     journal_service: JournalService = Depends(get_journal_service),
-    fx_service: FxService = Depends(get_fx_service)
+    fx_service: FxService = Depends(get_fx_service),
+    setting_service: SettingService = Depends(get_setting_service)
 ) -> ExpenseService:
     return ExpenseService(
         expense_dao=expense_dao,
         acct_service=acct_service,
         journal_service=journal_service,
-        fx_service=fx_service
+        fx_service=fx_service,
+        setting_service=setting_service
     )
     
 def get_item_service(
     item_dao: itemDao = Depends(get_item_dao),
-    acct_service: AcctService = Depends(get_acct_service)
+    acct_service: AcctService = Depends(get_acct_service),
 ) -> ItemService:
     return ItemService(
         item_dao=item_dao,
-        acct_service=acct_service
+        acct_service=acct_service,
     )
     
 def get_property_service(
@@ -117,14 +125,14 @@ def get_property_service(
     property_transaction_dao: propertyTransactionDao = Depends(get_property_transaction_dao),
     fx_service: FxService = Depends(get_fx_service),
     acct_service: AcctService = Depends(get_acct_service),
-    journal_service: JournalService = Depends(get_journal_service)
+    journal_service: JournalService = Depends(get_journal_service),
 ) -> PropertyService:
     return PropertyService(
         property_dao=property_dao,
         property_transaction_dao=property_transaction_dao,
         fx_service=fx_service,
         acct_service=acct_service,
-        journal_service=journal_service
+        journal_service=journal_service,
     )
 
 def get_purchase_service(
@@ -134,7 +142,8 @@ def get_purchase_service(
     entity_service: EntityService = Depends(get_entity_service),
     acct_service: AcctService = Depends(get_acct_service),
     journal_service: JournalService = Depends(get_journal_service),
-    fx_service: FxService = Depends(get_fx_service)
+    fx_service: FxService = Depends(get_fx_service),
+    setting_service: SettingService = Depends(get_setting_service)
 ) -> PurchaseService:
     return PurchaseService(
         invoice_dao=invoice_dao,
@@ -143,7 +152,8 @@ def get_purchase_service(
         entity_service=entity_service,
         acct_service=acct_service,
         journal_service=journal_service,
-        fx_service=fx_service
+        fx_service=fx_service,
+        setting_service=setting_service
     )
     
 def get_sales_service(
@@ -153,7 +163,8 @@ def get_sales_service(
     entity_service: EntityService = Depends(get_entity_service),
     acct_service: AcctService = Depends(get_acct_service),
     journal_service: JournalService = Depends(get_journal_service),
-    fx_service: FxService = Depends(get_fx_service)
+    fx_service: FxService = Depends(get_fx_service),
+    setting_service: SettingService = Depends(get_setting_service)
 ) -> SalesService:
     return SalesService(
         invoice_dao=invoice_dao,
@@ -162,7 +173,8 @@ def get_sales_service(
         entity_service=entity_service,
         acct_service=acct_service,
         journal_service=journal_service,
-        fx_service=fx_service
+        fx_service=fx_service,
+        setting_service=setting_service
     )
     
 def get_shares_service(
@@ -171,7 +183,8 @@ def get_shares_service(
     dividend_dao: dividendDao = Depends(get_dividend_dao),
     acct_service: AcctService = Depends(get_acct_service),
     journal_service: JournalService = Depends(get_journal_service),
-    fx_service: FxService = Depends(get_fx_service) 
+    fx_service: FxService = Depends(get_fx_service),
+    setting_service: SettingService = Depends(get_setting_service)
 ) -> SharesService:
     return SharesService(
         stock_issue_dao=stock_issue_dao,
@@ -179,14 +192,17 @@ def get_shares_service(
         dividend_dao=dividend_dao,
         acct_service=acct_service,
         journal_service=journal_service,
-        fx_service=fx_service
+        fx_service=fx_service,
+        setting_service=setting_service
     )
     
 def get_reporting_service(
     journal_service: JournalService = Depends(get_journal_service),
-    acct_service: AcctService = Depends(get_acct_service)
+    acct_service: AcctService = Depends(get_acct_service),
+    setting_service: SettingService = Depends(get_setting_service)
 ) -> ReportingService:
     return ReportingService(
         journal_service=journal_service,
-        acct_service=acct_service
+        acct_service=acct_service,
+        setting_service=setting_service
     )

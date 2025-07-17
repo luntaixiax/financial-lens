@@ -204,11 +204,12 @@ def test_journal_service(test_journal_dao, test_acct_service):
     )
     
 @pytest.fixture(scope='session')
-def test_fx_service(test_fx_dao):
+def test_fx_service(test_fx_dao, test_setting_service):
     from src.app.service.fx import FxService
     
     return FxService(
         fx_dao=test_fx_dao,
+        setting_service=test_setting_service,
     )
     
 @pytest.fixture(scope='session')
