@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
+from jose import jwt, JWTError, ExpiredSignatureError
+from pydantic import ValidationError
 from src.app.utils.tools import get_secret
-from src.app.model.exceptions import PermissionDeniedError
+from src.app.model.exceptions import NotExistError, PermissionDeniedError
 from src.app.model.user import Token, UserMeta
 from src.app.dao.user import userDao
 
@@ -17,12 +18,15 @@ def create_access_token(user_meta: UserMeta, secret_key: str,
 def decode_token(token: str, secret_key: str, algorithm: str="HS256") -> UserMeta:
     try:
         payload = jwt.decode(token, secret_key, algorithms=algorithm)
+    except ExpiredSignatureError:   
+        raise PermissionError("Token expired")
     except JWTError:
         raise PermissionError("Invalid token")
-    return UserMeta(
+    user = UserMeta(
         username=payload.get('username'), # type: ignore
         is_admin=payload.get('is_admin') # type: ignore
     )
+    return user
 
 class AuthService:
 
@@ -30,7 +34,10 @@ class AuthService:
         self.user_dao = user_dao
 
     def login(self, username: str, password: str) -> Token:
-        internal_user = self.user_dao.get_internal_user_by_name(username)
+        try:
+            internal_user = self.user_dao.get_internal_user_by_name(username)
+        except NotExistError:
+            raise PermissionDeniedError("User not found")
         
         if not internal_user.verify_password(password):
             raise PermissionDeniedError("Wrong password")
@@ -43,7 +50,7 @@ class AuthService:
             ),
             secret_key=auth_config['secret_key'],
             algorithm=auth_config['algorithm'],
-            expires_minutes=auth_config['expires_minutes']
+            expires_minutes=int(auth_config['expires_minutes'])
         )
         return Token(access_token=access_token, token_type="bearer")
     
@@ -55,17 +62,11 @@ class AuthService:
                 secret_key=auth_config['secret_key'],
                 algorithm=auth_config['algorithm']
             )
-        except PermissionError:
+        except ValidationError:
+            raise PermissionDeniedError("Cannot parse token")
+        except PermissionError as e:
             raise PermissionDeniedError(
-                message="Invalid token",
+                message=str(e),
                 details=token
             )
-        
-        username = decoded_token.get("username") # type: ignore
-        if username is None:
-            raise PermissionDeniedError(
-                message="Invalid token",
-                details=token
-            )
-        
         return decoded_token

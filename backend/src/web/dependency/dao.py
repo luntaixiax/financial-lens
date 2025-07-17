@@ -3,11 +3,11 @@ from fastapi import Depends
 from s3fs import S3FileSystem
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
-from src.app.dao.user import userDao
 from src.app.dao.expense import expenseDao
 from src.app.dao.entity import contactDao, customerDao, supplierDao
 from src.app.dao.backup import dataDao
-from src.app.dao.connection import yield_file_fs, yield_backup_fs, session_factory, engine_factory
+from src.app.dao.connection import yield_file_fs, yield_backup_fs, \
+    session_factory, engine_factory
 from src.app.dao.accounts import chartOfAcctDao, acctDao
 from src.app.dao.files import fileDao, configDao
 from src.app.dao.fx import fxDao
@@ -27,11 +27,6 @@ def yield_engine() -> Generator[Engine, None, None]:
     # TODO: extend to multiple db
     engine_gen_func = engine_factory('finlens')
     yield from engine_gen_func()
-    
-def get_user_dao(
-    session: Session = Depends(session_factory('common')) # get common session
-) -> userDao:
-    return userDao(session=session)
     
 def get_config_dao(
     file_fs: S3FileSystem = Depends(yield_file_fs)

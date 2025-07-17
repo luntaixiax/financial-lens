@@ -1,4 +1,6 @@
 from fastapi import Depends
+from fastapi.security import OAuth2PasswordBearer
+from src.app.model.user import UserMeta
 from src.app.service.auth import AuthService
 from src.app.dao.user import userDao
 from src.app.dao.files import configDao, fileDao
@@ -31,17 +33,9 @@ from src.web.dependency.dao import get_acct_dao, get_chart_of_acct_dao, \
     get_backup_dao, get_contact_dao, get_customer_dao, get_dividend_dao, get_expense_dao, \
     get_file_dao, get_fx_dao, get_item_dao, get_journal_dao, get_property_dao, \
     get_property_transaction_dao, get_stock_issue_dao, get_stock_repurchase_dao, \
-    get_supplier_dao, get_config_dao, get_payment_dao, get_invoice_dao, get_user_dao
+    get_supplier_dao, get_config_dao, get_payment_dao, get_invoice_dao
 
-def get_user_service(
-    user_dao: userDao = Depends(get_user_dao)
-) -> UserService:
-    return UserService(user_dao=user_dao)
 
-def get_auth_service(
-    user_dao: userDao = Depends(get_user_dao)
-) -> AuthService:
-    return AuthService(user_dao=user_dao)
 
 def get_backup_service(
     backup_dao: dataDao = Depends(get_backup_dao)
@@ -60,7 +54,7 @@ def get_setting_service(
     return SettingService(file_service=file_service, config_dao=config_dao)
 
 def get_fx_service(
-    fx_dao: fxDao = Depends(get_fx_dao)
+    fx_dao: fxDao = Depends(get_fx_dao),
 ) -> FxService:
     return FxService(fx_dao=fx_dao)
 
