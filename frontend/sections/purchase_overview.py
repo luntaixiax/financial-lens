@@ -105,7 +105,7 @@ if len(suppliers) > 0:
         )
         
     card_cols2 = st.columns(2)
-    with card_cols2[2]:
+    with card_cols2[0]:
         ui.metric_card(
             title="Remaining Balance", 
             content=f"{base_currency} {total_balance: ,.2f}", 
