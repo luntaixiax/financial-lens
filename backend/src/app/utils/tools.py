@@ -146,11 +146,10 @@ def get_secret() -> dict:
         'auth': auth
     }
 
-def get_fs_bucket(type_: Literal['files', 'backup'] = 'files') -> str:
-    # get bucket of storage server
-    if type_ == 'files':
-        path_config = get_secret()['storage_server']['path']
-    else:
-        path_config = get_secret()['backup_server']['path']
-    
+def get_files_bucket() -> str:
+    path_config = get_secret()['storage_server']['path']
+    return path_config['bucket']
+
+def get_backup_bucket() -> str:
+    path_config = get_secret()['backup_server']['path']
     return path_config['bucket']

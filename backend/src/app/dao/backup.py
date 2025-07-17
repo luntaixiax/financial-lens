@@ -1,6 +1,5 @@
 import tempfile
 from pathlib import Path
-from s3fs import S3FileSystem
 import sqlalchemy
 from sqlalchemy import MetaData, JSON, column, event
 from sqlalchemy.engine import Engine
@@ -11,7 +10,7 @@ from sqlmodel import Session, select, delete
 from src.app.dao.connection import get_db_url, get_engine, UserDaoAccess
 from src.app.model.exceptions import NotExistError
 from src.app.dao.orm import get_class_by_tablename, SQLModelWithSort
-from src.app.utils.tools import get_fs_bucket
+from src.app.utils.tools import get_files_bucket, get_backup_bucket
 
 def drop_tables(engine: Engine):
     metadata = MetaData()
@@ -101,7 +100,7 @@ class backupDao:
         self.dao_access = dao_access
     
     def get_backup_folder_path(self, backup_id: str) -> str:
-        return (Path(get_fs_bucket('backup')) / self.dao_access.user.user_id / backup_id).as_posix()
+        return (Path(get_backup_bucket()) / self.dao_access.user.user_id / 'backup' / backup_id).as_posix()
     
     @classmethod
     def get_backup_db_fname(cls) -> str:
@@ -109,7 +108,7 @@ class backupDao:
     
     def list_backup_ids(self) -> list[str]:
         bk_fs = self.dao_access.backup_fs
-        file_root = Path(get_fs_bucket('backup')) / self.dao_access.user.user_id
+        file_root = Path(get_backup_bucket()) / self.dao_access.user.user_id / 'backup'
         try:
             files = bk_fs.ls(file_root, detail=True)
         except FileNotFoundError:
@@ -118,7 +117,8 @@ class backupDao:
         ids = []
         for file in files:
             if file['type'] == 'directory':
-                ids.append(file['Key'].split('/')[-1])
+                # S3FS use `Key` and MemoryFS use `name`
+                ids.append(file.get('Key', file.get('name')).split('/')[-1])
         return ids
     
     def backup_files(self, backup_id: str):
@@ -128,19 +128,21 @@ class backupDao:
         bk_fs = self.dao_access.backup_fs
         bk_fs.mkdirs(bk_root, exist_ok=True)
         
+        rpath = (Path(get_files_bucket()) / self.dao_access.user.user_id / 'files').as_posix()
         fs = self.dao_access.file_fs
+        fs.mkdirs(rpath, exist_ok=True)
         
         with tempfile.TemporaryDirectory() as tmpdirname:
             # download files from fs to local temp dir first
             fs.get(
-                rpath=(Path(get_fs_bucket('files')) / self.dao_access.user.user_id / 'files').as_posix(),
-                lpath=Path(tmpdirname) / 'bk_files',
+                rpath=rpath,
+                lpath=(Path(tmpdirname) / 'bk_files').as_posix(),
                 recursive=True
             )
             
             # upload files to backup folder
             bk_fs.put(
-                lpath=Path(tmpdirname) / 'bk_files',
+                lpath=(Path(tmpdirname) / 'bk_files').as_posix(),
                 rpath=bk_root.as_posix(),
                 recursive=True
             )
@@ -182,21 +184,23 @@ class backupDao:
         bk_root = Path(self.get_backup_folder_path(backup_id)) / 'bk_files'
         bk_fs = self.dao_access.backup_fs
         
+        rpath = (Path(get_files_bucket()) / self.dao_access.user.user_id / 'files').as_posix()
         fs = self.dao_access.file_fs
+        fs.mkdirs(rpath, exist_ok=True)
         
         with tempfile.TemporaryDirectory() as tmpdirname:
             
             # download from backup storage to local first
             bk_fs.get(
                 rpath=bk_root.as_posix(),
-                lpath=Path(tmpdirname) / 'bk_files',
+                lpath=(Path(tmpdirname) / 'bk_files').as_posix(),
                 recursive=True
             )
             
             # upload to current storage
             fs.put(
-                lpath=Path(tmpdirname) / 'bk_files',
-                rpath=Path(get_fs_bucket('files')) / self.dao_access.user.user_id / 'files',
+                lpath=(Path(tmpdirname) / 'bk_files').as_posix(),
+                rpath=rpath,
                 recursive=True
             )
             

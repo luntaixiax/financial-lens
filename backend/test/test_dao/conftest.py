@@ -3,7 +3,6 @@ from datetime import date
 from typing import Generator
 from unittest import mock
 import pytest
-from src.app.utils.tools import get_base_cur
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.model.const import SystemAcctNumber, SystemChartOfAcctNumber
 from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
@@ -76,21 +75,21 @@ def asset_node() -> ChartNode:
     return total_asset
 
 @pytest.fixture
-def sample_accounts(asset_node: ChartNode) -> list[Account]:
+def sample_accounts(asset_node: ChartNode, test_setting_service) -> list[Account]:
     
     # create system accounts (tax, AR/AP, etc.)
     input_tax = Account(
         acct_id=SystemAcctNumber.INPUT_TAX,
         acct_name="Input Tax",
         acct_type=AcctType.AST,
-        currency=get_base_cur(),
+        currency=test_setting_service.get_base_currency(),
         chart=asset_node.find_node_by_id(SystemChartOfAcctNumber.NONCUR_ASSET).chart
     )
     ar = Account(
         acct_id=SystemAcctNumber.ACCT_RECEIV,
         acct_name="Account Receivable",
         acct_type=AcctType.AST,
-        currency=get_base_cur(),
+        currency=test_setting_service.get_base_currency(),                
         chart=asset_node.find_node_by_id(SystemChartOfAcctNumber.CUR_ASSET).chart
     )
     check = Account(
@@ -103,10 +102,7 @@ def sample_accounts(asset_node: ChartNode) -> list[Account]:
 
 
 @pytest.fixture
-def sample_journal_meal(session_with_sample_choa, settings, test_acct_service) -> Generator[Journal, None, None]:
-        
-    with mock.patch("src.app.utils.tools.get_settings") as mock_settings:
-        mock_settings.return_value = settings
+def sample_journal_meal(session_with_sample_choa, test_acct_service, test_setting_service) -> Generator[Journal, None, None]:
         
         journal = Journal(
             journal_id='jrn-sample',
@@ -115,7 +111,7 @@ def sample_journal_meal(session_with_sample_choa, settings, test_acct_service) -
                 Entry(
                     entry_type=EntryType.DEBIT,
                     acct=test_acct_service.get_account('acct-meal'),
-                    cur_incexp=get_base_cur(),
+                    cur_incexp=test_setting_service.get_base_currency(),
                     amount=105.83,
                     amount_base=105.83,
                     description='Have KFC with client'
@@ -123,7 +119,7 @@ def sample_journal_meal(session_with_sample_choa, settings, test_acct_service) -
                 Entry(
                     entry_type=EntryType.DEBIT,
                     acct=test_acct_service.get_account('acct-tip'),
-                    cur_incexp=get_base_cur(),
+                    cur_incexp=test_setting_service.get_base_currency(),
                     amount=13.93,
                     amount_base=13.93,
                     description='Tip for KFC'

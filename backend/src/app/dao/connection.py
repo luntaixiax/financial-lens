@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Generator, Literal
+from fsspec import AbstractFileSystem
 from pydantic import BaseModel
-from s3fs import S3FileSystem
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, create_engine
 from functools import lru_cache
@@ -40,7 +40,9 @@ def session_factory(db: str):
     return get_session
 
 @lru_cache
-def get_storage_fs(type_: Literal['files', 'backup'] = 'files') -> S3FileSystem:
+def get_storage_fs(type_: Literal['files', 'backup'] = 'files') -> AbstractFileSystem:
+    from s3fs import S3FileSystem
+    
     if type_ == 'files':
         config = get_secret()['storage_server']
     else:
@@ -68,8 +70,8 @@ class CommonDaoAccess(BaseModel):
     
     common_engine: Engine
     common_session: Session
-    file_fs: S3FileSystem # TODO: move user specific?
-    backup_fs: S3FileSystem
+    file_fs: AbstractFileSystem # TODO: move user specific?
+    backup_fs: AbstractFileSystem
 
 class UserDaoAccess(CommonDaoAccess):
     # all access needed for user specific operation

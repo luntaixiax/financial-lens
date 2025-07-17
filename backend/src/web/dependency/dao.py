@@ -1,6 +1,6 @@
 from typing import Any, Generator
 from fastapi import Depends
-from s3fs import S3FileSystem
+from fsspec import AbstractFileSystem
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 from src.web.dependency.auth import get_current_user
@@ -32,10 +32,10 @@ def yield_engine(current_user: User = Depends(get_current_user)) -> Generator[En
     engine_gen_func = engine_factory(db_name)
     yield from engine_gen_func()
 
-def yield_file_fs() -> S3FileSystem:
+def yield_file_fs() -> AbstractFileSystem:
     return get_storage_fs('files')
     
-def yield_backup_fs() -> S3FileSystem:
+def yield_backup_fs() -> AbstractFileSystem:
     return get_storage_fs('backup')
 
 def get_common_dao_access(

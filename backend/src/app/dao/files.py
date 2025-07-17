@@ -4,11 +4,10 @@ from typing import Any, Tuple
 import json
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from sqlmodel import Session, select, delete, case, func as f
-from src.app.utils.tools import get_fs_bucket
+from src.app.utils.tools import get_files_bucket
 from src.app.model.misc import FileWrapper
 from src.app.dao.orm import FileORM, infer_integrity_error
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
-from s3fs import S3FileSystem
 from src.app.dao.connection import UserDaoAccess
 
 class configDao:
@@ -19,7 +18,7 @@ class configDao:
         self.dao_access = dao_access
     
     def getConfigPath(self) -> str:
-        return (Path(get_fs_bucket('files')) / self.dao_access.user.user_id / 'config' / self.CONFIG_FILENAME).as_posix()
+        return (Path(get_files_bucket()) / self.dao_access.user.user_id / 'config' / self.CONFIG_FILENAME).as_posix()
     
     @lru_cache
     def get_config(self) -> dict[str, Any]:
@@ -58,7 +57,7 @@ class fileDao:
         self.dao_access = dao_access
     
     def getFilePath(self, filename: str) -> str:
-        return (Path(get_fs_bucket()) / self.dao_access.user.user_id / 'files' / filename).as_posix() # type: ignore
+        return (Path(get_files_bucket()) / self.dao_access.user.user_id / 'files' / filename).as_posix() # type: ignore
 
     @classmethod
     def fromFile(cls, file: FileWrapper) -> FileORM:
