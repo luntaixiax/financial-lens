@@ -11,7 +11,7 @@ from sqlmodel import Session, select, delete
 from src.app.dao.connection import get_db_url, get_engine, UserDaoAccess
 from src.app.model.exceptions import NotExistError
 from src.app.dao.orm import get_class_by_tablename, SQLModelWithSort
-from src.app.utils.tools import get_file_root
+from src.app.utils.tools import get_fs_bucket
 
 def drop_tables(engine: Engine):
     metadata = MetaData()
@@ -100,9 +100,8 @@ class backupDao:
     def __init__(self, dao_access: UserDaoAccess):
         self.dao_access = dao_access
     
-    @classmethod
-    def get_backup_folder_path(cls, backup_id: str) -> str:
-        return (Path(get_file_root('backup')) / backup_id).as_posix()
+    def get_backup_folder_path(self, backup_id: str) -> str:
+        return (Path(get_fs_bucket('backup')) / self.dao_access.user.user_id / backup_id).as_posix()
     
     @classmethod
     def get_backup_db_fname(cls) -> str:
@@ -110,8 +109,12 @@ class backupDao:
     
     def list_backup_ids(self) -> list[str]:
         bk_fs = self.dao_access.backup_fs
-        file_root = Path(get_file_root('backup'))
-        files = bk_fs.ls(file_root, detail=True)
+        file_root = Path(get_fs_bucket('backup')) / self.dao_access.user.user_id
+        try:
+            files = bk_fs.ls(file_root, detail=True)
+        except FileNotFoundError:
+            return []
+        
         ids = []
         for file in files:
             if file['type'] == 'directory':
@@ -130,7 +133,7 @@ class backupDao:
         with tempfile.TemporaryDirectory() as tmpdirname:
             # download files from fs to local temp dir first
             fs.get(
-                rpath=get_file_root('files'),
+                rpath=(Path(get_fs_bucket('files')) / self.dao_access.user.user_id / 'files').as_posix(),
                 lpath=Path(tmpdirname) / 'bk_files',
                 recursive=True
             )
@@ -193,7 +196,7 @@ class backupDao:
             # upload to current storage
             fs.put(
                 lpath=Path(tmpdirname) / 'bk_files',
-                rpath=get_file_root('files'),
+                rpath=Path(get_fs_bucket('files')) / self.dao_access.user.user_id / 'files',
                 recursive=True
             )
             

@@ -18,8 +18,8 @@ router = APIRouter(prefix="/test", tags=["test"])
 def router_test() -> str:
     return "Hello, router tester here"
 
-@router.post("/init_sample")
-def init_sample(
+@router.post("/create_sample")
+def create_sample(
     acct_service: AcctService = Depends(get_acct_service),
     journal_service: JournalService = Depends(get_journal_service),
     entity_service: EntityService = Depends(get_entity_service),
@@ -30,9 +30,6 @@ def init_sample(
     property_service: PropertyService = Depends(get_property_service),
     shares_service: SharesService = Depends(get_shares_service)
 ):
-
-    # create basic account structure *standard
-    acct_service.init()
     # create additional sample accounts
     acct_service.create_sample()
     # create sample journals

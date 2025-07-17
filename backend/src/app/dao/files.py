@@ -4,7 +4,7 @@ from typing import Any, Tuple
 import json
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from sqlmodel import Session, select, delete, case, func as f
-from src.app.utils.tools import get_file_root, get_config_root
+from src.app.utils.tools import get_fs_bucket
 from src.app.model.misc import FileWrapper
 from src.app.dao.orm import FileORM, infer_integrity_error
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError
@@ -18,9 +18,8 @@ class configDao:
     def __init__(self, dao_access: UserDaoAccess):
         self.dao_access = dao_access
     
-    @classmethod
-    def getConfigPath(cls) -> str:
-        return (Path(get_config_root()) / cls.CONFIG_FILENAME).as_posix()
+    def getConfigPath(self) -> str:
+        return (Path(get_fs_bucket('files')) / self.dao_access.user.user_id / 'config' / self.CONFIG_FILENAME).as_posix()
     
     @lru_cache
     def get_config(self) -> dict[str, Any]:
@@ -58,9 +57,8 @@ class fileDao:
     def __init__(self, dao_access: UserDaoAccess):
         self.dao_access = dao_access
     
-    @classmethod
-    def getFilePath(cls, filename: str) -> str:
-        return (Path(get_file_root()) / filename).as_posix() # type: ignore
+    def getFilePath(self, filename: str) -> str:
+        return (Path(get_fs_bucket()) / self.dao_access.user.user_id / 'files' / filename).as_posix() # type: ignore
 
     @classmethod
     def fromFile(cls, file: FileWrapper) -> FileORM:

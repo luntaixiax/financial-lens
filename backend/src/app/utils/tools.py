@@ -146,18 +146,11 @@ def get_secret() -> dict:
         'auth': auth
     }
 
-def get_file_root(type_: Literal['files', 'backup'] = 'files') -> str:
+def get_fs_bucket(type_: Literal['files', 'backup'] = 'files') -> str:
+    # get bucket of storage server
     if type_ == 'files':
         path_config = get_secret()['storage_server']['path']
     else:
         path_config = get_secret()['backup_server']['path']
     
-    return (Path(path_config['bucket']) / path_config['file_root']).as_posix()
-    
-def get_config_root(type_: Literal['files', 'backup'] = 'files') -> str:
-    if type_ == 'files':
-        path_config = get_secret()['storage_server']['path']
-    else:
-        path_config = get_secret()['backup_server']['path']
-        
-    return (Path(path_config['bucket']) / 'config').as_posix()
+    return path_config['bucket']
