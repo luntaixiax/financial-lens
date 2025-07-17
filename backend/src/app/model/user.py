@@ -7,11 +7,7 @@ class Token(EnhancedBaseModel):
     access_token: str
     token_type: str
     
-class UserMeta(EnhancedBaseModel):
-    username: str
-    is_admin: bool = Field(default=False)
-    
-class User(UserMeta):
+class User(EnhancedBaseModel):
     
     user_id: str = Field(
         default_factory=partial( # type: ignore
@@ -23,7 +19,7 @@ class User(UserMeta):
         frozen=True,
     )
     username: str = Field(max_length=20)
-    
+    is_admin: bool = Field(default=False)
     
 class UserInternalRead(User):
     hashed_password: str

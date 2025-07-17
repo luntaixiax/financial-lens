@@ -3,9 +3,11 @@ from fastapi import Depends
 from s3fs import S3FileSystem
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
+from src.web.dependency.auth import get_current_user
+from src.app.model.user import User
 from src.app.dao.expense import expenseDao
 from src.app.dao.entity import contactDao, customerDao, supplierDao
-from src.app.dao.backup import dataDao
+from src.app.dao.backup import backupDao, initDao
 from src.app.dao.connection import yield_file_fs, yield_backup_fs, \
     session_factory, engine_factory
 from src.app.dao.accounts import chartOfAcctDao, acctDao
@@ -18,14 +20,16 @@ from src.app.dao.property import propertyDao, propertyTransactionDao
 from src.app.dao.shares import stockIssueDao, stockRepurchaseDao, dividendDao
 
 
-def yield_session() -> Generator[Session, None, None]:
+def yield_session(current_user: User = Depends(get_current_user)) -> Generator[Session, None, None]:
     # TODO: extend to multiple db
-    session_gen_func = session_factory('finlens')
+    db_name = current_user.user_id
+    session_gen_func = session_factory(db_name)
     yield from session_gen_func()
 
-def yield_engine() -> Generator[Engine, None, None]:
+def yield_engine(current_user: User = Depends(get_current_user)) -> Generator[Engine, None, None]:
     # TODO: extend to multiple db
-    engine_gen_func = engine_factory('finlens')
+    db_name = current_user.user_id
+    engine_gen_func = engine_factory(db_name)
     yield from engine_gen_func()
     
 def get_config_dao(
@@ -40,13 +44,14 @@ def get_file_dao(
     return fileDao(session=session, file_fs=file_fs)
 
 def get_backup_dao(
-    user_engine: Engine = Depends(yield_engine), 
     common_engine: Engine = Depends(engine_factory('common')),
+    user_engine: Engine = Depends(yield_engine),
     backup_fs: S3FileSystem = Depends(yield_backup_fs),
     file_fs: S3FileSystem = Depends(yield_file_fs)
-) -> dataDao:
-    return dataDao(user_engine=user_engine, common_engine=common_engine, 
-                   backup_fs=backup_fs, file_fs=file_fs)
+) -> backupDao:
+    return backupDao(common_engine=common_engine, 
+                     user_engine=user_engine,
+                     backup_fs=backup_fs, file_fs=file_fs)
 
 def get_fx_dao(
     session: Session = Depends(yield_session) # switch to another db session

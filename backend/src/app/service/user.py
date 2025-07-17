@@ -1,11 +1,13 @@
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
+from src.app.dao.backup import initDao
 from src.app.dao.user import userDao
 from src.app.model.user import UserCreate, User
 
 class UserService:
     
-    def __init__(self, user_dao: userDao):
+    def __init__(self, user_dao: userDao, init_dao: initDao):
         self.user_dao = user_dao
+        self.init_dao = init_dao
         
     def create_user(self, user: UserCreate):
         try:
@@ -15,6 +17,9 @@ class UserService:
                 f"User {user.username} already exist",
                 details="N/A" # don't pass database info
             )
+        else:
+            # create user specific db
+            self.init_dao.init_user_db(user.user_id)
         
     def remove_user(self, user_id: str):
         try:
@@ -29,6 +34,9 @@ class UserService:
                 f"User {user_id} is associated with other data, cannot delete",
                 details=e.details
             )
+        else:
+            # remove user specific db
+            self.init_dao.remove_user_db(user_id)
             
     def remove_user_by_name(self, username: str):
         try:
@@ -43,6 +51,7 @@ class UserService:
                 f"User {username} is associated with other data, cannot delete",
                 details=e.details
             )
+        
         
     def update_user(self, user: UserCreate):
         try:

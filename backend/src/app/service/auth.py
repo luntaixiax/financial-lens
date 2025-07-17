@@ -3,26 +3,27 @@ from jose import jwt, JWTError, ExpiredSignatureError
 from pydantic import ValidationError
 from src.app.utils.tools import get_secret
 from src.app.model.exceptions import NotExistError, PermissionDeniedError
-from src.app.model.user import Token, UserMeta
+from src.app.model.user import Token, User
 from src.app.dao.user import userDao
 
-def create_access_token(user_meta: UserMeta, secret_key: str, 
+def create_access_token(user: User, secret_key: str, 
             algorithm: str="HS256", expires_minutes: int = 15) -> str:
-    to_encode = user_meta.model_dump()
+    to_encode = user.model_dump()
     expire = datetime.utcnow() + timedelta(minutes=expires_minutes)
     to_encode.update({"exp": expire}) # type: ignore # this can only be named as exp
     encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
     
     return encoded_jwt
 
-def decode_token(token: str, secret_key: str, algorithm: str="HS256") -> UserMeta:
+def decode_token(token: str, secret_key: str, algorithm: str="HS256") -> User:
     try:
         payload = jwt.decode(token, secret_key, algorithms=algorithm)
     except ExpiredSignatureError:   
         raise PermissionError("Token expired")
     except JWTError:
         raise PermissionError("Invalid token")
-    user = UserMeta(
+    user = User(
+        user_id=payload.get('user_id'), # type: ignore
         username=payload.get('username'), # type: ignore
         is_admin=payload.get('is_admin') # type: ignore
     )
@@ -44,7 +45,8 @@ class AuthService:
         
         auth_config = get_secret()['auth']
         access_token = create_access_token(
-            user_meta=UserMeta(
+            user=User(
+                user_id=internal_user.user_id,
                 username=username,
                 is_admin=internal_user.is_admin
             ),
@@ -54,7 +56,7 @@ class AuthService:
         )
         return Token(access_token=access_token, token_type="bearer")
     
-    def verify_token(self, token: str) -> UserMeta:
+    def verify_token(self, token: str) -> User:
         auth_config = get_secret()['auth']
         try:
             decoded_token = decode_token(
