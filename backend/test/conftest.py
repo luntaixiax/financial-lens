@@ -10,7 +10,7 @@ from sqlalchemy_utils import create_database, database_exists, drop_database
 from sqlmodel import Session
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_user():
     from src.app.model.user import User
     
@@ -19,7 +19,7 @@ def test_user():
         is_admin=True,
     )
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def engine(test_user):
     from src.app.dao.orm import SQLModelWithSort
     
@@ -46,7 +46,7 @@ def engine(test_user):
     
     drop_database(engine.url)
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def common_engine():
     from src.app.dao.orm import SQLModelWithSort
     
@@ -72,7 +72,7 @@ def common_engine():
     
     drop_database(engine.url)
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def testing_bucket_path():
     # TODO: switch to in-memory file system
     
@@ -81,7 +81,7 @@ def testing_bucket_path():
 
         yield bucket_path
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def storage_fs(testing_bucket_path):
     from fsspec.implementations.memory import MemoryFileSystem
     from fsspec.implementations.local import LocalFileSystem
@@ -93,7 +93,7 @@ def storage_fs(testing_bucket_path):
     
     fs.rm(testing_bucket_path, recursive=True)
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_common_dao_access(common_engine, storage_fs):
     from src.app.dao.connection import CommonDaoAccess
     
@@ -105,7 +105,7 @@ def test_common_dao_access(common_engine, storage_fs):
             backup_fs=storage_fs
         )
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_dao_access(engine, common_engine, storage_fs, test_user):
     from src.app.dao.connection import UserDaoAccess
     with (
@@ -124,7 +124,7 @@ def test_dao_access(engine, common_engine, storage_fs, test_user):
         
         yield user_dao_access
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_setting_service(test_dao_access):
     from src.app.service.settings import ConfigService
     from src.app.service.files import FileService
@@ -150,95 +150,95 @@ def test_setting_service(test_dao_access):
     
 #### DAO objects####
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_fx_dao(test_dao_access):
     from src.app.dao.fx import fxDao
     
     return fxDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_backup_dao(test_dao_access):
     from src.app.dao.backup import backupDao
     return backupDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_contact_dao(test_dao_access):
     from src.app.dao.entity import contactDao
     return contactDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_customer_dao(test_dao_access):
     from src.app.dao.entity import customerDao
     return customerDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_supplier_dao(test_dao_access):
     from src.app.dao.entity import supplierDao
     return supplierDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_item_dao(test_dao_access):
     from src.app.dao.invoice import itemDao
     return itemDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_invoice_dao(test_dao_access):
     from src.app.dao.invoice import invoiceDao
     return invoiceDao(test_dao_access) 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_journal_dao(test_dao_access):
     from src.app.dao.journal import journalDao
     return journalDao(test_dao_access)
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_acct_dao(test_dao_access):
     from src.app.dao.accounts import acctDao
     return acctDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_chart_of_acct_dao(test_dao_access):
     from src.app.dao.accounts import chartOfAcctDao
     return chartOfAcctDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_expense_dao(test_dao_access):
     from src.app.dao.expense import expenseDao
     return expenseDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_payment_dao(test_dao_access):
     from src.app.dao.payment import paymentDao
     return paymentDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_property_dao(test_dao_access):
     from src.app.dao.property import propertyDao
     return propertyDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_property_trans_dao(test_dao_access):
     from src.app.dao.property import propertyTransactionDao
     return propertyTransactionDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_stock_issue_dao(test_dao_access):
     from src.app.dao.shares import stockIssueDao
     return stockIssueDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_stock_repurchase_dao(test_dao_access):
     from src.app.dao.shares import stockRepurchaseDao
     return stockRepurchaseDao(test_dao_access)
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_stock_dividend_dao(test_dao_access):
     from src.app.dao.shares import dividendDao
     return dividendDao(test_dao_access)
 
 ### Service objects ###
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_entity_service(test_contact_dao, test_customer_dao, test_supplier_dao):
     from src.app.service.entity import EntityService
     
@@ -248,7 +248,7 @@ def test_entity_service(test_contact_dao, test_customer_dao, test_supplier_dao):
         supplier_dao=test_supplier_dao,
     )
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_acct_service(test_acct_dao, test_chart_of_acct_dao, test_setting_service):
     from src.app.service.acct import AcctService
     
@@ -258,7 +258,7 @@ def test_acct_service(test_acct_dao, test_chart_of_acct_dao, test_setting_servic
         setting_service=test_setting_service,
     )
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_journal_service(test_journal_dao, test_acct_service, test_setting_service):
     from src.app.service.journal import JournalService
     
@@ -268,7 +268,7 @@ def test_journal_service(test_journal_dao, test_acct_service, test_setting_servi
         setting_service=test_setting_service,
     )
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_fx_service(test_fx_dao, test_setting_service):
     from src.app.service.fx import FxService
     
@@ -277,7 +277,7 @@ def test_fx_service(test_fx_dao, test_setting_service):
         setting_service=test_setting_service,
     )
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_expense_service(test_expense_dao, test_fx_service, test_acct_service, 
                          test_journal_service, test_setting_service):
     from src.app.service.expense import ExpenseService
@@ -290,7 +290,7 @@ def test_expense_service(test_expense_dao, test_fx_service, test_acct_service,
         setting_service=test_setting_service,
     )
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_property_service(test_property_dao, test_property_trans_dao, 
                           test_fx_service, test_acct_service, test_journal_service):
     from src.app.service.property import PropertyService
@@ -303,7 +303,7 @@ def test_property_service(test_property_dao, test_property_trans_dao,
         journal_service=test_journal_service,
     )
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_sales_service(test_invoice_dao, test_payment_dao, test_fx_service, 
         test_acct_service, test_journal_service, test_item_service, 
         test_entity_service, test_setting_service):
@@ -320,7 +320,7 @@ def test_sales_service(test_invoice_dao, test_payment_dao, test_fx_service,
         setting_service=test_setting_service,
     )
     
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_item_service(test_item_dao, test_acct_service):
     from src.app.service.item import ItemService
     
@@ -329,7 +329,7 @@ def test_item_service(test_item_dao, test_acct_service):
         acct_service=test_acct_service,    
     )
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def test_shares_service(test_stock_issue_dao, test_stock_repurchase_dao, 
                         test_stock_dividend_dao, test_fx_service, test_acct_service, 
                         test_journal_service, test_setting_service):

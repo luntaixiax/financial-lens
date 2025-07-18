@@ -9,7 +9,7 @@ from src.web.main import app
 from src.web.dependency.dao import get_user_dao_access, get_common_dao_access
 from src.web.dependency.auth import get_current_user, get_common_session, get_init_dao
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def client(test_dao_access, test_common_dao_access):
     """
     Create a test client with dependency overrides for testing FastAPI endpoints.
@@ -40,7 +40,7 @@ def client(test_dao_access, test_common_dao_access):
         # Clean up overrides after tests
         app.dependency_overrides.clear()
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def token(test_user):
     from src.app.service.auth import create_access_token
     
@@ -52,7 +52,7 @@ def token(test_user):
     )
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def authorized_client(client, token):
     # actually our dependency does not require login if we mock the service object
     # so using this fixture is not necessary
