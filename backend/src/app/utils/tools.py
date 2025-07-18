@@ -1,6 +1,8 @@
 from functools import lru_cache
+from datetime import datetime, timezone, timedelta
 import math
-from typing import Literal
+from typing import Any, Hashable, Literal
+from collections import OrderedDict
 import uuid
 import re
 import hvac
@@ -114,3 +116,66 @@ def get_files_bucket() -> str:
 def get_backup_bucket() -> str:
     path_config = get_secret()['backup_server']['path']
     return path_config['bucket']
+
+class LocalCacheKVStore:
+    
+    def __init__(self, capacity: int, ttl: int = 60 * 60 * 1):
+        self._capacity = capacity
+        self._cache = {} # space -> key -> value
+        self._ttl = ttl
+
+    def put(self, space: str, key: Hashable, value: Any) -> None:
+        expire_time = datetime.now(timezone.utc) + timedelta(seconds=self._ttl)
+        
+        if space in self._cache:
+            if key in self._cache[space]:
+                self._cache[space].pop(key)
+            elif len(self._cache[space]) >= self._capacity:
+                self._cache[space].popitem(last=False) # Remove the least recently used (first item)
+            # set value
+            self._cache[space][key] = {
+                'value': value,
+                'expire_time': expire_time
+            }
+        else:
+            # set value
+            self._cache[space] = OrderedDict({key: {
+                'value': value,
+                'expire_time': expire_time
+            }})
+    
+    def get(self, space: str, key: Hashable) -> Any:
+        if space in self._cache:
+            if key in self._cache[space]:
+                if self._cache[space][key]['expire_time'] < datetime.now(timezone.utc):
+                    self._cache[space].pop(key)
+                    raise TimeoutError(f"Key {key} expired in space {space}")
+                else:
+                    return self._cache[space][key]['value']
+            else:
+                raise KeyError(f"Key {key} not found in space {space}")
+        else:
+            raise KeyError(f"Space {space} not found")
+    
+    def remove(self, space: str, key: Hashable) -> None:
+        if space in self._cache:
+            if key in self._cache[space]:
+                self._cache[space].pop(key)
+            else:
+                raise KeyError(f"Key {key} not found in space {space}")
+        else:
+            raise KeyError(f"Space {space} not found")
+        
+    def invalidate(self, space: str, key: Hashable) -> None:
+        try:
+            self.remove(space, key)
+        except KeyError:
+            pass
+        
+    def clear(self, space: str):
+        if space in self._cache:
+            self._cache.pop(space)
+    
+    def clear_all(self):
+        self._cache = {}
+            
