@@ -3,7 +3,7 @@ from fastapi import Depends
 from fsspec import AbstractFileSystem
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
-from src.web.dependency.auth import get_current_user
+from src.web.dependency.auth import get_current_user, common_engine_dep, get_common_session
 from src.app.model.user import User
 from src.app.dao.expense import expenseDao
 from src.app.dao.entity import contactDao, customerDao, supplierDao
@@ -39,10 +39,9 @@ def yield_backup_fs() -> AbstractFileSystem:
     return get_storage_fs('backup')
 
 def get_common_dao_access(
-    common_engine: Engine = Depends(engine_factory('common')),
-    common_session: Session = Depends(session_factory('common')),
+    common_engine: common_engine_dep,
+    common_session: Session = Depends(get_common_session),
 ) -> CommonDaoAccess:
-    # for common DAO access that does not require login
     return CommonDaoAccess(
         common_engine=common_engine,
         common_session=common_session,
@@ -51,9 +50,9 @@ def get_common_dao_access(
     )
 
 def get_user_dao_access(
+    common_engine: common_engine_dep,
+    common_session: Session = Depends(get_common_session),
     current_user: User = Depends(get_current_user),
-    common_engine: Engine = Depends(engine_factory('common')),
-    common_session: Session = Depends(session_factory('common')),
     user_engine: Engine = Depends(yield_engine),
     user_session: Session = Depends(yield_session),
 ) -> UserDaoAccess:

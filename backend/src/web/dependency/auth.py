@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Generator
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.engine import Engine
@@ -13,16 +13,21 @@ from src.app.model.user import User
 
 common_engine_dep = Annotated[Engine, Depends(engine_factory('common'))]
 
+def get_common_session(
+    common_engine: common_engine_dep
+) -> Generator[Session, None, None]:
+    with Session(common_engine) as common_session:
+        yield common_session
+
 def get_init_dao(
     common_engine: common_engine_dep
 ) -> initDao:
     return initDao(common_engine=common_engine)
 
 def get_user_dao(
-    common_engine: common_engine_dep
+    common_session: Session = Depends(get_common_session)
 ) -> userDao:
-    with Session(common_engine) as common_session:
-        return userDao(session=common_session)
+    return userDao(session=common_session)
 
 def get_user_service(
     user_dao: userDao = Depends(get_user_dao),
