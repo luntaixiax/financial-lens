@@ -19,7 +19,6 @@ class ReportingService:
         self.journal_service = journal_service
         self.acct_service = acct_service
         self.setting_service = setting_service
-        self.base_cur = setting_service.get_base_currency()
         
     def get_acct_details(self, tree: dict, balances: dict[str, _AcctFlowAGG], bal_type: bool):
         accts = self.acct_service.get_accounts_by_chart(
@@ -66,6 +65,7 @@ class ReportingService:
         return tree
     
     def get_balance_sheet_tree(self, rep_dt: date) -> dict[AcctType, dict]:
+        base_cur =  self.setting_service.get_base_currency()
         # get balances per acct id
         balances = self.journal_service.get_blsh_balances(rep_dt)
         
@@ -86,7 +86,7 @@ class ReportingService:
             "acct_id": SystemAcctNumber.RETAIN_EARN, # excluding dividend
             "acct_name": "Retained Earnings (Excl. Div)",
             "net_base": re_total,
-            "currency": self.base_cur,
+            "currency": base_cur,
             "net_raw": re_total
         }
         

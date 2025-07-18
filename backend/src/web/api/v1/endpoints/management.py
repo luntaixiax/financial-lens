@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
+from src.app.service.acct import AcctService
 from src.app.model.user import Token, UserCreate, User, UserRegister
 from src.app.service.user import UserService
 from src.app.service.backup import BackupService, InitService
 from src.app.service.auth import AuthService
-from src.web.dependency.service import get_init_service, get_backup_service
-from src.web.dependency.auth import get_auth_service, get_user_service, get_admin_user  
+from src.web.dependency.service import get_acct_service, get_init_service, get_backup_service
+from src.web.dependency.dao import get_user_dao_access
+from src.web.dependency.auth import get_auth_service, get_user_service, get_admin_user , \
+    get_current_user, common_engine_dep, get_common_session
 
 router = APIRouter(prefix="/management", tags=["management"])
 
@@ -27,6 +30,21 @@ def create_admin_user(
         password=user.password
     )
     user_service.create_user(user_)
+    
+@router.post("/create_sample_user")
+def create_sample_user(
+    user_service: UserService = Depends(get_user_service),
+    admin_user: User = Depends(get_admin_user),
+):
+    # should not use injected acct service, which is bind to the login user
+    # instead should 
+    user_ = UserCreate(
+        username='ltxsample',
+        is_admin=False,
+        password='ltxfinlens'
+    )
+    user_service.create_user(user_)
+    
     
 @router.post("/register")
 def register(

@@ -29,13 +29,14 @@ class ExpenseService:
         self.journal_service = journal_service
         self.fx_service = fx_service
         self.setting_service = setting_service
-        self.base_cur = setting_service.get_base_currency()
         
     def create_sample(self):
+        base_cur = self.setting_service.get_base_currency()
+        
         expense1 = Expense(
             expense_id='exp-sample1',
             expense_dt=date(2024, 1, 1),
-            currency=self.base_cur,
+            currency=base_cur,
             expense_items=[
                 ExpenseItem(
                     expense_item_id='sample-exp-item1',
@@ -157,6 +158,8 @@ class ExpenseService:
             
     
     def create_journal_from_expense(self, expense: Expense) -> Journal:
+        base_cur = self.setting_service.get_base_currency()
+        
         self._validate_expense(expense)
         
         # create journal entries
@@ -235,7 +238,7 @@ class ExpenseService:
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
                 acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
-                cur_incexp=self.base_cur,
+                cur_incexp=base_cur,
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
                 description='fx gain' if gain >=0 else 'fx loss'

@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Any, Tuple
 import requests
 from src.app.model.enums import CurType
-from src.app.model.entity import Contact
+from src.app.model.entity import Address, Contact
 from src.app.dao.files import configDao
 from src.app.model.exceptions import NotExistError, OpNotPermittedError
 from src.app.service.files import FileService
@@ -56,6 +56,30 @@ class SettingService:
     def __init__(self, file_service: FileService, config_dao: configDao):
         self.file_service = file_service
         self.config_dao = config_dao
+        
+    def create_sample(self):
+        # set base settings
+        self.set_base_currency(CurType.CAD)
+        self.set_default_tax_rate(0.13)
+        self.set_par_share_price(0.01)
+        # set company
+        self.set_company(
+            name='LTX FinLens Inc.', 
+            contact=Contact(
+                name='Sample Contact', 
+                email='sample@example.com', 
+                phone='123-456-7890',
+                address=Address(
+                    address1='123 Main St',
+                    address2=None,
+                    suite_no=100,
+                    city='Toronto',
+                    state='Ontario',
+                    country='Canada',
+                    postal_code='XYZ ABC'
+                )
+            )
+        )
     
     def set_logo(self, content: str):
         logo = FileWrapper(

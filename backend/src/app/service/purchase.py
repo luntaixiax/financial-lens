@@ -37,7 +37,6 @@ class PurchaseService:
         self.fx_service = fx_service
         self.entity_service = entity_service
         self.setting_service = setting_service
-        self.base_cur = setting_service.get_base_currency()
         
     def create_sample(self):
         invoice = Invoice(
@@ -99,6 +98,7 @@ class PurchaseService:
         self.delete_invoice('inv-purch')
         
     def create_journal_from_invoice(self, invoice: Invoice) -> Journal:
+        base_cur = self.setting_service.get_base_currency()
         self._validate_invoice(invoice)
         
         entries = []
@@ -156,7 +156,7 @@ class PurchaseService:
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
                 acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
-                cur_incexp=self.base_cur,
+                cur_incexp=base_cur,
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
                 description='fx gain' if gain >=0 else 'fx loss'
@@ -226,6 +226,7 @@ class PurchaseService:
         return journal
     
     def create_journal_from_payment(self, payment: Payment) -> Journal:
+        base_cur = self.setting_service.get_base_currency()
         self._validate_payment(payment)
         
         payment_acct = self.acct_service.get_account(payment.payment_acct_id)
@@ -291,7 +292,7 @@ class PurchaseService:
         fx_gain = Entry(
             entry_type=EntryType.CREDIT, # fx gain is credit
             acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
-            cur_incexp=self.base_cur,
+            cur_incexp=base_cur,
             amount=gain, # gain is already expressed in base currency
             amount_base=gain, # gain is already expressed in base currency
             description='fx gain' if gain >=0 else 'fx loss'

@@ -34,45 +34,6 @@ def id_generator(prefix: str, length: int = 8, existing_list: list[str] | None =
         new_id = re.sub(r'[^a-zA-Z0-9]', '', new_id)
     return new_id
 
-
-# def get_settings(user: User) -> dict:
-#     from sqlmodel import Session
-#     from src.app.service.misc import SettingService
-#     from src.app.service.files import FileService
-#     from src.app.dao.files import configDao, fileDao
-#     from src.app.dao.connection import UserDaoAccess, get_engine, get_storage_fs
-    
-#     common_engine = get_engine('common')
-#     user_engine=get_engine(user.user_id)
-    
-#     with Session(common_engine) as common_session, Session(user_engine) as user_session:
-#         dao_access = UserDaoAccess(
-#             common_engine=common_engine,
-#             common_session=common_session,
-#             user_engine=user_engine,
-#             user_session=user_session,
-#             file_fs=get_storage_fs('files'),
-#             backup_fs=get_storage_fs('backup'),
-#             user=user
-#         )
-#         file_dao=fileDao(dao_access=dao_access)
-#         file_service = FileService(file_dao=file_dao)
-#         config_dao = configDao(dao_access=dao_access)
-        
-#         setting_service = SettingService(
-#             file_service=file_service,
-#             config_dao=config_dao
-#         )
-    
-#         settings = {
-#             'preferences': {
-#                 'base_cur': setting_service.get_base_currency(),
-#                 'default_sales_tax_rate': setting_service.get_default_tax_rate(),
-#                 'par_share_price': setting_service.get_par_share_price()
-#             }
-#         }
-#     return settings
-
 @lru_cache()
 def get_amount_precision() -> int:
     return 2 # dollar amount precision will be maxed at this decimal place
