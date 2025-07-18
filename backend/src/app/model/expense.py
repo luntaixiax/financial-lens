@@ -3,7 +3,7 @@ from functools import partial
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.enums import CurType
-from src.app.utils.tools import get_default_tax_rate, id_generator, finround, taxround
+from src.app.utils.tools import id_generator, finround, taxround
 from src.app.utils.base import EnhancedBaseModel
 
 class Merchant(BaseModel):
@@ -34,7 +34,7 @@ class ExpenseItem(EnhancedBaseModel):
         description='Amount pretax, expressed in currency charged'
     )
     tax_rate: float = Field(
-        default_factory=get_default_tax_rate
+        default=0.13
     )
     description: str | None = Field(None)
     

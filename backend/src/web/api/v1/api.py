@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from src.web.api.v1.endpoints import (
-    test,
+    sample,
     misc,
     entity,
     acct,
@@ -17,9 +17,9 @@ from src.web.api.v1.endpoints import (
 )
 
 api_router = APIRouter()
-api_router.include_router(test.router)
-api_router.include_router(settings.router)
 api_router.include_router(management.router)
+api_router.include_router(settings.router)
+api_router.include_router(sample.router)
 api_router.include_router(misc.router)
 api_router.include_router(entity.router)
 api_router.include_router(acct.router)

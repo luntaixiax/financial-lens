@@ -8,10 +8,11 @@ from src.app.model.enums import PropertyTransactionType, PropertyType
 from src.app.dao.orm import PropertyORM, PropertyTransactionORM, infer_integrity_error
 from src.app.model.property import Property, PropertyTransaction, _PropertyPriceBrief
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, FKNoDeleteUpdateError
+from src.app.dao.connection import UserDaoAccess
 
 class propertyDao:
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromProperty(self, journal_id: str, property: Property) -> PropertyORM:
         return PropertyORM(
@@ -44,11 +45,11 @@ class propertyDao:
 
     def add(self, journal_id: str, property: Property):
         property_orm = self.fromProperty(journal_id, property)
-        self.session.add(property_orm)
+        self.dao_access.user_session.add(property_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
         
     def remove(self, property_id: str):
@@ -59,10 +60,10 @@ class propertyDao:
         
         # commit at same time
         try:
-            self.session.exec(sql) # type: ignore
-            self.session.commit()
+            self.dao_access.user_session.exec(sql) # type: ignore
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNoDeleteUpdateError(str(e))
             
     def get(self, property_id: str) -> Tuple[Property, str]:
@@ -72,7 +73,7 @@ class propertyDao:
             PropertyORM.property_id == property_id
         )
         try:
-            property_orm = self.session.exec(sql).one() # get the property
+            property_orm = self.dao_access.user_session.exec(sql).one() # get the property
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -87,7 +88,7 @@ class propertyDao:
             PropertyORM.property_id == property.property_id,
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -108,21 +109,21 @@ class propertyDao:
         p.journal_id = journal_id # update to new journal id
         
         try:
-            self.session.add(p)
-            self.session.commit()
+            self.dao_access.user_session.add(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNotExistError(
                 details=str(e)
             )
         else:
-            self.session.refresh(p) # update p to instantly have new values
+            self.dao_access.user_session.refresh(p) # update p to instantly have new values
                 
     def list_properties(self) -> list[Property]:
         # get property
         sql = select(PropertyORM)
         try:
-            property_orms = self.session.exec(sql).all() # get the property
+            property_orms = self.dao_access.user_session.exec(sql).all() # get the property
         except NoResultFound as e:
             return []
         
@@ -134,8 +135,8 @@ class propertyDao:
                 
                 
 class propertyTransactionDao:
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):  
+        self.dao_access = dao_access
         
     def fromPropertyTrans(self, journal_id: str, property_trans: PropertyTransaction) -> PropertyTransactionORM:
         return PropertyTransactionORM(
@@ -159,11 +160,11 @@ class propertyTransactionDao:
     def add(self, journal_id: str, property_trans: PropertyTransaction):
         property_trans_orm = self.fromPropertyTrans(journal_id, property_trans)
             
-        self.session.add(property_trans_orm)
+        self.dao_access.user_session.add(property_trans_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
         
     def remove(self, trans_id: str):
@@ -174,10 +175,10 @@ class propertyTransactionDao:
             
             # commit at same time
             try:
-                self.session.exec(sql) # type: ignore
-                self.session.commit()
+                self.dao_access.user_session.exec(sql) # type: ignore
+                self.dao_access.user_session.commit()
             except IntegrityError as e:
-                self.session.rollback()
+                self.dao_access.user_session.rollback()
                 raise FKNoDeleteUpdateError(str(e))
             
     def get(self, trans_id: str) -> Tuple[PropertyTransaction, str]:
@@ -188,7 +189,7 @@ class propertyTransactionDao:
             PropertyTransactionORM.trans_id == trans_id
         )
         try:
-            property_trans_orm = self.session.exec(sql).one() # get the property
+            property_trans_orm = self.dao_access.user_session.exec(sql).one() # get the property
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -203,7 +204,7 @@ class propertyTransactionDao:
             PropertyTransactionORM.trans_id == property_trans.trans_id,
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -220,15 +221,15 @@ class propertyTransactionDao:
         p.journal_id = journal_id # update to new journal id
         
         try:
-            self.session.add(p)
-            self.session.commit()
+            self.dao_access.user_session.add(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNotExistError(
                 details=str(e)
             )
         else:
-            self.session.refresh(p) # update p to instantly have new values
+            self.dao_access.user_session.refresh(p) # update p to instantly have new values
                 
     def get_acc_stat(self, property_id: str, rep_dt: date) -> _PropertyPriceBrief:
         prop_summary = (
@@ -239,7 +240,7 @@ class propertyTransactionDao:
             )
         )
         try:
-            prop = self.session.exec(prop_summary).one()
+            prop = self.dao_access.user_session.exec(prop_summary).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -258,12 +259,12 @@ class propertyTransactionDao:
         )
 
         try:
-            result = self.session.exec(flow_summary).all()
+            result = self.dao_access.user_session.exec(flow_summary).all()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
         
-        prop = propertyDao(self.session).toProperty(prop)
+        prop = propertyDao(self.dao_access).toProperty(prop)
         p = _PropertyPriceBrief(pur_cost=prop.pur_cost) # type: ignore
         if len(result) > 0:
             attr_mapping = {
@@ -283,7 +284,7 @@ class propertyTransactionDao:
             PropertyTransactionORM.property_id == property_id
         )
         try:
-            property_trans_orms = self.session.exec(sql).all() # get the property
+            property_trans_orms = self.dao_access.user_session.exec(sql).all() # get the property
         except NoResultFound as e:
             return []
         

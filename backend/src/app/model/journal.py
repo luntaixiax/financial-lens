@@ -1,5 +1,3 @@
-
-
 from datetime import date
 from functools import partial
 import math
@@ -7,7 +5,7 @@ from typing import Tuple
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
-from src.app.utils.tools import get_base_cur, id_generator
+from src.app.utils.tools import id_generator
 from src.app.utils.base import EnhancedBaseModel
 
 class Entry(EnhancedBaseModel):
@@ -36,11 +34,6 @@ class Entry(EnhancedBaseModel):
         else:
             assert self.cur_incexp is not None, \
                 f"Acct type is {self.acct.acct_type}, must specify cur_incexp"
-                
-            # validate for inc/exp entry, if base currency is used, amount must equal
-            if self.cur_incexp == get_base_cur():
-                assert self.amount == self.amount_base, \
-                f"Acct Currency is base currency, Amount {self.amount} not equal to base amount {self.amount_base}"
         return self
 
 class _AcctFlowAGG(EnhancedBaseModel):

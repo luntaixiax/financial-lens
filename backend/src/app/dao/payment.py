@@ -7,12 +7,13 @@ from src.app.model.enums import CurType, EntityType, EntryType
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError
 from src.app.dao.orm import AcctORM, EntryORM, InvoiceORM, PaymentItemORM, PaymentORM, infer_integrity_error
 from src.app.model.payment import Payment, PaymentItem, _PaymentBrief
+from src.app.dao.connection import UserDaoAccess
 
 
 class paymentDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromPaymentItem(self, payment_id: str, payment_item: PaymentItem) -> PaymentItemORM:
         return PaymentItemORM(
@@ -63,11 +64,11 @@ class paymentDao:
     def add(self, journal_id: str, payment: Payment):
         # add payment first
         payment_orm = self.fromPayment(journal_id=journal_id, payment=payment)
-        self.session.add(payment_orm)
+        self.dao_access.user_session.add(payment_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise AlreadyExistError(details=str(e))
         
         # add individual payment items
@@ -76,14 +77,14 @@ class paymentDao:
                 payment_id=payment.payment_id,
                 payment_item=payment_item
             )
-            self.session.add(payment_item_orm)
+            self.dao_access.user_session.add(payment_item_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             # remove payment as well
-            self.session.delete(payment_orm)
-            self.session.commit()
+            self.dao_access.user_session.delete(payment_orm)
+            self.dao_access.user_session.commit()
             raise infer_integrity_error(e, during_creation=True)
 
         
@@ -93,7 +94,7 @@ class paymentDao:
             PaymentItemORM.payment_id == payment_id
         )
         try:
-            payment_item_orms = self.session.exec(sql).all()
+            payment_item_orms = self.dao_access.user_session.exec(sql).all()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         # get payment
@@ -101,7 +102,7 @@ class paymentDao:
             PaymentORM.payment_id == payment_id
         )
         try:
-            payment_orm = self.session.exec(sql).one() # get the payment
+            payment_orm = self.dao_access.user_session.exec(sql).one() # get the payment
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -118,23 +119,23 @@ class paymentDao:
         sql = delete(PaymentItemORM).where(
             PaymentItemORM.payment_id == payment_id
         )
-        self.session.exec(sql) # type: ignore
+        self.dao_access.user_session.exec(sql) # type: ignore
         # remove payment
         sql = select(PaymentORM).where(
             PaymentORM.payment_id == payment_id
         )
         
         try:
-            p = self.session.exec(sql).one() # get the payment
+            p = self.dao_access.user_session.exec(sql).one() # get the payment
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
         # commit at same time
         try:
-            self.session.delete(p)
-            self.session.commit()
+            self.dao_access.user_session.delete(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=False)
             
     def update(self, journal_id: str, payment: Payment):
@@ -143,7 +144,7 @@ class paymentDao:
             PaymentORM.payment_id == payment.payment_id,
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -163,21 +164,21 @@ class paymentDao:
             p.journal_id = journal_id # update to new journal id
             
             try:
-                self.session.add(p)
-                self.session.commit()
+                self.dao_access.user_session.add(p)
+                self.dao_access.user_session.commit()
             except IntegrityError as e:
-                self.session.rollback()
+                self.dao_access.user_session.rollback()
                 raise FKNotExistError(
                     details=str(e)
                 )
             else:
-                self.session.refresh(p) # update p to instantly have new values
+                self.dao_access.user_session.refresh(p) # update p to instantly have new values
     
         # remove existing payment items
         sql = delete(PaymentItemORM).where(
             PaymentItemORM.payment_id == payment.payment_id
         )
-        self.session.exec(sql) # type: ignore
+        self.dao_access.user_session.exec(sql) # type: ignore
         
         # add new payment items
         # add individual payment items
@@ -186,11 +187,11 @@ class paymentDao:
                 payment_id=payment.payment_id,
                 payment_item=payment_item
             )
-            self.session.add(payment_item_orm)
+            self.dao_access.user_session.add(payment_item_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback() # will rollback both item removal and new item add
+            self.dao_access.user_session.rollback() # will rollback both item removal and new item add
             raise FKNotExistError(
                 details=str(e)
             )
@@ -335,7 +336,7 @@ class paymentDao:
         )
         
         try:
-            payments = self.session.exec(joined).all()
+            payments = self.dao_access.user_session.exec(joined).all()
         except NoResultFound as e:
             return []
             

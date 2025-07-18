@@ -5,11 +5,12 @@ from src.app.model.enums import EntityType
 from src.app.dao.orm import ContactORM, EntityORM, EntityORM, infer_integrity_error
 from src.app.model.entity import _ContactBrief, _CustomerBrief, _SupplierBrief, Address, Contact, Customer, Supplier
 from src.app.model.exceptions import AlreadyExistError, NotExistError, FKNoDeleteUpdateError
+from src.app.dao.connection import UserDaoAccess
 
 class contactDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromContact(self, contact: Contact) -> ContactORM:
         return ContactORM(
@@ -33,26 +34,26 @@ class contactDao:
         
     def add(self, contact: Contact):
         contact_orm = self.fromContact(contact)
-        self.session.add(contact_orm)
+        self.dao_access.user_session.add(contact_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise AlreadyExistError(details=str(e))
         
         
     def remove(self, contact_id: str):
         sql = select(ContactORM).where(ContactORM.contact_id == contact_id)
         try:
-            p = self.session.exec(sql).one() # get the ccount
+            p = self.dao_access.user_session.exec(sql).one() # get the ccount
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
         try:
-            self.session.delete(p)
-            self.session.commit()
+            self.dao_access.user_session.delete(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNoDeleteUpdateError(details=str(e))
         
     def update(self, contact: Contact):
@@ -62,7 +63,7 @@ class contactDao:
             ContactORM.contact_id == contact_orm.contact_id
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -73,9 +74,9 @@ class contactDao:
             p.phone = contact_orm.phone
             p.address = contact_orm.address
             
-            self.session.add(p)
-            self.session.commit()
-            self.session.refresh(p) # update p to instantly have new values
+            self.dao_access.user_session.add(p)
+            self.dao_access.user_session.commit()
+            self.dao_access.user_session.refresh(p) # update p to instantly have new values
                 
 
     def get(self, contact_id: str) -> Contact:
@@ -83,22 +84,22 @@ class contactDao:
             ContactORM.contact_id == contact_id
         )
         try:
-            p = self.session.exec(sql).one() # get the contact
+            p = self.dao_access.user_session.exec(sql).one() # get the contact
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         return self.toContact(p)
     
     def list_contact(self) -> list[_ContactBrief]:
         sql = select(ContactORM.contact_id, ContactORM.name)
-        contacts = self.session.exec(sql).all()
+        contacts = self.dao_access.user_session.exec(sql).all()
 
         return [_ContactBrief(contact_id=c.contact_id, name=c.name) for c in contacts]
     
 
 class customerDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
 
     def fromCustomer(self, customer: Customer) -> EntityORM:
         return EntityORM(
@@ -123,11 +124,11 @@ class customerDao:
         
     def add(self, customer: Customer):
         customer_orm = self.fromCustomer(customer)
-        self.session.add(customer_orm)
+        self.dao_access.user_session.add(customer_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
             
     def remove(self, cust_id: str):
@@ -136,15 +137,15 @@ class customerDao:
             EntityORM.entity_type == EntityType.CUSTOMER
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
 
         try:
-            self.session.delete(p)
-            self.session.commit()
+            self.dao_access.user_session.delete(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNoDeleteUpdateError(details=str(e))
             
     def update(self, customer: Customer):
@@ -155,7 +156,7 @@ class customerDao:
             EntityORM.entity_type == EntityType.CUSTOMER
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -167,9 +168,9 @@ class customerDao:
             p.ship_same_as_bill = customer_orm.ship_same_as_bill
             p.ship_contact_id = customer_orm.ship_contact_id
             
-            self.session.add(p)
-            self.session.commit()
-            self.session.refresh(p) # update p to instantly have new values
+            self.dao_access.user_session.add(p)
+            self.dao_access.user_session.commit()
+            self.dao_access.user_session.refresh(p) # update p to instantly have new values
             
     def get(self, cust_id: str, bill_contact: Contact, ship_contact: Contact | None) -> Customer:
         sql = select(EntityORM).where(
@@ -177,7 +178,7 @@ class customerDao:
             EntityORM.entity_type == EntityType.CUSTOMER
         )
         try:
-            p = self.session.exec(sql).one() # get the customer
+            p = self.dao_access.user_session.exec(sql).one() # get the customer
         except NoResultFound as e:
             raise NotExistError(details=str(e))
             
@@ -190,7 +191,7 @@ class customerDao:
             EntityORM.entity_type == EntityType.CUSTOMER
         )
         try:
-            p = self.session.exec(sql).one() # get the customer
+            p = self.dao_access.user_session.exec(sql).one() # get the customer
         except NoResultFound as e:
             raise NotExistError(details=str(e))
     
@@ -202,7 +203,7 @@ class customerDao:
             .where(EntityORM.entity_type == EntityType.CUSTOMER)
         )
         try:
-            customers = self.session.exec(sql).all()
+            customers = self.dao_access.user_session.exec(sql).all()
         except NoResultFound as e:
             return []
 
@@ -218,8 +219,8 @@ class customerDao:
     
 class supplierDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromSupplier(self, supplier: Supplier) -> EntityORM:
         return EntityORM(
@@ -244,11 +245,11 @@ class supplierDao:
             
     def add(self, supplier: Supplier):
         supplier_orm = self.fromSupplier(supplier)
-        self.session.add(supplier_orm)
+        self.dao_access.user_session.add(supplier_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
             
     def remove(self, supplier_id: str):
@@ -257,15 +258,15 @@ class supplierDao:
             EntityORM.entity_type == EntityType.SUPPLIER
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))    
     
         try:
-            self.session.delete(p)
-            self.session.commit()
+            self.dao_access.user_session.delete(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNoDeleteUpdateError(details=str(e))
             
     def update(self, supplier: Supplier):
@@ -275,7 +276,7 @@ class supplierDao:
             EntityORM.entity_type == EntityType.SUPPLIER
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -287,9 +288,9 @@ class supplierDao:
             p.ship_same_as_bill = supplier_orm.ship_same_as_bill
             p.ship_contact_id = supplier_orm.ship_contact_id
             
-            self.session.add(p)
-            self.session.commit()
-            self.session.refresh(p) # update p to instantly have new values
+            self.dao_access.user_session.add(p)
+            self.dao_access.user_session.commit()
+            self.dao_access.user_session.refresh(p) # update p to instantly have new values
             
     def get(self, supplier_id: str, bill_contact: Contact, ship_contact: Contact | None) -> Supplier:
         sql = select(EntityORM).where(
@@ -297,7 +298,7 @@ class supplierDao:
             EntityORM.entity_type == EntityType.SUPPLIER
         )
         try:
-            p = self.session.exec(sql).one() # get the supplier
+            p = self.dao_access.user_session.exec(sql).one() # get the supplier
         except NoResultFound as e:
             raise NotExistError(details=str(e))
             
@@ -310,7 +311,7 @@ class supplierDao:
             EntityORM.entity_type == EntityType.SUPPLIER
         )
         try:
-            p = self.session.exec(sql).one() # get the supplier
+            p = self.dao_access.user_session.exec(sql).one() # get the supplier
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -322,7 +323,7 @@ class supplierDao:
             .where(EntityORM.entity_type == EntityType.SUPPLIER)
         )
         try:
-            suppliers = self.session.exec(sql).all()
+            suppliers = self.dao_access.user_session.exec(sql).all()
         except NoResultFound as e:
             return []
 

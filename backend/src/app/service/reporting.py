@@ -1,18 +1,24 @@
 
 from datetime import date
-from src.app.utils.tools import get_base_cur
 from src.app.model.const import SystemAcctNumber
 from src.app.model.journal import _AcctFlowAGG
 from src.app.service.journal import JournalService
 from src.app.service.acct import AcctService
 from src.app.model.enums import AcctType
+from src.app.service.settings import ConfigService
 
 
 class ReportingService:
     
-    def __init__(self, journal_service: JournalService, acct_service: AcctService):
+    def __init__(
+        self, 
+        journal_service: JournalService, 
+        acct_service: AcctService, 
+        setting_service: ConfigService
+    ):
         self.journal_service = journal_service
         self.acct_service = acct_service
+        self.setting_service = setting_service
         
     def get_acct_details(self, tree: dict, balances: dict[str, _AcctFlowAGG], bal_type: bool):
         accts = self.acct_service.get_accounts_by_chart(
@@ -59,6 +65,7 @@ class ReportingService:
         return tree
     
     def get_balance_sheet_tree(self, rep_dt: date) -> dict[AcctType, dict]:
+        base_cur =  self.setting_service.get_base_currency()
         # get balances per acct id
         balances = self.journal_service.get_blsh_balances(rep_dt)
         
@@ -79,7 +86,7 @@ class ReportingService:
             "acct_id": SystemAcctNumber.RETAIN_EARN, # excluding dividend
             "acct_name": "Retained Earnings (Excl. Div)",
             "net_base": re_total,
-            "currency": get_base_cur(),
+            "currency": base_cur,
             "net_raw": re_total
         }
         

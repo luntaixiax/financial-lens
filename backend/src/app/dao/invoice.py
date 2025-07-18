@@ -7,12 +7,13 @@ from src.app.model.invoice import _InvoiceBalance, _InvoiceBrief, InvoiceItem, G
 from src.app.dao.orm import EntityORM, InvoiceItemORM, GeneralInvoiceItemORM, InvoiceORM, ItemORM, EntryORM, \
     PaymentItemORM, PaymentORM, infer_integrity_error
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, FKNoDeleteUpdateError
+from src.app.dao.connection import UserDaoAccess
 
 
 class itemDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromItem(self, item: Item) -> ItemORM:
         return ItemORM.model_validate(
@@ -21,31 +22,31 @@ class itemDao:
         
     def toItem(self, item_orm: ItemORM) -> Item:
         return Item.model_validate(
-            item_orm.model_dump()
+            item_orm.model_dump()   
         )
         
     def add(self, item: Item):
         item_orm = self.fromItem(item)
-        self.session.add(item_orm)
+        self.dao_access.user_session.add(item_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise AlreadyExistError(details=str(e))
         
         
     def remove(self, item_id: str):
         sql = select(ItemORM).where(ItemORM.item_id == item_id)
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
         try:
-            self.session.delete(p)
-            self.session.commit()
+            self.dao_access.user_session.delete(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNoDeleteUpdateError(details=str(e))
         
         
@@ -55,7 +56,7 @@ class itemDao:
             ItemORM.item_id == item_orm.item_id
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -68,9 +69,9 @@ class itemDao:
         p.currency = item_orm.currency
         p.default_acct_id = item_orm.default_acct_id # TODO: only income/expense account
         
-        self.session.add(p)
-        self.session.commit()
-        self.session.refresh(p) # update p to instantly have new values
+        self.dao_access.user_session.add(p)
+        self.dao_access.user_session.commit()
+        self.dao_access.user_session.refresh(p) # update p to instantly have new values
 
 
     def get(self, item_id: str) -> Item:
@@ -78,7 +79,7 @@ class itemDao:
             ItemORM.item_id == item_id
         )
         try:
-            p = self.session.exec(sql).one() # get the item
+            p = self.dao_access.user_session.exec(sql).one() # get the item
         except NoResultFound as e:
             raise NotExistError(details=str(e))
             
@@ -87,15 +88,15 @@ class itemDao:
 
     def list_item(self, entity_type: EntityType) -> list[Item]:
         sql = select(ItemORM).where(ItemORM.entity_type == entity_type)
-        item_orms = self.session.exec(sql).all()
+        item_orms = self.dao_access.user_session.exec(sql).all()
         
         return [self.toItem(item_orm) for item_orm in item_orms]
 
 
 class invoiceDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromInvoiceItem(self, invoice_id: str, invoice_item: InvoiceItem) -> InvoiceItemORM:
         return InvoiceItemORM(
@@ -125,7 +126,7 @@ class invoiceDao:
     def toInvoiceItem(self, invoice_item_orm: InvoiceItemORM) -> InvoiceItem:
         return InvoiceItem(
             invoice_item_id=invoice_item_orm.invoice_item_id,
-            item=itemDao(self.session).get(item_id=invoice_item_orm.item_id),
+            item=itemDao(self.dao_access).get(item_id=invoice_item_orm.item_id),
             quantity=invoice_item_orm.quantity,
             acct_id=invoice_item_orm.acct_id,
             tax_rate=invoice_item_orm.tax_rate,
@@ -191,11 +192,11 @@ class invoiceDao:
         # add invoice first
         invoice_orm = self.fromInvoice(journal_id, invoice)
             
-        self.session.add(invoice_orm)
+        self.dao_access.user_session.add(invoice_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
         
         # add invoice items
@@ -204,7 +205,7 @@ class invoiceDao:
                 invoice_id=invoice.invoice_id,
                 invoice_item=invoice_item
             )
-            self.session.add(invoice_item_orm)
+            self.dao_access.user_session.add(invoice_item_orm)
             
         # add general invoice items
         for ginvoice_item in invoice.ginvoice_items:
@@ -212,13 +213,13 @@ class invoiceDao:
                 invoice_id=invoice.invoice_id,
                 general_invoice_item=ginvoice_item
             )
-            self.session.add(general_invoice_item_orm)
+            self.dao_access.user_session.add(general_invoice_item_orm)
         
         # commit all items
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
             
     def remove(self, invoice_id: str):
@@ -228,23 +229,23 @@ class invoiceDao:
             sql = delete(InvoiceItemORM).where(
                 InvoiceItemORM.invoice_id == invoice_id
             )
-            self.session.exec(sql) # type: ignore
+            self.dao_access.user_session.exec(sql) # type: ignore
             # remove general invoice items next
             sql = delete(GeneralInvoiceItemORM).where(
                 GeneralInvoiceItemORM.invoice_id == invoice_id
             )
-            self.session.exec(sql) # type: ignore
+            self.dao_access.user_session.exec(sql) # type: ignore
             
             # remove invoice
             sql = delete(InvoiceORM).where(
                 InvoiceORM.invoice_id == invoice_id
             )
-            self.session.exec(sql) # type: ignore
+            self.dao_access.user_session.exec(sql) # type: ignore
             
             # commit at same time
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=False)
 
             
@@ -255,7 +256,7 @@ class invoiceDao:
             InvoiceORM.invoice_id == invoice.invoice_id,
         )
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
 
@@ -277,21 +278,21 @@ class invoiceDao:
         p.note = invoice_orm.note
         
         try:
-            self.session.add(p)
-            self.session.commit()
+            self.dao_access.user_session.add(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNotExistError(
                 details=str(e)
             )
         else:
-            self.session.refresh(p) # update p to instantly have new values
+            self.dao_access.user_session.refresh(p) # update p to instantly have new values
             
         # remove existing invoice items
         sql = delete(InvoiceItemORM).where(
             InvoiceItemORM.invoice_id == invoice.invoice_id
         )
-        self.session.exec(sql) # type: ignore
+        self.dao_access.user_session.exec(sql) # type: ignore
         
         # add new invoice items
         # add individual invoice items
@@ -300,11 +301,11 @@ class invoiceDao:
                 invoice_id=invoice.invoice_id,
                 invoice_item=invoice_item
             )
-            self.session.add(invoice_item_orm)
+            self.dao_access.user_session.add(invoice_item_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback() # will rollback both item removal and new item add
+            self.dao_access.user_session.rollback() # will rollback both item removal and new item add
             raise FKNotExistError(
                 details=str(e)
             )
@@ -313,7 +314,7 @@ class invoiceDao:
         sql = delete(GeneralInvoiceItemORM).where(
             GeneralInvoiceItemORM.invoice_id == invoice.invoice_id
         )
-        self.session.exec(sql) # type: ignore
+        self.dao_access.user_session.exec(sql) # type: ignore
         # add new general invoice items
         # add individual invoice items
         for ginvoice_item in invoice.ginvoice_items:
@@ -321,11 +322,11 @@ class invoiceDao:
                 invoice_id=invoice.invoice_id,
                 general_invoice_item=ginvoice_item
             )
-            self.session.add(general_invoice_item_orm)
+            self.dao_access.user_session.add(general_invoice_item_orm)
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback() # will rollback both item removal and new item add
+            self.dao_access.user_session.rollback() # will rollback both item removal and new item add
             raise FKNotExistError(
                 details=str(e)
             )
@@ -337,7 +338,7 @@ class invoiceDao:
             InvoiceItemORM.invoice_id == invoice_id
         )
         try:
-            invoice_item_orms = self.session.exec(sql).all()
+            invoice_item_orms = self.dao_access.user_session.exec(sql).all()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -346,7 +347,7 @@ class invoiceDao:
             GeneralInvoiceItemORM.invoice_id == invoice_id
         )
         try:
-            ginvoice_item_orms = self.session.exec(sql).all()
+            ginvoice_item_orms = self.dao_access.user_session.exec(sql).all()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
 
@@ -355,7 +356,7 @@ class invoiceDao:
             InvoiceORM.invoice_id == invoice_id
         )
         try:
-            invoice_orm = self.session.exec(sql).one() # get the invoice
+            invoice_orm = self.dao_access.user_session.exec(sql).one() # get the invoice
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -517,7 +518,7 @@ class invoiceDao:
         )
         
         try:
-            invoices = self.session.exec(invoice_joined).all()
+            invoices = self.dao_access.user_session.exec(invoice_joined).all()
         except NoResultFound as e:
             return []
             
@@ -603,7 +604,7 @@ class invoiceDao:
         )
         
         try:
-            joined = self.session.exec(invoice_joined).one()
+            joined = self.dao_access.user_session.exec(invoice_joined).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
             
@@ -701,7 +702,7 @@ class invoiceDao:
         )
         
         try:
-            joined = self.session.exec(invoice_joined).all()
+            joined = self.dao_access.user_session.exec(invoice_joined).all()
         except NoResultFound as e:
             return []
             

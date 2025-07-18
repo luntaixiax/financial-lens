@@ -3,7 +3,8 @@ import os
 from typing import Tuple
 import requests
 
-from utils.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError, UnprocessableEntityError
+from utils.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, \
+    NotMatchWithSystemError, OpNotPermittedError, UnprocessableEntityError, PermissionDeniedError
 
 SERVE_APP_HOST = os.environ.get('SERVE_APP_HOST', 'localhost')
 SERVE_APP_PORT = os.environ.get('SERVE_APP_PORT', 8181)
@@ -35,6 +36,8 @@ def handle_error(f):
             elif r.status_code == 422:
                 # unprocess entity
                 raise UnprocessableEntityError()
+            elif r.status_code == 403:
+                raise PermissionDeniedError(**js)
             else:
                 raise
 

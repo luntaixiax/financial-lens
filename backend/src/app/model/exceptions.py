@@ -52,4 +52,10 @@ class OpNotPermittedError(SystemError):
         super().__init__(message)
         self.message = message
         self.details = details
+        
+class PermissionDeniedError(PermissionError):
+    def __init__(self, message: str = "Permission denied", details: str = "N/A"):
+        super().__init__(message)
+        self.message = message
+        self.details = details
     

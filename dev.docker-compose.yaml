@@ -12,7 +12,6 @@ services:
       MYSQL_ROOT_PASSWORD_FILE: "/run/secrets/mysql_root_password"
       MYSQL_USER: "luntaixia"
       MYSQL_PASSWORD: "luntaixia"
-      MYSQL_DATABASE: "finlens"
     secrets:
       - mysql_root_password
     ports:

@@ -1,11 +1,9 @@
 from datetime import date
 from fastapi import APIRouter, Depends, File, UploadFile
-from pydantic import BaseModel
-from src.app.service.backup import BackupService
 from src.app.model.exceptions import AlreadyExistError
 from src.app.model.enums import CurType
 from src.app.service.fx import FxService
-from src.app.service.misc import GeoService, SettingService
+from src.app.service.misc import GeoService
 from src.app.service.files import FileService
 from src.app.model.misc import _CountryBrief, _StateBrief, FileWrapper
 from src.web.dependency.service import get_fx_service, get_file_service

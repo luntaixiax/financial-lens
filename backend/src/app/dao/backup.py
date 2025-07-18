@@ -1,15 +1,16 @@
 import tempfile
 from pathlib import Path
-from s3fs import S3FileSystem
+from fsspec import AbstractFileSystem
 import sqlalchemy
 from sqlalchemy import MetaData, JSON, column, event
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import IntegrityError
 from sqlite3 import Connection as SQLite3Connection
-from sqlalchemy_utils import create_database, database_exists
-from sqlmodel import Session, select, delete
+from sqlalchemy_utils import database_exists, create_database, drop_database
+from sqlmodel import Session
+from src.app.dao.user import userDao
+from src.app.dao.connection import CommonDaoAccess, UserDaoAccess, get_engine
 from src.app.dao.orm import get_class_by_tablename, SQLModelWithSort
-from src.app.utils.tools import get_file_root
+from src.app.utils.tools import get_files_bucket, get_backup_bucket
 
 def drop_tables(engine: Engine):
     metadata = MetaData()
@@ -24,13 +25,28 @@ def drop_tables(engine: Engine):
             table_cls = get_class_by_tablename(tbl.name)
             table_cls.__table__.drop(bind=engine) # type: ignore
             
-def migrate_database(src_engine: Engine, tgt_engine: Engine):
+def migrate_database(src_engine: Engine, tgt_engine: Engine, collection: str):
+    
+    if not database_exists(src_engine.url):
+        # return if source database not exist
+        return
+    
+    # if target database not exist, create it
+    if database_exists(tgt_engine.url):
+        # drop all existing tables
+        drop_database(tgt_engine.url)
+    
+    create_database(tgt_engine.url)
+
 
     src_metadata = MetaData()
     src_metadata.reflect(bind=src_engine)
     
     # create table schema in target engine
-    SQLModelWithSort.metadata.create_all(tgt_engine)
+    SQLModelWithSort.create_table_within_collection(
+        collection=collection,
+        engine=tgt_engine
+    )
     
     # open connection to backup database
     with Session(tgt_engine) as s:
@@ -55,137 +71,273 @@ def migrate_database(src_engine: Engine, tgt_engine: Engine):
                     s.exec(stmt.values(row)) # type: ignore
                     s.commit()
 
-class dataDao:
-    
-    def __init__(self, primary_engine: Engine, backup_fs: S3FileSystem, file_fs: S3FileSystem):
-        self.primary_engine = primary_engine
-        self.backup_fs = backup_fs
-        self.file_fs = file_fs
+def general_restore_db(bk_fs: AbstractFileSystem, bk_db_fname: str, bpath: str, tgt_engine: Engine, collection: str):
         
-    def init_db(self):
-        if not database_exists(self.primary_engine.url):
-            create_database(self.primary_engine.url)
-        SQLModelWithSort.metadata.create_all(self.primary_engine)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        cur_path = (Path(tmpdirname) / bk_db_fname).as_posix()
+        # download the file to local first
+        bk_fs.get_file(
+            rpath=(Path(bpath) / bk_db_fname).as_posix(),
+            lpath=cur_path
+        )
+        
+        src_engine = sqlalchemy.create_engine(f'sqlite:///{cur_path}')
+        # copy data from source to target
+        migrate_database(
+            src_engine = src_engine,
+            tgt_engine = tgt_engine,
+            collection=collection
+        )
+            
+def general_backup_db(bk_fs: AbstractFileSystem, bk_db_fname: str, bpath: str, src_engine: Engine, collection: str):
+    bk_fs.mkdirs(bpath, exist_ok=True)
     
-    @classmethod
-    def get_backup_folder_path(cls, backup_id: str) -> str:
-        return (Path(get_file_root('backup')) / backup_id).as_posix()
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        
+        # create sqlite3 database
+        @event.listens_for(Engine, "connect")
+        def _set_sqlite_pragma(dbapi_connection, connection_record):
+            if isinstance(dbapi_connection, SQLite3Connection):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA foreign_keys=ON;")
+                cursor.close()
+        
+        # setup sqlite database with all tables
+        cur_path = (Path(tmpdirname) / bk_db_fname).as_posix()
+        tgt_engine = sqlalchemy.create_engine(f'sqlite:///{cur_path}')
+                        
+        migrate_database(
+            src_engine = src_engine,
+            tgt_engine = tgt_engine,
+            collection=collection
+        )
+        
+        # upload backup file to backup server
+        bk_fs.put_file(
+            lpath=cur_path,
+            rpath=(Path(bpath) / bk_db_fname).as_posix()
+        )
+
+def general_backup_files(spath: str, file_fs: AbstractFileSystem, bpath: str, bk_fs: AbstractFileSystem):
+    """Backup files from storage server to backup server
+    Args:
+        spath: folder root path on storage server that contains the files to backup
+        file_fs: file system on storage server
+        bpath: folderroot path on backup server that will paste the files (actual file will go under bpath/bk_files)
+        bk_fs: file system on backup server
+    """
+    # root on backup server
+    bk_root = Path(bpath) / 'bk_files'
+    bk_fs.mkdirs(bk_root, exist_ok=True)
+    
+    # root on storage server
+    #file_fs.mkdirs(spath, exist_ok=True)
+    
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # download files from file storage to local temp dir first
+        if file_fs.exists(spath):
+            file_fs.get(
+                rpath=spath,
+                lpath=Path(tmpdirname) / 'bk_files',
+                recursive=True
+            )
+            
+            # upload files to backup server
+            bk_fs.put(
+                lpath=Path(tmpdirname) / 'bk_files',
+                rpath=bk_root.as_posix(),
+                recursive=True
+            )
+        
+def general_restore_files(spath: str, file_fs: AbstractFileSystem, bpath: str, bk_fs: AbstractFileSystem):
+    """Restore files from backup server to storage server
+    Args:
+        spath: folder root path on storage server that contains the files to backup
+        file_fs: file system on storage server
+        bpath: folderroot path on backup server that will paste the files (actual file will go under bpath/bk_files)
+        bk_fs: file system on backup server
+    """
+    bk_root = Path(bpath) / 'bk_files'
+    file_fs.mkdirs(spath, exist_ok=True)
+    
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        if bk_fs.exists(bk_root):
+            # download from backup storage to local first
+            bk_fs.get(
+                rpath=bk_root.as_posix(),
+                lpath=Path(tmpdirname) / 'bk_files', # for local FS, need to be Path to work properly, but for some db, may need posix string
+                recursive=True
+            )
+            
+            # upload to current storage
+            file_fs.put(
+                lpath=Path(tmpdirname) / 'bk_files',
+                rpath=spath,
+                recursive=True
+            )
+
+class backupDao:
+    
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
+    
+    def get_backup_folder_path(self, backup_id: str) -> str:
+        return (Path(get_backup_bucket()) / self.dao_access.user.user_id / 'backup' / backup_id).as_posix()
     
     @classmethod
     def get_backup_db_fname(cls) -> str:
         return 'backup-data.db'
     
     def list_backup_ids(self) -> list[str]:
-        bk_fs = self.backup_fs
-        file_root = Path(get_file_root('backup'))
-        files = bk_fs.ls(file_root, detail=True)
+        bk_fs = self.dao_access.backup_fs
+        file_root = Path(get_backup_bucket()) / self.dao_access.user.user_id / 'backup'
+        try:
+            files = bk_fs.ls(file_root, detail=True)
+        except FileNotFoundError:
+            return []
+        
         ids = []
         for file in files:
             if file['type'] == 'directory':
-                ids.append(file['Key'].split('/')[-1])
+                # S3FS use `Key` and MemoryFS use `name`
+                ids.append(file.get('Key', file.get('name')).split('/')[-1])
         return ids
     
     def backup_files(self, backup_id: str):
-        # backup all files, e.g., receipts
-        # create backup folder
-        bk_root = Path(self.get_backup_folder_path(backup_id)) / 'bk_files'
-        bk_fs = self.backup_fs
-        bk_fs.mkdirs(bk_root, exist_ok=True)
         
-        fs = self.file_fs
-        
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            # download files from fs to local temp dir first
-            fs.get(
-                rpath=get_file_root('files'),
-                lpath=Path(tmpdirname) / 'bk_files',
-                recursive=True
-            )
+        general_backup_files(
+            spath=(Path(get_files_bucket()) / self.dao_access.user.user_id / 'files').as_posix(),
+            file_fs=self.dao_access.file_fs,
+            bpath=(Path(self.get_backup_folder_path(backup_id))).as_posix(),
+            bk_fs=self.dao_access.backup_fs
+        )
+    
+    def backup_database(self, backup_id: str):
+        # read all data from src database and save to a sqlite database as backup
+        general_backup_db(
+            bk_fs=self.dao_access.backup_fs,
+            bpath=self.get_backup_folder_path(backup_id),
+            bk_db_fname=self.get_backup_db_fname(),
+            src_engine=self.dao_access.user_engine,
+            collection='user_specific',
+        )
             
-            # upload files to backup folder
-            bk_fs.put(
-                lpath=Path(tmpdirname) / 'bk_files',
-                rpath=bk_root.as_posix(),
-                recursive=True
+    def restore_files(self, backup_id: str):
+        general_restore_files(
+            spath=(Path(get_files_bucket()) / self.dao_access.user.user_id / 'files').as_posix(),
+            file_fs=self.dao_access.file_fs,
+            bpath=(Path(self.get_backup_folder_path(backup_id))).as_posix(),
+            bk_fs=self.dao_access.backup_fs
+        )
+            
+            
+    def restore_database(self, backup_id: str):
+        # read all data from backup sqlite database (source) and overwrite the target database
+        general_restore_db(
+            bk_fs=self.dao_access.backup_fs,
+            bpath=self.get_backup_folder_path(backup_id),
+            bk_db_fname=self.get_backup_db_fname(),
+            tgt_engine=self.dao_access.user_engine,
+            collection='user_specific',
+        )        
+
+            
+class adminBackupDao:
+    # only backup admin database, not user specific database
+    
+    def __init__(self, dao_access: CommonDaoAccess):
+        self.dao_access = dao_access
+        
+    def get_backup_folder_path(self, backup_id: str) -> str:
+        return (Path(get_backup_bucket()) / '_common' / 'backup' / backup_id).as_posix()
+    
+    @classmethod
+    def get_backup_db_fname(cls) -> str:
+        return 'backup-common.db'
+        
+    def list_backup_ids(self) -> list[str]:
+        bk_fs = self.dao_access.backup_fs
+        file_root = Path(get_backup_bucket()) / '_common' / 'backup'
+        try:
+            files = bk_fs.ls(file_root, detail=True)
+        except FileNotFoundError:
+            return []
+        
+        ids = []
+        for file in files:
+            if file['type'] == 'directory':
+                # S3FS use `Key` and MemoryFS use `name`
+                ids.append(file.get('Key', file.get('name')).split('/')[-1])
+        return ids
+    
+    def backup_files(self, backup_id: str):
+        user_dao = userDao(self.dao_access.common_session)
+        for user in user_dao.list_user():
+
+            general_backup_files(
+                spath=(Path(get_files_bucket()) / user.user_id / 'files').as_posix(),
+                file_fs=self.dao_access.file_fs,
+                bpath=(Path(self.get_backup_folder_path(backup_id)) / user.user_id).as_posix(),
+                bk_fs=self.dao_access.backup_fs
             )
     
     def backup_database(self, backup_id: str):
         # read all data from src database and save to a sqlite database as backup
+        general_backup_db(
+            bk_fs=self.dao_access.backup_fs,
+            bpath=self.get_backup_folder_path(backup_id),
+            bk_db_fname=self.get_backup_db_fname(),
+            src_engine=self.dao_access.common_engine,
+            collection='common',
+        )
         
-        # create backup folder
-        bk_fs = self.backup_fs
-        bk_fs.mkdirs(self.get_backup_folder_path(backup_id), exist_ok=True)
+        # back up all user specific databases
+        user_dao = userDao(self.dao_access.common_session)
+        for user in user_dao.list_user():
+            
+            user_engine = get_engine(user.user_id)
+            
+            general_backup_db(
+                bk_fs=self.dao_access.backup_fs,
+                bpath=(Path(self.get_backup_folder_path(backup_id)) / user.user_id).as_posix(),
+                bk_db_fname='user-specific.db',
+                src_engine=user_engine,
+                collection='user_specific',
+            )
         
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            
-            # create sqlite3 database
-            @event.listens_for(Engine, "connect")
-            def _set_sqlite_pragma(dbapi_connection, connection_record):
-                if isinstance(dbapi_connection, SQLite3Connection):
-                    cursor = dbapi_connection.cursor()
-                    cursor.execute("PRAGMA foreign_keys=ON;")
-                    cursor.close()
-            
-            # setup sqlite database with all tables
-            cur_path = Path(tmpdirname) / self.get_backup_db_fname()
-            tgt_engine = sqlalchemy.create_engine(f'sqlite:///{cur_path.as_posix()}')
-                            
-            migrate_database(
-                src_engine = self.primary_engine,
-                tgt_engine = tgt_engine
-            )
-            
-            # upload backup file to backup server
-            bk_fs.put_file(
-                lpath=cur_path,
-                rpath=Path(self.get_backup_folder_path(backup_id)) / self.get_backup_db_fname()
-            )
             
     def restore_files(self, backup_id: str):
-        # read all files (e.g., receipts) from backup storage and save/overwrite current fs
-        bk_root = Path(self.get_backup_folder_path(backup_id)) / 'bk_files'
-        bk_fs = self.backup_fs
         
-        fs = self.file_fs
-        
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            
-            # download from backup storage to local first
-            bk_fs.get(
-                rpath=bk_root.as_posix(),
-                lpath=Path(tmpdirname) / 'bk_files',
-                recursive=True
-            )
-            
-            # upload to current storage
-            fs.put(
-                lpath=Path(tmpdirname) / 'bk_files',
-                rpath=get_file_root('files'),
-                recursive=True
+        user_dao = userDao(self.dao_access.common_session)
+        for user in user_dao.list_user():
+            general_restore_files(
+                spath=(Path(get_files_bucket()) / user.user_id / 'files').as_posix(),
+                file_fs=self.dao_access.file_fs,
+                bpath=(Path(self.get_backup_folder_path(backup_id)) / user.user_id).as_posix(),
+                bk_fs=self.dao_access.backup_fs
             )
             
             
     def restore_database(self, backup_id: str):
         # read all data from backup sqlite database (source) and overwrite the target database
+        general_restore_db(
+            bk_fs=self.dao_access.backup_fs,
+            bpath=self.get_backup_folder_path(backup_id),
+            bk_db_fname=self.get_backup_db_fname(),
+            tgt_engine=self.dao_access.common_engine,
+            collection='common',
+        )
         
-        bk_fs = self.backup_fs
-        
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            cur_path = Path(tmpdirname) / self.get_backup_db_fname()
-            # download the file to local first
-            bk_fs.get_file(
-                rpath=Path(self.get_backup_folder_path(backup_id)) / self.get_backup_db_fname(),
-                lpath=cur_path
-            )
+        # back up all user specific databases
+        user_dao = userDao(self.dao_access.common_session)
+        for user in user_dao.list_user():
             
-            src_engine = sqlalchemy.create_engine(f'sqlite:///{cur_path.as_posix()}')
-            tgt_engine = self.primary_engine
+            user_engine = get_engine(user.user_id)
             
-            # drop all existing tables
-            drop_tables(tgt_engine)
-            
-            # copy data from source to target
-            migrate_database(
-                src_engine = src_engine,
-                tgt_engine = tgt_engine
+            general_restore_db(
+                bk_fs=self.dao_access.backup_fs,
+                bpath=(Path(self.get_backup_folder_path(backup_id)) / user.user_id).as_posix(),
+                bk_db_fname='user-specific.db',
+                tgt_engine=user_engine,
+                collection='user_specific',
             )

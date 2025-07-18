@@ -3,14 +3,13 @@ from datetime import date
 import pytest
 from src.app.model.enums import CurType
 from src.app.model.expense import Expense, ExpenseItem, ExpInfo, Merchant
-from src.app.utils.tools import get_base_cur
 
 
 @pytest.fixture
-def sample_expense_meal() -> Expense: 
+def sample_expense_meal(test_setting_service) -> Expense: 
     expense = Expense(
         expense_dt=date(2024, 1, 1),
-        currency=get_base_cur(),
+        currency=test_setting_service.get_base_currency(),
         expense_items=[
             ExpenseItem(
                 expense_item_id='sample-exp-item1',

@@ -125,17 +125,6 @@ def test_journal_entry_base_currency(sample_chart_of_accounts: dict[AcctType, Ch
         ).chart,
     )
     
-    # entry - amount not equal case
-    with pytest.raises(ValidationError):
-        entry1 = Entry(
-            entry_type=EntryType.DEBIT,
-            acct=acct_expense,
-            cur_incexp=CurType.CAD,
-            amount=57.5,
-            amount_base=20,
-            description='Meal'
-        )
-    
     # journal entry - normal case
     entry1 = Entry(
         entry_type=EntryType.DEBIT,
@@ -266,13 +255,3 @@ def test_journal_entry_multi_currency(sample_chart_of_accounts: dict[AcctType, C
             description='Meal'
         )
         
-    # test invalid entry (base currency specified for inc/exp, but amount not equal)
-    with pytest.raises(ValidationError):
-        entry1 = Entry(
-            entry_type=EntryType.DEBIT,
-            acct=acct_expense,
-            cur_incexp=get_base_cur(),
-            amount=40,
-            amount_base=57.5,
-            description='Meal'
-        )

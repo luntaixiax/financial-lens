@@ -1,14 +1,19 @@
-from typing import Generator
+from typing import Any, Generator
 from fastapi import Depends
-from s3fs import S3FileSystem
+from fsspec import AbstractFileSystem
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
+from src.web.dependency.auth import get_current_user, common_engine_dep, get_common_session
+from src.app.model.user import User
 from src.app.dao.expense import expenseDao
 from src.app.dao.entity import contactDao, customerDao, supplierDao
-from src.app.dao.backup import dataDao
-from src.app.dao.connection import yield_file_fs, yield_backup_fs, session_factory, engine_factory
+from src.app.dao.backup import adminBackupDao, backupDao
+from src.app.dao.init import initDao
+from src.app.dao.connection import CommonDaoAccess, get_storage_fs, \
+    session_factory, engine_factory, UserDaoAccess
 from src.app.dao.accounts import chartOfAcctDao, acctDao
-from src.app.dao.files import fileDao, configDao
+from src.app.dao.files import fileDao
+from src.app.dao.config import configDao
 from src.app.dao.fx import fxDao
 from src.app.dao.invoice import invoiceDao, itemDao
 from src.app.dao.journal import journalDao
@@ -16,112 +21,151 @@ from src.app.dao.payment import paymentDao
 from src.app.dao.property import propertyDao, propertyTransactionDao
 from src.app.dao.shares import stockIssueDao, stockRepurchaseDao, dividendDao
 
-def yield_session() -> Generator[Session, None, None]:
+
+def yield_session(current_user: User = Depends(get_current_user)) -> Generator[Session, None, None]:
     # TODO: extend to multiple db
-    session_gen_func = session_factory('finlens')
+    db_name = current_user.user_id
+    session_gen_func = session_factory(db_name)
     yield from session_gen_func()
 
-def yield_engine() -> Generator[Engine, None, None]:
+def yield_engine(current_user: User = Depends(get_current_user)) -> Generator[Engine, None, None]:
     # TODO: extend to multiple db
-    engine_gen_func = engine_factory('finlens')
+    db_name = current_user.user_id
+    engine_gen_func = engine_factory(db_name)
     yield from engine_gen_func()
+
+def yield_file_fs() -> AbstractFileSystem:
+    return get_storage_fs('files')
     
+def yield_backup_fs() -> AbstractFileSystem:
+    return get_storage_fs('backup')
+
+def get_common_dao_access(
+    common_engine: common_engine_dep,
+    common_session: Session = Depends(get_common_session),
+) -> CommonDaoAccess:
+    return CommonDaoAccess(
+        common_engine=common_engine,
+        common_session=common_session,
+        file_fs=get_storage_fs('files'),
+        backup_fs=get_storage_fs('backup')
+    )
+
+def get_user_dao_access(
+    common_engine: common_engine_dep,
+    common_session: Session = Depends(get_common_session),
+    current_user: User = Depends(get_current_user),
+    user_engine: Engine = Depends(yield_engine),
+    user_session: Session = Depends(yield_session),
+) -> UserDaoAccess:
+    # for user DAO access that requires login
+    return UserDaoAccess(
+        user=current_user,
+        file_fs=get_storage_fs('files'),
+        backup_fs=get_storage_fs('backup'),
+        common_engine=common_engine,
+        user_engine=user_engine,
+        common_session=common_session,
+        user_session=user_session
+    )
+
+def get_admin_backup_dao(
+    dao_access: CommonDaoAccess = Depends(get_common_dao_access)
+) -> adminBackupDao:
+    return adminBackupDao(dao_access=dao_access)
+
 def get_config_dao(
-    file_fs: S3FileSystem = Depends(yield_file_fs)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> configDao:
-    return configDao(file_fs=file_fs)
+    return configDao(dao_access=dao_access)
 
 def get_file_dao(
-    session: Session = Depends(yield_session), 
-    file_fs: S3FileSystem = Depends(yield_file_fs)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> fileDao:
-    return fileDao(session=session, file_fs=file_fs)
+    return fileDao(dao_access=dao_access)
 
 def get_backup_dao(
-    engine: Engine = Depends(yield_engine), 
-    backup_fs: S3FileSystem = Depends(yield_backup_fs),
-    file_fs: S3FileSystem = Depends(yield_file_fs)
-) -> dataDao:
-    return dataDao(primary_engine=engine, backup_fs=backup_fs, file_fs=file_fs)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
+) -> backupDao:
+    return backupDao(dao_access=dao_access)
 
 def get_fx_dao(
-    session: Session = Depends(yield_session) # switch to another db session
+    dao_access: CommonDaoAccess = Depends(get_common_dao_access)
 ) -> fxDao:
-    return fxDao(session=session)
+    return fxDao(dao_access=dao_access)
 
 def get_acct_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> acctDao:    
-    return acctDao(session=session)
+    return acctDao(dao_access=dao_access)
 
 def get_chart_of_acct_dao(
-    engine: Engine = Depends(yield_engine)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> chartOfAcctDao:
-    return chartOfAcctDao(engine=engine)
+    return chartOfAcctDao(dao_access=dao_access)
 
 def get_contact_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> contactDao:
-    return contactDao(session=session)
+    return contactDao(dao_access=dao_access)
 
 def get_customer_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> customerDao:
-    return customerDao(session=session)
+    return customerDao(dao_access=dao_access)
 
 def get_supplier_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> supplierDao:
-    return supplierDao(session=session)
+    return supplierDao(dao_access=dao_access)
 
 def get_expense_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> expenseDao:
-    return expenseDao(session=session)
+    return expenseDao(dao_access=dao_access)
 
 def get_item_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> itemDao:
-    return itemDao(session=session)
+    return itemDao(dao_access=dao_access)
 
 def get_invoice_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> invoiceDao:
-    return invoiceDao(session=session)
+    return invoiceDao(dao_access=dao_access)
 
 def get_journal_dao(
-    session: Session = Depends(yield_session),
-    engine: Engine = Depends(yield_engine)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> journalDao:
-    return journalDao(session=session, engine=engine)
+    return journalDao(dao_access=dao_access)
 
 def get_payment_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> paymentDao:
-    return paymentDao(session=session)
+    return paymentDao(dao_access=dao_access)
 
 def get_property_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> propertyDao:
-    return propertyDao(session=session)
+    return propertyDao(dao_access=dao_access)
 
 
 def get_property_transaction_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> propertyTransactionDao:
-    return propertyTransactionDao(session=session)
+    return propertyTransactionDao(dao_access=dao_access)
 
 def get_stock_issue_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> stockIssueDao:
-    return stockIssueDao(session=session)
+    return stockIssueDao(dao_access=dao_access)
 
 def get_stock_repurchase_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> stockRepurchaseDao:
-    return stockRepurchaseDao(session=session) 
+    return stockRepurchaseDao(dao_access=dao_access) 
 
 def get_dividend_dao(
-    session: Session = Depends(yield_session)
+    dao_access: UserDaoAccess = Depends(get_user_dao_access)
 ) -> dividendDao:
-    return dividendDao(session=session)
+    return dividendDao(dao_access=dao_access)

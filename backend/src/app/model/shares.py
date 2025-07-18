@@ -4,8 +4,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 
 from src.app.utils.base import EnhancedBaseModel
-from src.app.model.enums import BankAcctType, CurType
-from src.app.utils.tools import finround, id_generator, get_par_share_price
+from src.app.utils.tools import finround, id_generator
 
 class StockIssue(EnhancedBaseModel):
     

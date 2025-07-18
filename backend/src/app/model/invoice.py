@@ -4,7 +4,7 @@ import math
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 from src.app.model.enums import CurType, EntityType, ItemType, UnitType
-from src.app.utils.tools import get_default_tax_rate, id_generator
+from src.app.utils.tools import id_generator
 from src.app.utils.base import EnhancedBaseModel
 
 class Item(EnhancedBaseModel):
@@ -39,7 +39,7 @@ class InvoiceItem(EnhancedBaseModel):
     quantity: float = Field(ge=0)
     acct_id: str = Field("") # will be overwritten in validator
     tax_rate: float = Field(
-        default_factory=get_default_tax_rate
+        default=0.13
     )
     discount_rate: float = Field(
         default=0, 
@@ -102,7 +102,7 @@ class GeneralInvoiceItem(EnhancedBaseModel):
         description='Amount pretax, expressed in the invoice currency'
     )
     tax_rate: float = Field(
-        default_factory=get_default_tax_rate
+        default=0.13
     )
     description: str | None = Field(None)
     

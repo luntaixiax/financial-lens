@@ -6,16 +6,14 @@ from src.app.model.enums import AcctType
 from src.app.model.accounts import Chart, ChartNode
 
 @pytest.fixture
-def session_with_acct(test_session, settings, test_chart_of_acct_dao, asset_node: ChartNode):
-    with mock.patch("src.app.utils.tools.get_settings") as mock_settings:
-        mock_settings.return_value = settings
-        # create chart of account
-        test_chart_of_acct_dao.save(asset_node)
-        
-        yield test_session
-        
-        # remove chart of account
-        test_chart_of_acct_dao.remove(asset_node.chart.acct_type)
+def session_with_acct(test_chart_of_acct_dao, asset_node: ChartNode):
+    # create chart of account
+    test_chart_of_acct_dao.save(asset_node)
+    
+    yield
+    
+    # remove chart of account
+    test_chart_of_acct_dao.remove(asset_node.chart.acct_type)
     
 def test_account(test_acct_dao, session_with_acct, sample_accounts):
     
