@@ -7,7 +7,7 @@ from src.web.dependency.auth import get_current_user, common_engine_dep, get_com
 from src.app.model.user import User
 from src.app.dao.expense import expenseDao
 from src.app.dao.entity import contactDao, customerDao, supplierDao
-from src.app.dao.backup import backupDao
+from src.app.dao.backup import adminBackupDao, backupDao
 from src.app.dao.init import initDao
 from src.app.dao.connection import CommonDaoAccess, get_storage_fs, \
     session_factory, engine_factory, UserDaoAccess
@@ -68,6 +68,11 @@ def get_user_dao_access(
         common_session=common_session,
         user_session=user_session
     )
+
+def get_admin_backup_dao(
+    dao_access: CommonDaoAccess = Depends(get_common_dao_access)
+) -> adminBackupDao:
+    return adminBackupDao(dao_access=dao_access)
 
 def get_config_dao(
     dao_access: UserDaoAccess = Depends(get_user_dao_access)

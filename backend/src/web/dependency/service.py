@@ -10,7 +10,7 @@ from src.app.dao.property import propertyDao, propertyTransactionDao
 from src.app.dao.invoice import itemDao, invoiceDao
 from src.app.dao.payment import paymentDao
 from src.app.dao.accounts import acctDao, chartOfAcctDao
-from src.app.dao.backup import backupDao
+from src.app.dao.backup import adminBackupDao, backupDao
 from src.app.dao.init import initDao
 from src.app.service.shares import SharesService
 from src.app.service.reporting import ReportingService
@@ -26,13 +26,13 @@ from src.app.service.expense import ExpenseService
 from src.app.service.entity import EntityService
 from src.app.service.acct import AcctService
 from src.app.service.settings import BackupService
-from src.app.service.management import InitService
+from src.app.service.management import AdminBackupService, InitService
 from src.web.dependency.auth import get_init_dao
 from src.web.dependency.dao import get_acct_dao, get_chart_of_acct_dao, \
     get_backup_dao, get_contact_dao, get_customer_dao, get_dividend_dao, get_expense_dao, \
     get_file_dao, get_fx_dao, get_item_dao, get_journal_dao, get_property_dao, \
     get_property_transaction_dao, get_stock_issue_dao, get_stock_repurchase_dao, \
-    get_supplier_dao, get_config_dao, get_payment_dao, get_invoice_dao
+    get_supplier_dao, get_config_dao, get_payment_dao, get_invoice_dao, get_admin_backup_dao
 
 def get_init_service(
     init_dao: initDao = Depends(get_init_dao)
@@ -205,3 +205,8 @@ def get_reporting_service(
         acct_service=acct_service,
         setting_service=setting_service
     )
+    
+def get_admin_backup_service(
+    backup_dao: adminBackupDao = Depends(get_admin_backup_dao)
+) -> AdminBackupService:
+    return AdminBackupService(backup_dao=backup_dao)

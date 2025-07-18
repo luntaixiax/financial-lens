@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from src.app.model.user import Token, UserCreate, User, UserRegister
-from src.app.service.management import UserService, InitService
+from src.app.service.management import AdminBackupService, UserService, InitService
 from src.app.service.auth import AuthService
-from src.web.dependency.service import get_init_service
+from src.web.dependency.service import get_init_service, get_admin_backup_service
 from src.web.dependency.auth import get_auth_service, get_user_service, get_admin_user
 
 router = APIRouter(prefix="/management", tags=["management"])
@@ -26,21 +26,6 @@ def create_admin_user(
         password=user.password
     )
     user_service.create_user(user_)
-    
-@router.post("/create_sample_user")
-def create_sample_user(
-    user_service: UserService = Depends(get_user_service),
-    admin_user: User = Depends(get_admin_user),
-):
-    # should not use injected acct service, which is bind to the login user
-    # instead should 
-    user_ = UserCreate(
-        username='ltxsample',
-        is_admin=False,
-        password='ltxfinlens'
-    )
-    user_service.create_user(user_)
-    
     
 @router.post("/register")
 def register(
@@ -120,4 +105,25 @@ def verify_token(
 ) -> User:
     return auth_service.verify_token(token)
 
+@router.get("/list_common_backup_ids")
+def list_backup_ids(
+    backup_service: AdminBackupService = Depends(get_admin_backup_service),
+    admin_user: User = Depends(get_admin_user)
+) -> list[str]:
+    return backup_service.list_backup_ids()
 
+@router.post("/backup_common_data")
+def backup_common_data(
+    backup_id: str | None = None,
+    backup_service: AdminBackupService = Depends(get_admin_backup_service),
+    admin_user: User = Depends(get_admin_user)
+):
+    return backup_service.backup(backup_id)
+
+@router.post("/restore_common_data")
+def restore_common_data(
+    backup_id: str,
+    backup_service: AdminBackupService = Depends(get_admin_backup_service),
+    admin_user: User = Depends(get_admin_user)
+):
+    return backup_service.restore(backup_id)

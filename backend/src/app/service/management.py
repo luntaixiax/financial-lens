@@ -1,6 +1,8 @@
+from datetime import datetime
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
 from src.app.dao.init import initDao
 from src.app.dao.user import userDao
+from src.app.dao.backup import adminBackupDao
 from src.app.model.user import UserCreate, User
 
 ### Operations that only admin should do ###
@@ -97,3 +99,31 @@ class UserService:
         
     def list_user(self) -> list[User]:
         return self.user_dao.list_user()
+    
+class AdminBackupService:
+    
+    def __init__(self, backup_dao: adminBackupDao):
+        self.backup_dao = backup_dao
+    
+    def list_backup_ids(self) -> list[str]:
+        return self.backup_dao.list_backup_ids()
+    
+    def backup(self, backup_id: str | None) -> str:
+        # use current timestamp if not given backup id
+        backup_id = backup_id or datetime.now().strftime('%Y%m%dT%H%M%S')
+        
+        # backup database
+        self.backup_dao.backup_database(backup_id)
+        # backup files
+        self.backup_dao.backup_files(backup_id)
+        
+        return backup_id
+    
+    def restore(self, backup_id: str):
+        # need to restore database first, otherwise user specific database will not be created
+        # restore database
+        self.backup_dao.restore_database(backup_id)
+        
+        # restore files
+        self.backup_dao.restore_files(backup_id)
+        
