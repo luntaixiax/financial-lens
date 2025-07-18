@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 import tempfile
 from unittest import mock
