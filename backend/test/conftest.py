@@ -94,6 +94,18 @@ def storage_fs(testing_bucket_path):
     fs.rm(testing_bucket_path, recursive=True)
     
 @pytest.fixture(scope='session')
+def test_common_dao_access(common_engine, storage_fs):
+    from src.app.dao.connection import CommonDaoAccess
+    
+    with Session(common_engine) as common_session:
+        yield CommonDaoAccess(
+            common_engine=common_engine,
+            common_session=common_session,
+            file_fs=storage_fs,
+            backup_fs=storage_fs
+        )
+    
+@pytest.fixture(scope='session')
 def test_dao_access(engine, common_engine, storage_fs, test_user):
     from src.app.dao.connection import UserDaoAccess
     with (
