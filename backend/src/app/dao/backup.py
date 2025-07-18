@@ -165,7 +165,7 @@ def general_restore_files(spath: str, file_fs: AbstractFileSystem, bpath: str, b
             # download from backup storage to local first
             bk_fs.get(
                 rpath=bk_root.as_posix(),
-                lpath=Path(tmpdirname) / 'bk_files',
+                lpath=Path(tmpdirname) / 'bk_files', # for local FS, need to be Path to work properly, but for some db, may need posix string
                 recursive=True
             )
             

@@ -112,16 +112,16 @@ def list_backup_ids(
 ) -> list[str]:
     return backup_service.list_backup_ids()
 
-@router.post("/backup_common_data")
-def backup_common_data(
+@router.post("/backup_all_data")
+def backup_all_data(
     backup_id: str | None = None,
     backup_service: AdminBackupService = Depends(get_admin_backup_service),
     admin_user: User = Depends(get_admin_user)
 ):
     return backup_service.backup(backup_id)
 
-@router.post("/restore_common_data")
-def restore_common_data(
+@router.post("/restore_all_data")
+def restore_all_data(
     backup_id: str,
     backup_service: AdminBackupService = Depends(get_admin_backup_service),
     admin_user: User = Depends(get_admin_user)

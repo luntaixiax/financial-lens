@@ -47,7 +47,7 @@ def init(
     user_service.create_user(user)
 
 @app.command(help='Backup common data')
-def backup_common_data(
+def backup_all_data(
     backup_id: str | None = typer.Argument(
         default=None,
         help='If provided, use the id you provide for backup', 
@@ -57,7 +57,7 @@ def backup_common_data(
     backup_service.backup(backup_id)
     
 @app.command(help='Restore common data')
-def restore_common_data(
+def restore_all_data(
     backup_id: str = typer.Argument(
         help='Use the id of the backup to restore', 
     ),
