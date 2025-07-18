@@ -12,12 +12,12 @@ from src.app.model.exceptions import (
     NotMatchWithSystemError,
     OpNotPermittedError,
 )
-from src.app.service.misc import SettingService
+from src.app.service.settings import ConfigService
 
 class AcctService:
     
     def __init__(self, acct_dao: acctDao, chart_of_acct_dao: chartOfAcctDao, 
-                 setting_service: SettingService):
+                 setting_service: ConfigService):
         self.acct_dao = acct_dao
         self.chart_of_acct_dao = chart_of_acct_dao
         self.setting_service = setting_service

@@ -1,7 +1,5 @@
 from fastapi import APIRouter, Depends
-from src.app.model.entity import Contact
-from src.app.model.enums import CurType
-from src.app.service.misc import SettingService
+from src.app.service.settings import ConfigService
 from src.app.service.acct import AcctService
 from src.app.service.journal import JournalService
 from src.app.service.entity import EntityService
@@ -28,7 +26,7 @@ def create_sample(
     expense_service: ExpenseService = Depends(get_expense_service),
     property_service: PropertyService = Depends(get_property_service),
     shares_service: SharesService = Depends(get_shares_service),
-    setting_service: SettingService = Depends(get_setting_service)
+    setting_service: ConfigService = Depends(get_setting_service)
 ):
     # set base settings
     setting_service.create_sample()

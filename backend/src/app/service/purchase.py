@@ -16,7 +16,7 @@ from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from src.app.model.invoice import _InvoiceBalance, _InvoiceBrief, GeneralInvoiceItem, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
-from src.app.service.misc import SettingService
+from src.app.service.settings import ConfigService
 
 
 class PurchaseService:
@@ -27,7 +27,7 @@ class PurchaseService:
             item_service: ItemService, entity_service: EntityService,
             acct_service: AcctService, journal_service: JournalService,
             fx_service: FxService,
-            setting_service: SettingService
+            setting_service: ConfigService
         ):
         self.invoice_dao = invoice_dao
         self.payment_dao = payment_dao

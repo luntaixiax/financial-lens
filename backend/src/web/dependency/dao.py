@@ -7,11 +7,13 @@ from src.web.dependency.auth import get_current_user, common_engine_dep, get_com
 from src.app.model.user import User
 from src.app.dao.expense import expenseDao
 from src.app.dao.entity import contactDao, customerDao, supplierDao
-from src.app.dao.backup import backupDao, initDao
+from src.app.dao.backup import backupDao
+from src.app.dao.init import initDao
 from src.app.dao.connection import CommonDaoAccess, get_storage_fs, \
     session_factory, engine_factory, UserDaoAccess
 from src.app.dao.accounts import chartOfAcctDao, acctDao
-from src.app.dao.files import fileDao, configDao
+from src.app.dao.files import fileDao
+from src.app.dao.config import configDao
 from src.app.dao.fx import fxDao
 from src.app.dao.invoice import invoiceDao, itemDao
 from src.app.dao.journal import journalDao

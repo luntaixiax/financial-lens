@@ -16,7 +16,7 @@ from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, F
 from src.app.service.acct import AcctService
 from src.app.model.accounts import Account
 from src.app.model.shares import Dividend, StockIssue, StockRepurchase
-from src.app.service.misc import SettingService
+from src.app.service.settings import ConfigService
 
 
 class SharesService:
@@ -29,7 +29,7 @@ class SharesService:
             acct_service: AcctService, 
             journal_service: JournalService,
             fx_service: FxService,
-            setting_service: SettingService
+            setting_service: ConfigService
         ):
         self.stock_issue_dao = stock_issue_dao
         self.stock_repurchase_dao = stock_repurchase_dao

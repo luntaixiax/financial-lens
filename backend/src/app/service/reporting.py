@@ -5,7 +5,7 @@ from src.app.model.journal import _AcctFlowAGG
 from src.app.service.journal import JournalService
 from src.app.service.acct import AcctService
 from src.app.model.enums import AcctType
-from src.app.service.misc import SettingService
+from src.app.service.settings import ConfigService
 
 
 class ReportingService:
@@ -14,7 +14,7 @@ class ReportingService:
         self, 
         journal_service: JournalService, 
         acct_service: AcctService, 
-        setting_service: SettingService
+        setting_service: ConfigService
     ):
         self.journal_service = journal_service
         self.acct_service = acct_service

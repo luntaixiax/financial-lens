@@ -1,6 +1,6 @@
 from datetime import date
 from currency_converter import CurrencyConverter, ECB_URL
-from src.app.service.misc import SettingService
+from src.app.service.settings import ConfigService
 from src.app.model.exceptions import NotExistError
 from src.app.dao.fx import fxDao
 from src.app.model.enums import CurType
@@ -16,7 +16,7 @@ class FxService:
         CurType.CUP: 25.41
     }
     
-    def __init__(self, fx_dao: fxDao, setting_service: SettingService):
+    def __init__(self, fx_dao: fxDao, setting_service: ConfigService):
         self.fx_dao = fx_dao
         self.setting_service = setting_service
             

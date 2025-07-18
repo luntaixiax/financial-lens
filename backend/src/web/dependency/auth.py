@@ -3,13 +3,14 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
-from src.app.dao.backup import initDao
+from src.app.model.user import User
 from src.app.model.exceptions import PermissionDeniedError
 from src.app.dao.connection import session_factory, engine_factory
 from src.app.dao.user import userDao
+from src.app.dao.init import initDao
 from src.app.service.auth import AuthService
-from src.app.service.user import UserService
-from src.app.model.user import User
+from src.app.service.management import UserService
+
 
 common_engine_dep = Annotated[Engine, Depends(engine_factory('common'))]
 

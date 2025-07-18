@@ -7,7 +7,7 @@ from src.app.model.exceptions import FKNoDeleteUpdateError, NotExistError, Alrea
 from src.app.dao.journal import journalDao
 from src.app.model.journal import _AcctFlowAGG, _EntryBrief, _JournalBrief, Entry, Journal
 from src.app.service.acct import AcctService
-from src.app.service.misc import SettingService
+from src.app.service.settings import ConfigService
 
 class JournalService:
     
@@ -15,7 +15,7 @@ class JournalService:
         self, 
         journal_dao: journalDao, 
         acct_service: AcctService, 
-        setting_service: SettingService
+        setting_service: ConfigService
     ):
         self.journal_dao = journal_dao
         self.acct_service = acct_service

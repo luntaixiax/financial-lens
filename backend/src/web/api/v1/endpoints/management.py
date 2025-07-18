@@ -1,14 +1,10 @@
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from src.app.service.acct import AcctService
 from src.app.model.user import Token, UserCreate, User, UserRegister
-from src.app.service.user import UserService
-from src.app.service.backup import BackupService, InitService
+from src.app.service.management import UserService, InitService
 from src.app.service.auth import AuthService
-from src.web.dependency.service import get_acct_service, get_init_service, get_backup_service
-from src.web.dependency.dao import get_user_dao_access
-from src.web.dependency.auth import get_auth_service, get_user_service, get_admin_user , \
-    get_current_user, common_engine_dep, get_common_session
+from src.web.dependency.service import get_init_service
+from src.web.dependency.auth import get_auth_service, get_user_service, get_admin_user
 
 router = APIRouter(prefix="/management", tags=["management"])
 
@@ -124,22 +120,4 @@ def verify_token(
 ) -> User:
     return auth_service.verify_token(token)
 
-@router.get("/list_backup_ids")
-def list_backup_ids(
-    backup_service: BackupService = Depends(get_backup_service)
-) -> list[str]:
-    return backup_service.list_backup_ids()
 
-@router.post("/backup")
-def backup(
-    backup_id: str | None = None,
-    backup_service: BackupService = Depends(get_backup_service)
-) -> str:
-    return backup_service.backup(backup_id)
-
-@router.post("/restore")
-def restore(
-    backup_id: str,
-    backup_service: BackupService = Depends(get_backup_service)
-):
-    backup_service.restore(backup_id)

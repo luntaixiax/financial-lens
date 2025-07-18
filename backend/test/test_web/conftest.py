@@ -14,7 +14,7 @@ def client(test_dao_access, test_common_dao_access):
     """
     Create a test client with dependency overrides for testing FastAPI endpoints.
     """
-    from src.app.dao.backup import initDao
+    from src.app.dao.init import initDao
     
     # Override authentication dependencies
     # def test_get_common_session():

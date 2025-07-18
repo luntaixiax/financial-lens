@@ -1,8 +1,18 @@
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, NotExistError
-from src.app.dao.backup import initDao
+from src.app.dao.init import initDao
 from src.app.dao.user import userDao
 from src.app.model.user import UserCreate, User
 
+### Operations that only admin should do ###
+
+class InitService:
+    
+    def __init__(self, init_dao: initDao):
+        self.init_dao = init_dao
+        
+    def init_common_db(self):
+        self.init_dao.init_common_db()
+        
 class UserService:
     
     def __init__(self, user_dao: userDao, init_dao: initDao):

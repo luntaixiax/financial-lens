@@ -12,7 +12,7 @@ from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
 from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, ExpInfo, Merchant
 from src.app.model.journal import Journal, Entry
-from src.app.service.misc import SettingService
+from src.app.service.settings import ConfigService
 
 class ExpenseService:
     
@@ -22,7 +22,7 @@ class ExpenseService:
         acct_service: AcctService, 
         journal_service: JournalService, 
         fx_service: FxService, 
-        setting_service: SettingService
+        setting_service: ConfigService
     ):
         self.expense_dao = expense_dao
         self.acct_service = acct_service

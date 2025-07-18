@@ -126,13 +126,13 @@ def test_dao_access(engine, common_engine, storage_fs, test_user):
     
 @pytest.fixture(scope='session')
 def test_setting_service(test_dao_access):
-    from src.app.model.enums import CurType
-    from src.app.service.misc import SettingService, FileService
-    from src.app.dao.files import configDao
+    from src.app.service.settings import ConfigService
+    from src.app.service.files import FileService
+    from src.app.dao.config import configDao
     from src.app.dao.files import fileDao
     from src.app.model.enums import CurType
     
-    setting_service = SettingService(
+    setting_service = ConfigService(
         file_service=FileService(file_dao=fileDao(test_dao_access)),
         config_dao=configDao(test_dao_access)
     )

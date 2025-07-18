@@ -2087,7 +2087,7 @@ def set_par_share_price(par_share_price: float):
 def backup():
     now = datetime.now(tz=timezone.utc)
     post_req(
-        prefix='management',
+        prefix='settings',
         endpoint='backup',
         params={
             'backup_id': now.strftime('%Y%m%dT%H%M%S')
@@ -2097,7 +2097,7 @@ def backup():
 @message_box
 def restore(backup_id: str):
     post_req(
-        prefix='management',
+        prefix='settings',
         endpoint='restore',
         params={
             'backup_id': backup_id
@@ -2108,7 +2108,7 @@ def restore(backup_id: str):
 @message_box
 def list_backup_ids() -> list[str]:
     return get_req(
-        prefix='management',
+        prefix='settings',
         endpoint=f'list_backup_ids',
     )
 
