@@ -14,13 +14,18 @@ from utils.apis import convert_to_base, get_base_currency, list_expense, get_exp
     create_journal_from_new_expense, validate_expense, add_expense, update_expense, delete_expense, \
     get_default_tax_rate, get_accounts_by_type, get_all_accounts, get_account, \
     upload_file, delete_file, get_file, get_comp_contact, get_logo
-    
+from utils.apis import cookie_manager
+
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
     
 def display_exp(exp: dict) -> dict:
@@ -188,7 +193,7 @@ def navigate_to_page(page: int):
         
 
 
-exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
+exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value, access_token=access_token)
 dds_exp_accts = DropdownSelect(
     briefs=exp_accts,
     include_null=False,
@@ -196,16 +201,16 @@ dds_exp_accts = DropdownSelect(
     display_keys=['acct_name']
 )
 
-ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
-lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
-equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value)
+ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value, access_token=access_token)
+lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value, access_token=access_token)
+equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value, access_token=access_token)
 dds_balsh_accts = DropdownSelect(
     briefs=ast_accts + lib_accts + equ_accts,
     include_null=False,
     id_key='acct_id',
     display_keys=['acct_name']
 )
-all_accts = get_all_accounts()
+all_accts = get_all_accounts(access_token=access_token)
 dds_all_accts = DropdownSelect(
     briefs=all_accts,
     include_null=False,
@@ -526,7 +531,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
             )
         # get payment acct details
         pmt_acct_id = dds_balsh_accts.get_id(pmt_acct)
-        pmt_acct = get_account(pmt_acct_id)
+        pmt_acct = get_account(pmt_acct_id, access_token=access_token)
         
     with exp_cols[1]:
         cur_type_option = st.selectbox(

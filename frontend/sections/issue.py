@@ -13,13 +13,18 @@ from utils.enums import AcctType, CurType, EntryType, JournalSrc
 from utils.apis import add_issue, create_journal_from_new_issue, delete_issue, get_account, get_accounts_by_type, \
     get_all_accounts, get_base_currency, get_comp_contact, get_issue_journal, get_logo, list_issue, \
     list_repur, get_total_reissue_from_repur, update_issue, validate_issue
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
 def display_issue(issue: dict) -> dict:
     return {
@@ -98,16 +103,16 @@ class JournalEntryHelper:
 
 
     
-ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
-lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
-exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
+ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value, access_token=access_token)
+lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value, access_token=access_token)
+exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value, access_token=access_token)
 dds_pay_accts = DropdownSelect(
     briefs=ast_accts + lib_accts + exp_accts,
     include_null=False,
     id_key='acct_id',
     display_keys=['acct_name']
 )
-all_accts = get_all_accounts()
+all_accts = get_all_accounts(access_token=access_token) 
 dds_all_accts = DropdownSelect(
     briefs=all_accts,
     include_null=False,
@@ -118,7 +123,7 @@ dds_currency = DropdownSelect.from_enum(
     CurType,
     include_null=False
 )
-repurs = list_repur()
+repurs = list_repur(access_token=access_token)
 dds_repurs = DropdownSelect(
     briefs=repurs,
     include_null=False,
@@ -127,7 +132,7 @@ dds_repurs = DropdownSelect(
 )
 
 
-base_cur_name = CurType(get_base_currency()).name
+base_cur_name = CurType(get_base_currency(access_token=access_token)).name
 
 edit_mode = st.radio(
     label='Edit Mode',
@@ -321,7 +326,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
             
         # get payment acct details
         pmt_acct_id = dds_pay_accts.get_id(pmt_acct)
-        pmt_acct = get_account(pmt_acct_id)
+        pmt_acct = get_account(pmt_acct_id, access_token=access_token)
         
     with iss_cols[1]:
         pmt_amt = st.number_input(

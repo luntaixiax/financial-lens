@@ -4,13 +4,18 @@ from utils.enums import EntityType, ItemType, UnitType, CurType, AcctType
 from utils.tools import DropdownSelect
 from utils.apis import list_item, get_item, delete_item, update_item, add_item, \
     get_accounts_by_type, get_comp_contact, get_logo
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
     
 def show_item(item: dict) -> dict:
@@ -28,8 +33,8 @@ st.subheader('Manage Items')
 
 tabs = st.tabs(['Items', 'Add/Edit Sales Item', 'Add/Edit Purchase Item'])
 with tabs[0]:
-    sales_items = list_item(entity_type=EntityType.CUSTOMER.value)
-    purch_items = list_item(entity_type=EntityType.SUPPLIER.value)
+    sales_items = list_item(entity_type=EntityType.CUSTOMER.value, access_token=access_token)
+    purch_items = list_item(entity_type=EntityType.SUPPLIER.value, access_token=access_token)
     
     sales_item_display = [show_item(it) for it in sales_items]
     purch_item_display = [show_item(it) for it in purch_items]
@@ -120,7 +125,7 @@ with tabs[1]:
             )
         # selected something, will load it from database first
         existing_sales_item_id = dds_sales.get_id(edit_sales)
-        existing_sales_item = get_item(existing_sales_item_id)
+        existing_sales_item = get_item(existing_sales_item_id, access_token=access_token)
     
     st.divider()
     
@@ -203,7 +208,7 @@ with tabs[1]:
         )
         
     # default account (only income type)
-    sales_accts = get_accounts_by_type(acct_type=AcctType.INC.value)
+    sales_accts = get_accounts_by_type(acct_type=AcctType.INC.value, access_token=access_token)
     dds_sales_accts = DropdownSelect(
         briefs=sales_accts,
         include_null=False,
@@ -238,7 +243,8 @@ with tabs[1]:
                 unit=unit_types.get_id(sales_unit_type).value, 
                 unit_price=sales_unit_price, 
                 currency=cur_types.get_id(sales_cur).value, 
-                default_acct_id=dds_sales_accts.get_id(default_acct)
+                default_acct_id=dds_sales_accts.get_id(default_acct),
+                access_token=access_token
             ),
             key='sales-add'
         )
@@ -258,7 +264,8 @@ with tabs[1]:
                     unit=unit_types.get_id(sales_unit_type).value, 
                     unit_price=sales_unit_price, 
                     currency=cur_types.get_id(sales_cur).value, 
-                    default_acct_id=dds_sales_accts.get_id(default_acct)
+                    default_acct_id=dds_sales_accts.get_id(default_acct),
+                    access_token=access_token
                 ),
                 key='sales-update'
             )
@@ -268,7 +275,8 @@ with tabs[1]:
                 type='primary',
                 on_click=delete_item,
                 kwargs=dict(
-                    item_id=existing_sales_item_id
+                    item_id=existing_sales_item_id,
+                    access_token=access_token
                 ),
                 key='sales-remove'
             )
@@ -304,7 +312,7 @@ with tabs[2]:
             )
         # selected something, will load it from database first
         existing_purch_item_id = dds_purchase.get_id(edit_purch)
-        existing_purch_item = get_item(existing_purch_item_id)
+        existing_purch_item = get_item(existing_purch_item_id, access_token=access_token)
     
     st.divider()
     
@@ -385,7 +393,7 @@ with tabs[2]:
         )
         
     # default account (only income type)
-    purch_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
+    purch_accts = get_accounts_by_type(acct_type=AcctType.EXP.value, access_token=access_token)
     dds_purch_accts = DropdownSelect(
         briefs=purch_accts,
         include_null=False,
@@ -420,7 +428,8 @@ with tabs[2]:
                 unit=unit_types.get_id(purch_unit_type).value, 
                 unit_price=purch_unit_price, 
                 currency=cur_types.get_id(purch_cur).value, 
-                default_acct_id=dds_purch_accts.get_id(default_acct)
+                default_acct_id=dds_purch_accts.get_id(default_acct),
+                access_token=access_token
             ),
             key='purch-add'
         )
@@ -440,7 +449,8 @@ with tabs[2]:
                     unit=unit_types.get_id(purch_unit_type).value, 
                     unit_price=purch_unit_price, 
                     currency=cur_types.get_id(purch_cur).value, 
-                    default_acct_id=dds_purch_accts.get_id(default_acct)
+                    default_acct_id=dds_purch_accts.get_id(default_acct),
+                    access_token=access_token
                 ),
                 key='purch-update'
             )
@@ -450,7 +460,8 @@ with tabs[2]:
                 type='primary',
                 on_click=delete_item,
                 kwargs=dict(
-                    item_id=existing_purch_item_id
+                    item_id=existing_purch_item_id,
+                    access_token=access_token
                 ),
                 key='purch-remove'
             )

@@ -14,13 +14,18 @@ from utils.apis import get_fx, list_supplier, list_item, list_purchase_invoice, 
     create_journal_from_new_purchase_invoice, get_all_accounts, add_purchase_invoice, \
     update_purchase_invoice, delete_purchase_invoice, get_base_currency, preview_purchase_invoice, \
     get_comp_contact, get_logo
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="wide")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
     
 def display_invoice(invoice: dict) -> dict:
@@ -103,7 +108,7 @@ def clear_entries_and_reset_page():
 
 def update_inv_item(entry: dict) -> dict:
     if entry.get('item_id') is not None:
-        item = get_item(dds_citems.get_id(entry['item_id']))
+        item = get_item(dds_citems.get_id(entry['item_id']), access_token=access_token)
         entry['unit_price'] = item['unit_price']
     else:
         entry['unit_price'] = None
@@ -164,7 +169,8 @@ def update_general_inv_item(entry: dict) -> dict:
         entry['amount_pre_tax'] = amount_pre_tax_raw * get_fx(
             src_currency=CurType[currency].value,
             tgt_currency=CurType[inv_cur_type_option].value,
-            cur_dt=entry.get('incur_dt').date()
+            cur_dt=entry.get('incur_dt').date(),
+            access_token=access_token
         )
         
     return entry
@@ -213,7 +219,7 @@ def convert_inv_items_to_db(inv_item_entries: list[dict]) -> list[dict]:
             continue
         
         r = {}
-        r['item'] = get_item(dds_citems.get_id(e['item_id']))
+        r['item'] = get_item(dds_citems.get_id(e['item_id']), access_token=access_token)
         r['quantity'] = e['quantity']
         r['acct_id'] = dds_exp_accts.get_id(e['acct_name'])
         r['tax_rate'] = e['tax_rate'] / 100
@@ -316,7 +322,7 @@ def validate_invoice(invoice_: dict):
     )
     
 
-suppliers = list_supplier()
+suppliers = list_supplier(access_token=access_token)
 if len(suppliers) > 0:
     dds_suppliers = DropdownSelect(
         briefs=suppliers,
@@ -328,8 +334,8 @@ if len(suppliers) > 0:
         CurType,
         include_null=False
     )
-    inc_accts = get_accounts_by_type(acct_type=AcctType.INC.value)
-    exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
+    inc_accts = get_accounts_by_type(acct_type=AcctType.INC.value, access_token=access_token)
+    exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value, access_token=access_token)
     dds_exp_accts = DropdownSelect(
         briefs=exp_accts,
         include_null=False,
@@ -342,7 +348,7 @@ if len(suppliers) > 0:
         id_key='acct_id',
         display_keys=['acct_name']
     )
-    all_accts = get_all_accounts()
+    all_accts = get_all_accounts(access_token=access_token)
     dds_accts = DropdownSelect(
         briefs=all_accts,
         include_null=False,
@@ -509,7 +515,7 @@ if len(suppliers) > 0:
         )
         
         # get item list (filter by currency)
-        items = list_item(entity_type=EntityType.SUPPLIER.value)
+        items = list_item(entity_type=EntityType.SUPPLIER.value, access_token=access_token)
         items = list(map(
             display_item, filter(
                 lambda e: e['currency'] == CurType[inv_cur_type_option].value, 

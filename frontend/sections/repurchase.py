@@ -13,14 +13,18 @@ from utils.enums import AcctType, CurType, EntryType, JournalSrc
 from utils.apis import add_repur, create_journal_from_new_repur, delete_repur, get_account, get_accounts_by_type, get_all_accounts, \
     get_base_currency, get_comp_contact, list_reissue_from_repur, \
     get_repur_journal, get_logo, list_repur, update_repur, validate_repur
-    
+from utils.apis import cookie_manager
     
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
 def display_repur(repur: dict) -> dict:
     return {
@@ -97,15 +101,15 @@ class JournalEntryHelper:
         ]
 
 
-ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
-lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
+ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value, access_token=access_token)
+lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value, access_token=access_token)
 dds_pay_accts = DropdownSelect(
     briefs=ast_accts + lib_accts,
     include_null=False,
     id_key='acct_id',
     display_keys=['acct_name']
 )
-all_accts = get_all_accounts()
+all_accts = get_all_accounts(access_token=access_token)
 dds_all_accts = DropdownSelect(
     briefs=all_accts,
     include_null=False,
@@ -270,7 +274,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(repurs) > 0 and _row_list)
             
         # get payment acct details
         pmt_acct_id = dds_pay_accts.get_id(pmt_acct)
-        pmt_acct = get_account(pmt_acct_id)
+        pmt_acct = get_account(pmt_acct_id, access_token=access_token)
         
     with iss_cols[1]:
         pmt_amt = st.number_input(

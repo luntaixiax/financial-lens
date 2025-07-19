@@ -4,19 +4,24 @@ from utils.tools import DropdownSelect
 from utils.apis import list_country, list_state, list_city, \
     list_contacts, get_contact, add_contact, update_contact, delete_contact, \
     get_comp_contact, get_logo
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
 
 st.subheader('Manage Contact')
 
 tabs = st.tabs(['Contacts', 'Add/Edit Contact'])
 with tabs[0]:
-    entities = list_contacts()
+    entities = list_contacts(access_token=access_token)
 
     ui.metric_card(
         title="# Contacts", 
@@ -63,7 +68,7 @@ with tabs[1]:
             )
         # selected something, will load it from database first
         existing_entity_id = dds_entities.get_id(edit_entity)
-        existing_entity = get_contact(existing_entity_id)
+        existing_entity = get_contact(existing_entity_id, access_token=access_token)
     
     st.divider()
     
@@ -205,7 +210,8 @@ with tabs[1]:
             kwargs=dict(
                 name=bname, email=bemail, phone=bphone, 
                 address1=baddress1, address2=baddress2, suite_no=bsuite_no, 
-                city=bcity, state=bstate, country=bcountry, postal_code=bpostal
+                city=bcity, state=bstate, country=bcountry, postal_code=bpostal,
+                access_token=access_token
             )
         )
     else:
@@ -219,7 +225,8 @@ with tabs[1]:
                 kwargs=dict(
                     contact_id=existing_entity_id, name=bname, email=bemail, phone=bphone, 
                     address1=baddress1, address2=baddress2, suite_no=bsuite_no, 
-                    city=bcity, state=bstate, country=bcountry, postal_code=bpostal
+                    city=bcity, state=bstate, country=bcountry, postal_code=bpostal,
+                    access_token=access_token
                 )
             )
         with btn_cols[1]:
@@ -228,6 +235,7 @@ with tabs[1]:
                 type='primary',
                 on_click=delete_contact,
                 kwargs=dict(
-                    contact_id=existing_entity_id
+                    contact_id=existing_entity_id,
+                    access_token=access_token
                 )
             )

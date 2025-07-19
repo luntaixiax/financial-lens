@@ -12,10 +12,15 @@ from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, Jour
 from utils.apis import get_account, get_fx, get_purchase_payment_journal, list_supplier, list_purchase_invoice, list_purchase_payment, \
     get_accounts_by_type, get_purchase_invoice_balance, validate_purchase_payment, create_journal_from_new_purchase_payment, \
     get_base_currency, get_all_accounts, add_purchase_payment, update_purchase_payment, delete_purchase_payment, get_comp_contact, get_logo
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
     st.logo(get_logo(), size='large')
@@ -87,7 +92,8 @@ def update_pmt_item(entry: dict) -> dict:
                 entry['payment_amount_raw'] = payment_amount * get_fx(
                     src_currency=CurType(pmt_acct['currency']).value,
                     tgt_currency=CurType(balance['currency']).value,
-                    cur_dt=pmt_date
+                    cur_dt=pmt_date,
+                    access_token=access_token
                 )
 
     return entry
@@ -190,7 +196,7 @@ class JournalEntryHelper:
         ]
         
         
-suppliers = list_supplier()
+suppliers = list_supplier(access_token=access_token)
 
 if len(suppliers) > 0:
     dds_suppliers = DropdownSelect(
@@ -203,9 +209,9 @@ if len(suppliers) > 0:
         CurType,
         include_null=False
     )
-    ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
-    lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
-    equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value)
+    ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value, access_token=access_token)
+    lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value, access_token=access_token)
+    equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value, access_token=access_token)
     balsh_accts = ast_accts + lib_accts + equ_accts
     dds_accts = DropdownSelect(
         briefs=balsh_accts,
@@ -214,7 +220,7 @@ if len(suppliers) > 0:
         display_keys=['acct_name']
     )
 
-    all_accts = get_all_accounts()
+    all_accts = get_all_accounts(access_token=access_token)
     dds_all_accts = DropdownSelect(
         briefs=all_accts,
         include_null=False,
@@ -369,7 +375,7 @@ if len(suppliers) > 0:
             )
             # get payment acct details
             pmt_acct_id = dds_accts.get_id(pmt_acct)
-            pmt_acct = get_account(pmt_acct_id)
+            pmt_acct = get_account(pmt_acct_id, access_token=access_token)
             
         # prepare data editor
         if edit_mode == 'Edit':

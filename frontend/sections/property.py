@@ -14,13 +14,18 @@ from utils.apis import get_file, list_property, get_account, get_property_journa
 from utils.enums import PropertyType, PropertyTransactionType, CurType, AcctType, EntryType
 from utils.tools import DropdownSelect, display_number
 from utils.exceptions import NotExistError
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
     
 def reset_validate():
@@ -108,9 +113,9 @@ property_types = DropdownSelect.from_enum(
 
 properties = list_property()
 
-ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
-lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
-equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value)
+ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value, access_token=access_token)
+lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value, access_token=access_token)
+equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value, access_token=access_token)
 
 dds_balsh_accts = DropdownSelect(
     briefs=ast_accts + lib_accts + equ_accts,
@@ -119,7 +124,7 @@ dds_balsh_accts = DropdownSelect(
     display_keys=['acct_name']
 )
 
-all_accts = get_all_accounts()
+all_accts = get_all_accounts(access_token=access_token)
 dds_all_accts = DropdownSelect(
     briefs=all_accts,
     include_null=False,
@@ -137,7 +142,7 @@ if len(properties) > 0:
     
     prop_stitch = []
     for p in properties:
-        acct = get_account(p['pur_acct_id'])
+        acct = get_account(p['pur_acct_id'], access_token=access_token)
         stat = get_property_stat(p['property_id'], rep_dt=datetime.now().date())
         prop = {
             #'Property ID': p['property_id'],
@@ -263,7 +268,7 @@ with prop_col1[1]:
     
 # get payment acct details
 pur_acct_id = dds_balsh_accts.get_id(pur_acct)
-pur_acct = get_account(pur_acct_id)
+pur_acct = get_account(pur_acct_id, access_token=access_token) 
 
 with prop_col1[0]:
     pur_amt = st.number_input(

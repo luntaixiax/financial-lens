@@ -13,13 +13,18 @@ from utils.apis import list_property, get_account, get_property_journal, \
     add_property_trans, update_property_trans, delete_property_trans, get_comp_contact, get_logo
 from utils.enums import PropertyType, PropertyTransactionType, CurType, AcctType, EntryType
 from utils.tools import DropdownSelect, display_number
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
     
 def reset_validate():
@@ -121,7 +126,7 @@ if len(properties) > 0:
         enum_cls=PropertyTransactionType,
         include_null=False
     )
-    all_accts = get_all_accounts()
+    all_accts = get_all_accounts(access_token=access_token)
     dds_all_accts = DropdownSelect(
         briefs=all_accts,
         include_null=False,
@@ -145,10 +150,10 @@ if len(properties) > 0:
     prop_sel, prop_jrn = get_property_journal(existing_property_id)
     pur_dt = datetime.strptime(prop_sel['pur_dt'], '%Y-%m-%d').date()
     cur_dt = datetime.now().date()
-    acct = get_account(prop_sel['pur_acct_id'])
+    acct = get_account(prop_sel['pur_acct_id'], access_token=access_token)
     currency = CurType(acct['currency']).name
     # list transactions
-    prop_trans = list_property_trans(existing_property_id)
+    prop_trans = list_property_trans(existing_property_id, access_token=access_token)
 
     # add key date points to transaction history
     trans_curve = [{

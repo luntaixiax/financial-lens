@@ -11,10 +11,14 @@ from utils.tools import DropdownSelect
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from utils.apis import get_base_currency, list_supplier, list_purchase_invoice, \
     list_purchase_payment, get_ppurchase_invoices_balance_by_entity, get_comp_contact, get_logo
-
+from utils.apis import cookie_manager
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
     st.logo(get_logo(), size='large')
@@ -52,7 +56,7 @@ def get_purchase_payment_hist() -> list[dict]:
         
 
 
-suppliers = list_supplier()
+suppliers = list_supplier(access_token=access_token)
 if len(suppliers) > 0:
 
     dds_suppliers = DropdownSelect(
