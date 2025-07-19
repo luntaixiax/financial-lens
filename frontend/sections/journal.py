@@ -12,13 +12,21 @@ from utils.apis import convert_to_base, get_base_currency, list_journal, get_jou
     get_all_accounts, get_account, add_journal, delete_journal, update_journal, \
     stat_journal_by_src, get_comp_contact, get_logo
 from utils.exceptions import OpNotPermittedError
-
+from utils.apis import cookie_manager
 st.set_page_config(layout="centered")
+
+
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
+base_cur = get_base_currency(access_token=access_token)
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
     
 def display_journal(jrn: dict) -> dict:
@@ -59,24 +67,25 @@ def correct_entry(entry: dict) -> dict:
     # correct and populate fields automatically
     if entry.get('acct_name') is not None:
         acct_id = dds_accts.get_id(entry['acct_name'])
-        acct = get_account(acct_id)
+        acct = get_account(acct_id, access_token=access_token)
         if acct['acct_type'] in (1, 2, 3):
             # balance sheet accounts
             entry['currency'] = CurType(acct['currency']).name
     
     if entry.get('amount') is not None:
         # if has amount entered
-        if entry.get('currency') == CurType(get_base_currency()).name: # TODO, switch to use base currency
+        if entry.get('currency') == CurType(base_cur).name: # TODO, switch to use base currency
             entry['amount_base'] = entry['amount']
         elif entry.get('currency') is not None:
             # if currency exist and not base currency, do live FX conversion for user
             if entry.get('amount_base') is None:
                 # if amount base not exist or value is None
                 # only do conversion if not present, not to override user input
-                fx = convert_to_base(
+                fx = convert_to_base(           
                     amount = 1.0,
                     src_currency = CurType[entry['currency']].value,
-                    cur_dt = jrn_date
+                    cur_dt = jrn_date,
+                    access_token=access_token
                 )
                 entry['amount_base'] = round(entry['amount'] * fx, 2)
                 
@@ -93,7 +102,7 @@ def validate_entry(entry: dict):
         )
     
     acct_id = dds_accts.get_id(entry['acct_name'])
-    acct = get_account(acct_id)
+    acct = get_account(acct_id, access_token=access_token)
     if acct['acct_type'] in (1, 2, 3):
         if entry['currency'] != CurType(acct['currency']).name:
             OpNotPermittedError(
@@ -101,10 +110,10 @@ def validate_entry(entry: dict):
                 details=f"{entry['acct_name']} should have currency {CurType(acct['currency']).name}",
             )
             
-    if entry['currency'] == CurType(get_base_currency()).name:
+    if entry['currency'] == CurType(base_cur).name:
         if entry['amount_base'] != entry['amount']:
             OpNotPermittedError(
-                message=f'Base Amount not equal to Raw Amount when currency is {CurType(get_base_currency()).name}', # TODO
+                message=f'Base Amount not equal to Raw Amount when currency is {CurType(base_cur).name}', # TODO
                 details=f"{entry['acct_name']} should have same raw and base amount",
             )
 
@@ -235,7 +244,7 @@ def navigate_to_page(page: int):
 
 
 # display metric card
-stat_jrn_by_src = stat_journal_by_src()
+stat_jrn_by_src = stat_journal_by_src(access_token=access_token)
 count_all_jrns = sum(s[0] for s in stat_jrn_by_src.values())
 amount_all_jrns = sum(s[1] for s in stat_jrn_by_src.values())
 
@@ -290,7 +299,7 @@ edit_mode = st.radio(
     on_change=clear_entries_and_reset_page, # clear cache
 )
 
-all_accts = get_all_accounts()
+all_accts = get_all_accounts(access_token=access_token)
 dds_accts = DropdownSelect(
     briefs=all_accts,
     include_null=False,
@@ -421,7 +430,8 @@ if edit_mode == 'Edit':
         note_keyword=search_note,
         min_amount=search_min_amount,
         max_amount=search_max_amount,
-        num_entries=search_num_entries
+        num_entries=search_num_entries,
+        access_token=access_token
     )
     
     # prevent overflow (from cached)
@@ -569,7 +579,7 @@ if edit_mode == 'Edit':
 
         if  _row_list := selected['selection']['rows']:
             jrn_id_sel = jrns[_row_list[0]]['journal_id']
-            jrn_sel = get_journal(jrn_id_sel)
+            jrn_sel = get_journal(jrn_id_sel, access_token=access_token)
             #st.json(jrn_sel)
             
             badge_cols = st.columns([1, 2])
@@ -751,10 +761,10 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_jrns > 0 and _row_list):
     #st.json(debit_entries)
     total_debit = get_total_amount_base(debit_entries)
     #debit_container.json(debit_entries)
-    debit_container.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+    debit_container.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')
     total_credit = get_total_amount_base(credit_entries)
     #credit_container.json(credit_entries)
-    credit_container.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+    credit_container.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]')
     
     if not disbale_edit:
         validate_btn = st.button(
@@ -789,7 +799,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_jrns > 0 and _row_list):
                         convert_entry_to_db(e, entry_type=EntryType.CREDIT) 
                         for e in credit_entries
                     ],
-                    note=note
+                    note=note,
+                    access_token=access_token
                 )
             )
             
@@ -813,7 +824,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_jrns > 0 and _row_list):
                             convert_entry_to_db(e, entry_type=EntryType.CREDIT) 
                             for e in credit_entries
                         ],
-                        note=note
+                        note=note,
+                        access_token=access_token
                     )
                 )
         with btn_cols[0]:
@@ -822,6 +834,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_jrns > 0 and _row_list):
                 type='primary',
                 on_click=delete_journal,
                 kwargs=dict(
-                    journal_id=jrn_id_sel
+                    journal_id=jrn_id_sel,
+                    access_token=access_token
                 )
             )

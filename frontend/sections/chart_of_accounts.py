@@ -7,13 +7,19 @@ from utils.apis import tree_charts, list_charts, get_chart, get_parent_chart, li
     add_chart, update_move_chart, delete_chart, list_accounts_by_chart, get_account, \
     add_account, update_account, delete_account, get_comp_contact, get_logo
 from utils.tools import DropdownSelect
-
+from utils.apis import cookie_manager
 st.set_page_config(layout="centered")
+
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
 
 st.subheader('Manage Chart of Accounts')
 
@@ -21,7 +27,7 @@ def show_expander(tree: dict):
     label = f"**{tree['name']}** &nbsp; | &nbsp; :violet-background[{tree['chart_id']}]"
     with st.expander(label=label, expanded=True, icon = '🟰'):
         st.empty()
-        accts = list_accounts_by_chart(tree['chart_id'])
+        accts = list_accounts_by_chart(tree['chart_id'], access_token=access_token)
         accts = pd.DataFrame.from_records([
             {
                 #'System': ,
@@ -54,12 +60,12 @@ tabs = st.tabs(['Chart of Accounts', 'Add/Edit Chart', 'Add/Edit Account'])
 with tabs[0]:
     
     
-    ast_charts = tree_charts(acct_type.value)
+    ast_charts = tree_charts(acct_type.value, access_token=access_token)
     show_expander(ast_charts)
     
 with tabs[1]:
     
-    charts = list_charts(acct_type.value)
+    charts = list_charts(acct_type.value, access_token=access_token)
     
     dds_charts = DropdownSelect(
         briefs=charts,
@@ -85,8 +91,8 @@ with tabs[1]:
                 key='chart_select'
             )
         existing_chart_id = dds_charts.get_id(edit_chart_option)
-        existing_chart = get_chart(existing_chart_id)
-        existing_parent_chart = get_parent_chart(existing_chart_id)
+        existing_chart = get_chart(existing_chart_id, access_token=access_token)
+        existing_parent_chart = get_parent_chart(existing_chart_id, access_token=access_token)
         
     st.divider()
     
@@ -139,6 +145,7 @@ with tabs[1]:
                     acct_type=acct_type.value
                 ),
                 parent_chart_id=parent_chart_id,
+                access_token=access_token
             )
         )
         
@@ -158,6 +165,7 @@ with tabs[1]:
                             acct_type=acct_type.value
                         ),
                         parent_chart_id=parent_chart_id,
+                        access_token=access_token
                     )
                 )
             else:
@@ -173,7 +181,8 @@ with tabs[1]:
                 type='primary',
                 on_click=delete_chart,
                 kwargs=dict(
-                    chart_id=existing_chart_id
+                    chart_id=existing_chart_id,
+                    access_token=access_token
                 )
             )
             
@@ -197,9 +206,9 @@ with tabs[2]:
                 key='acct_chart_select'
             )
             existing_acct_chart_id = dds_charts.get_id(edit_acct_chart_option)
-            existing_acct_chart = get_chart(existing_acct_chart_id)
+            existing_acct_chart = get_chart(existing_acct_chart_id, access_token=access_token)
         
-            accounts = list_accounts_by_chart(existing_acct_chart_id)
+            accounts = list_accounts_by_chart(existing_acct_chart_id, access_token=access_token)
             accounts = [
                 {
                     'acct_id': r['acct_id'], 
@@ -223,7 +232,7 @@ with tabs[2]:
             if edit_acct_option is not None:
                 # possible no account under some chart
                 existing_acct_id = dds_accts.get_id(edit_acct_option)
-                existing_acct = get_account(existing_acct_id)
+                existing_acct = get_account(existing_acct_id, access_token=access_token)
         
     st.divider()
     
@@ -301,6 +310,7 @@ with tabs[2]:
                     acct_type=acct_type.value,
                     currency=currency.value if has_currency else None,
                     chart_id=parent_acct_chart_id,
+                    access_token=access_token
                 ),
                 key='add_acount'
             )
@@ -319,6 +329,7 @@ with tabs[2]:
                         acct_type=acct_type.value,
                         currency=currency.value if has_currency else None,
                         chart_id=parent_acct_chart_id,
+                        access_token=access_token
                     ),
                     key='update_acount'
                 )
@@ -330,6 +341,7 @@ with tabs[2]:
                     on_click=delete_account,
                     kwargs=dict(
                         acct_id=existing_acct_id,
+                        access_token=access_token
                     ),
                     key='delete_acount',
                     disabled=existing_acct['is_system']
