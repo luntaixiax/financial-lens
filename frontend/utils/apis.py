@@ -1460,7 +1460,7 @@ def list_expense(
 def add_expense(expense: dict, files: list[Tuple[str, bytes]], access_token: str | None = None):
     #save the files
     if len(files) > 0:
-        file_ids = upload_file(files)
+        file_ids = upload_file(files, access_token)   
         expense['receipts'] = file_ids
         
     post_req(
@@ -1499,7 +1499,7 @@ def add_expenses(expenses: list[dict], access_token: str | None = None):
 def update_expense(expense: dict, files: list[str], access_token: str | None = None):
     #save the files
     if len(files) > 0:
-        file_ids = upload_file(files)
+        file_ids = upload_file(files, access_token)   
         
         existing_receipts = expense['receipts'] or []
         existing_receipts.extend(file_ids)

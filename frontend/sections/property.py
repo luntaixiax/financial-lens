@@ -20,6 +20,7 @@ st.set_page_config(layout="centered")
 if cookie_manager.get("authenticated") != True:
     st.switch_page('sections/login.py')
 access_token=cookie_manager.get("access_token")
+base_cur = get_base_currency(access_token=access_token)
 
 with st.sidebar:
     comp_name, _ = get_comp_contact(access_token=access_token)
@@ -76,12 +77,12 @@ def validate_property_(property_: dict):
         )
         return
     
-    property_ = validate_property(property_)
+    property_ = validate_property(property_, access_token=access_token)
     if isinstance(property_, dict):
         st.session_state['validated'] = True
         
         # calculate and journal to session state
-        jrn_ = create_journal_from_new_property(property_)
+        jrn_ = create_journal_from_new_property(property_, access_token=access_token)  
         st.session_state['journal'] = jrn_
     
 class JournalEntryHelper:
@@ -111,7 +112,7 @@ property_types = DropdownSelect.from_enum(
     include_null=False
 )
 
-properties = list_property()
+properties = list_property(access_token=access_token)    
 
 ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value, access_token=access_token)
 lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value, access_token=access_token)
@@ -143,7 +144,7 @@ if len(properties) > 0:
     prop_stitch = []
     for p in properties:
         acct = get_account(p['pur_acct_id'], access_token=access_token)
-        stat = get_property_stat(p['property_id'], rep_dt=datetime.now().date())
+        stat = get_property_stat(p['property_id'], rep_dt=datetime.now().date(), access_token=access_token)    
         prop = {
             #'Property ID': p['property_id'],
             'Property': p['property_name'],
@@ -194,7 +195,7 @@ if edit_mode == 'Edit':
             index=0
         )
         existing_property_id = dds_property.get_id(edit_property)
-        existing_prop_item, jrn_sel = get_property_journal(existing_property_id)
+        existing_prop_item, jrn_sel = get_property_journal(existing_property_id, access_token=access_token)    
         
         if not 'journal' in st.session_state:
             st.session_state['journal'] = jrn_sel
@@ -316,7 +317,7 @@ if edit_mode == 'Edit' and (recpt_ids := existing_prop_item['receipts']) is not 
     remove_receipts = []
     for recpt_id in recpt_ids:
         try:
-            receipt = get_file(file_id = recpt_id)
+            receipt = get_file(file_id = recpt_id, access_token=access_token)
         except NotExistError as e:
             receipt_section.error(f"{e.message}")
         else:
@@ -439,7 +440,7 @@ if (edit_mode == 'Add' and st.session_state.get('validated', False)) or edit_mod
             for e in debit_entries
             if pd.notnull(e['amount_base'])
         )
-        st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+        st.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')  
         
         st.caption('Credit Entries')
         credit_entries = st.data_editor(
@@ -497,14 +498,14 @@ if (edit_mode == 'Add' and st.session_state.get('validated', False)) or edit_mod
             for e in credit_entries
             if pd.notnull(e['amount_base'])
         )
-        st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+        st.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]')  
 
 if edit_mode == 'Add' and st.session_state.get('validated', False):
     # add button
     st.button(
         label='Add Property',
         on_click=add_property,
-        args=(property_, files)
+        args=(property_, files, access_token=access_token)
     )
     
 elif edit_mode == 'Edit':
@@ -517,7 +518,7 @@ elif edit_mode == 'Edit':
                 label='Update',
                 type='secondary',
                 on_click=update_property,
-                args=(property_, files)
+                args=(property_, files, access_token=access_token)
             )
     with btn_cols[0]:
         st.button(
@@ -525,7 +526,8 @@ elif edit_mode == 'Edit':
             type='primary',
             on_click=delete_property,
             kwargs=dict(
-                property_id=existing_property_id
+                property_id=existing_property_id,
+                access_token=access_token
             )
         )
             

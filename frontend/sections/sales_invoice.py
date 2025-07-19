@@ -20,6 +20,7 @@ st.set_page_config(layout="wide")
 if cookie_manager.get("authenticated") != True:
     st.switch_page('sections/login.py')
 access_token=cookie_manager.get("access_token")
+base_cur = get_base_currency(access_token=access_token)
 
 with st.sidebar:
     comp_name, _ = get_comp_contact(access_token=access_token)
@@ -295,7 +296,7 @@ def validate_invoice(invoice_: dict):
         )
         return
     
-    invoice_ = validate_sales(invoice_)
+    invoice_ = validate_sales(invoice_, access_token=access_token)
     if isinstance(invoice_, dict):
         if invoice_.get('subtotal_invitems') is not None:
             # pass the validation, otherwise may not pass, just pop up alerts
@@ -307,7 +308,7 @@ def validate_invoice(invoice_: dict):
             st.session_state['validated'] = True
 
             # calculate and journal to session state
-            jrn_ = create_journal_from_new_sales_invoice(invoice_)
+            jrn_ = create_journal_from_new_sales_invoice(invoice_, access_token=access_token)
             st.session_state['journal'] = jrn_
             
             return
@@ -382,7 +383,7 @@ if len(customers) > 0:
     # either add mode or selected edit/view mode
     if edit_mode == 'Edit':
         
-        invoices = list_sales_invoice(customer_ids=[cust_id])
+        invoices = list_sales_invoice(customer_ids=[cust_id], access_token=access_token)
         
         inv_displays = map(display_invoice, invoices)
         selected: dict = st.dataframe(
@@ -449,7 +450,7 @@ if len(customers) > 0:
 
         if  _row_list := selected['selection']['rows']:
             inv_id_sel = invoices[_row_list[0]]['invoice_id']
-            inv_sel, jrn_sel = get_sales_invoice_journal(inv_id_sel)
+            inv_sel, jrn_sel = get_sales_invoice_journal(inv_id_sel, access_token=access_token)    
 
             ui.badges(
                 badge_list=[("Invoice ID", "default"), (inv_id_sel, "secondary")], 
@@ -592,7 +593,7 @@ if len(customers) > 0:
                 'description'
             ]}]
             invoice_items[0]['discount_rate'] = 0
-            invoice_items[0]['tax_rate'] = get_default_tax_rate() * 100
+            invoice_items[0]['tax_rate'] = get_default_tax_rate(access_token=access_token) * 100
             
             general_invoice_items = [{c: None for c in [
                 'incur_dt',
@@ -657,7 +658,7 @@ if len(customers) > 0:
                     step=0.001,
                     min_value=0.0,
                     max_value=100.0,
-                    default=get_default_tax_rate() * 100,
+                    default=get_default_tax_rate(access_token=access_token) * 100,   
                     #required=True
                 ),
                 'discount_rate': st.column_config.NumberColumn(
@@ -758,7 +759,7 @@ if len(customers) > 0:
                     step=0.001,
                     min_value=0.0,
                     max_value=100.0,
-                    default=get_default_tax_rate() * 100,
+                    default=get_default_tax_rate(access_token=access_token) * 100,   
                     #required=True
                 ),
                 'description': st.column_config.TextColumn(
@@ -885,7 +886,7 @@ if len(customers) > 0:
                     for e in debit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+                st.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')  
                 
                 st.caption('Credit Entries')
                 credit_entries = st.data_editor(
@@ -943,7 +944,7 @@ if len(customers) > 0:
                     for e in credit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+                st.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]')  
 
         
         if edit_mode == 'Add' and st.session_state.get('validated', False):
@@ -951,7 +952,7 @@ if len(customers) > 0:
             st.button(
                 label='Add Invoice',
                 on_click=add_sales_invoice,
-                args=(invoice_,)
+                args=(invoice_, access_token)
             )
             
         elif edit_mode == 'Edit':
@@ -964,7 +965,7 @@ if len(customers) > 0:
                         label='Update',
                         type='secondary',
                         on_click=update_sales_invoice,
-                        args=(invoice_,)
+                        args=(invoice_, access_token)
                     )
             with btn_cols[0]:
                 st.button(
@@ -972,7 +973,8 @@ if len(customers) > 0:
                     type='primary',
                     on_click=delete_sales_invoice,
                     kwargs=dict(
-                        invoice_id=inv_id_sel
+                        invoice_id=inv_id_sel,
+                        access_token=access_token
                     )
                 )
                 
@@ -981,7 +983,7 @@ if len(customers) > 0:
                 st.subheader("Invoice Preview")
                 # show sales invoice HTML preview
                 components.html(
-                    preview_sales_invoice(inv_id_sel), 
+                    preview_sales_invoice(inv_id_sel, access_token=access_token), 
                     height = 1250, 
                     scrolling=True
                 )

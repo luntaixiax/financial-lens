@@ -20,6 +20,8 @@ if cookie_manager.get("authenticated") != True:
     st.switch_page('sections/login.py')
 access_token=cookie_manager.get("access_token")
 
+base_cur = get_base_currency(access_token=access_token)
+
 with st.sidebar:
     comp_name, _ = get_comp_contact(access_token=access_token)
     
@@ -72,12 +74,12 @@ def validate_div_(div_: dict):
         )
         return
     
-    div_ = validate_div(div_)
+    div_ = validate_div(div_, access_token=access_token)
     if isinstance(div_, dict):
         st.session_state['validated'] = True
         
         # calculate and journal to session state
-        jrn_ = create_journal_from_new_div(div_)
+        jrn_ = create_journal_from_new_div(div_, access_token=access_token)
         st.session_state['journal'] = jrn_
         
 class JournalEntryHelper:
@@ -140,7 +142,7 @@ edit_mode = st.radio(
 )
 if edit_mode == 'Edit':
     
-    divs = list_div()
+    divs = list_div(access_token=access_token)
     if len(divs) > 0:
         div_displays = map(display_div, divs)
         
@@ -192,7 +194,7 @@ if edit_mode == 'Edit':
 
         if  _row_list := selected['selection']['rows']:
             rep_id_sel = divs[_row_list[0]]['div_id']
-            div_sel, jrn_sel = get_div_journal(rep_id_sel)
+            div_sel, jrn_sel = get_div_journal(rep_id_sel, access_token=access_token)  
             
             badge_cols = st.columns([1, 2])
             with badge_cols[0]:
@@ -254,7 +256,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(divs) > 0 and _row_list):
         
     with iss_cols[1]:
         pmt_amt = st.number_input(
-            label=f"💰 Payment Amount ({CurType(pmt_acct['currency'] or get_base_currency()).name})",
+            label=f"💰 Payment Amount ({CurType(pmt_acct['currency'] or base_cur).name})",       
             value=0.0 if edit_mode == 'Add' else div_sel['div_amt'],
             step=0.01,
             key='pmt_amt',
@@ -356,7 +358,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(divs) > 0 and _row_list):
                 for e in debit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+            st.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')  
             
             st.caption('Credit Entries')
             credit_entries = st.data_editor(
@@ -414,7 +416,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(divs) > 0 and _row_list):
                 for e in credit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+            st.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]') 
 
 
     if edit_mode == 'Add' and st.session_state.get('validated', False):
@@ -422,7 +424,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(divs) > 0 and _row_list):
         st.button(
             label='Add Dividend',
             on_click=add_div,
-            args=(div_,)
+            args=(div_, access_token)
         )
         
     elif edit_mode == 'Edit':
@@ -435,7 +437,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(divs) > 0 and _row_list):
                     label='Update',
                     type='secondary',
                     on_click=update_div,
-                    args=(div_,)
+                    args=(div_, access_token)
                 )
         with btn_cols[0]:
             st.button(
@@ -443,6 +445,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(divs) > 0 and _row_list):
                 type='primary',
                 on_click=delete_div,
                 kwargs=dict(
-                    div_id=rep_id_sel
+                    div_id=rep_id_sel,
+                    access_token=access_token
                 )
             )

@@ -20,6 +20,8 @@ if cookie_manager.get("authenticated") != True:
     st.switch_page('sections/login.py')
 access_token=cookie_manager.get("access_token")
 
+base_cur = get_base_currency(access_token=access_token)
+
 with st.sidebar:
     comp_name, _ = get_comp_contact(access_token=access_token)
     
@@ -83,12 +85,12 @@ def validate_property_trans_(trans_: dict) -> dict:
         )
         return
     
-    trans_ = validate_property_trans(trans_)
+    trans_ = validate_property_trans(trans_, access_token=access_token)
     if isinstance(trans_, dict):
         st.session_state['validated'] = True
         
         # calculate and journal to session state
-        jrn_ = create_journal_from_new_property_trans(trans_)
+        jrn_ = create_journal_from_new_property_trans(trans_, access_token=access_token)   
         st.session_state['journal'] = jrn_
 
 class JournalEntryHelper:
@@ -113,7 +115,7 @@ class JournalEntryHelper:
             if e['entry_type'] == entry_type.value
         ]
 
-properties = list_property()
+properties = list_property(access_token=access_token)
 
 if len(properties) > 0:
     dds_property = DropdownSelect(
@@ -147,7 +149,7 @@ if len(properties) > 0:
     existing_property_id = dds_property.get_id(edit_property)
 
     # TODO: list property value curve through time
-    prop_sel, prop_jrn = get_property_journal(existing_property_id)
+    prop_sel, prop_jrn = get_property_journal(existing_property_id, access_token=access_token) 
     pur_dt = datetime.strptime(prop_sel['pur_dt'], '%Y-%m-%d').date()
     cur_dt = datetime.now().date()
     acct = get_account(prop_sel['pur_acct_id'], access_token=access_token)
@@ -173,7 +175,7 @@ if len(properties) > 0:
             'amount': (1 if prop_tran['trans_type'] in (3, ) else -1) * prop_tran['trans_amount'],
         })
         # add each accumulative value at each key date
-        trans_stat = get_property_stat(existing_property_id, rep_dt=event_dt)
+        trans_stat = get_property_stat(existing_property_id, rep_dt=event_dt, access_token=access_token)   
         trans_curve.append({
             'event_dt': event_dt,
             'bool_value': trans_stat['value'],
@@ -276,7 +278,7 @@ if len(properties) > 0:
             
             if  _row_list := selected['selection']['rows']:
                 trans_id_sel = prop_trans[_row_list[0]]['trans_id']
-                trans_sel, jrn_sel = get_propertytrans_journal(trans_id_sel)
+                trans_sel, jrn_sel = get_propertytrans_journal(trans_id_sel, access_token=access_token)
                 
                 if not 'journal' in st.session_state:
                     st.session_state['journal'] = jrn_sel
@@ -429,7 +431,7 @@ if len(properties) > 0:
                     for e in debit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+                st.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')  
                 
                 st.caption('Credit Entries')
                 credit_entries = st.data_editor(
@@ -487,7 +489,7 @@ if len(properties) > 0:
                     for e in credit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+                st.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]')  
 
         
         if edit_mode == 'Add' and st.session_state.get('validated', False):
@@ -495,7 +497,7 @@ if len(properties) > 0:
             st.button(
                 label='Add Transaction',
                 on_click=add_property_trans,
-                args=(property_trans_, )
+                args=(property_trans_, access_token)
             )
             
         elif edit_mode == 'Edit':
@@ -507,7 +509,7 @@ if len(properties) > 0:
                         label='Update',
                         type='secondary',
                         on_click=update_property_trans,
-                        args=(property_trans_, )
+                        args=(property_trans_, access_token)
                     )
             with btn_cols[0]:
                 st.button(
@@ -515,7 +517,8 @@ if len(properties) > 0:
                     type='primary',
                     on_click=delete_property_trans,
                     kwargs=dict(
-                        trans_id=trans_id_sel
+                        trans_id=trans_id_sel,
+                        access_token=access_token
                     )
                 )
             

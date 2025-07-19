@@ -20,6 +20,8 @@ if cookie_manager.get("authenticated") != True:
     st.switch_page('sections/login.py')
 access_token=cookie_manager.get("access_token")
 
+base_cur = get_base_currency(access_token=access_token)
+
 with st.sidebar:
     comp_name, _ = get_comp_contact(access_token=access_token)
     
@@ -71,12 +73,12 @@ def validate_issue_(issue_: dict):
         )
         return
     
-    issue_ = validate_issue(issue_)
+    issue_ = validate_issue(issue_, access_token=access_token)
     if isinstance(issue_, dict):
         st.session_state['validated'] = True
         
         # calculate and journal to session state
-        jrn_ = create_journal_from_new_issue(issue_)
+        jrn_ = create_journal_from_new_issue(issue_, access_token=access_token)
         st.session_state['journal'] = jrn_
 
 class JournalEntryHelper:
@@ -132,7 +134,7 @@ dds_repurs = DropdownSelect(
 )
 
 
-base_cur_name = CurType(get_base_currency(access_token=access_token)).name
+base_cur_name = CurType(base_cur).name  
 
 edit_mode = st.radio(
     label='Edit Mode',
@@ -149,8 +151,8 @@ edit_mode = st.radio(
 
 if edit_mode == 'Edit':
     
-    reissues = list_issue(is_reissue=True)
-    issues = list_issue(is_reissue=False)
+    reissues = list_issue(is_reissue=True, access_token=access_token)
+    issues = list_issue(is_reissue=False, access_token=access_token)
     issues = sorted(issues + reissues, key=lambda i: i['issue_dt'])
     
     if len(issues) > 0:
@@ -202,7 +204,7 @@ if edit_mode == 'Edit':
 
         if  _row_list := selected['selection']['rows']:
             iss_id_sel = issues[_row_list[0]]['issue_id']
-            issue_sel, jrn_sel = get_issue_journal(iss_id_sel)
+            issue_sel, jrn_sel = get_issue_journal(iss_id_sel, access_token=access_token)
             
             badge_cols = st.columns([1, 2])
             with badge_cols[0]:
@@ -270,7 +272,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
             total_reissued = get_total_reissue_from_repur(
                 repur_id=repur_id,
                 rep_dt=issue_dt,
-                exclu_issue_id=None if edit_mode == 'Add' else iss_id_sel # must exclude itself
+                exclu_issue_id=None if edit_mode == 'Add' else iss_id_sel, # must exclude itself
+                access_token=access_token
             )
             repur = list(filter(lambda r: r['repur_id'] == repur_id, repurs))[0]
             
@@ -330,7 +333,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
         
     with iss_cols[1]:
         pmt_amt = st.number_input(
-            label=f"💰 Received Amount ({CurType(pmt_acct['currency'] or get_base_currency()).name})",
+            label=f"💰 Received Amount ({CurType(pmt_acct['currency'] or base_cur).name})",  
             value=0.0 if edit_mode == 'Add' else issue_sel['issue_amt'],
             step=0.01,
             key='pmt_amt',
@@ -441,7 +444,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
                 for e in debit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+            st.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')  
             
             st.caption('Credit Entries')
             credit_entries = st.data_editor(
@@ -499,7 +502,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
                 for e in credit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+            st.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]')
 
 
     if edit_mode == 'Add' and st.session_state.get('validated', False):
@@ -507,7 +510,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
         st.button(
             label='Add Issue',
             on_click=add_issue,
-            args=(issue_,)
+            args=(issue_, access_token)
         )
         
     elif edit_mode == 'Edit':
@@ -519,7 +522,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
                     label='Update',
                     type='secondary',
                     on_click=update_issue,
-                    args=(issue_,)
+                    args=(issue_, access_token)
                 )
         with btn_cols[0]:
             st.button(
@@ -527,7 +530,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
                 type='primary',
                 on_click=delete_issue,
                 kwargs=dict(
-                    issue_id=iss_id_sel
+                    issue_id=iss_id_sel,
+                    access_token=access_token
                 )
             )
     

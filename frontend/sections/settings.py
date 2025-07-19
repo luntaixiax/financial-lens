@@ -7,7 +7,7 @@ import streamlit_shadcn_ui as ui
 from utils.enums import CurType
 from utils.tools import DropdownSelect
 from utils.apis import set_logo, get_logo, list_country, list_state, list_city, \
-    upsert_comp_contact, get_comp_contact, is_setup, get_base_currency, set_base_currency, \
+    upsert_comp_contact, get_comp_contact, is_setup, get_base_currency, \
     get_default_tax_rate, set_default_tax_rate, get_par_share_price, set_par_share_price, initiate
 from utils.apis import cookie_manager
 st.set_page_config(layout="centered")

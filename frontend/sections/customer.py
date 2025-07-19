@@ -15,7 +15,7 @@ with st.sidebar:
     comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')   
 
 st.subheader('Manage Customer')
 

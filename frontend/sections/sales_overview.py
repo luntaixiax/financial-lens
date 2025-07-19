@@ -17,6 +17,7 @@ st.set_page_config(layout="centered")
 if cookie_manager.get("authenticated") != True:
     st.switch_page('sections/login.py')
 access_token=cookie_manager.get("access_token")
+base_cur = get_base_currency(access_token=access_token)
 
 with st.sidebar:
     comp_name, _ = get_comp_contact(access_token=access_token)
@@ -25,8 +26,8 @@ with st.sidebar:
     st.logo(get_logo(access_token=access_token), size='large')
     
 def get_sales_payment_hist() -> list[dict]:
-    invoices = list_sales_invoice(customer_ids=[cust_id])
-    payments = list_sales_payment(invoice_ids=[i['invoice_id'] for i in invoices])
+    invoices = list_sales_invoice(customer_ids=[cust_id], access_token=access_token)
+    payments = list_sales_payment(invoice_ids=[i['invoice_id'] for i in invoices], access_token=access_token)
     
     chain = []
     for invoice in invoices:    
@@ -84,7 +85,7 @@ if len(customers) > 0:
     total_offset = sum(h['offset_amount'] for h in historys if h['direction'] == 'payment')
     total_balance = total_billed - total_offset
     fx_gain = total_paid - total_offset
-    base_currency = CurType(get_base_currency()).name
+    base_currency = CurType(base_cur).name   
 
     card_cols = st.columns(3)
     with card_cols[0]:
@@ -130,7 +131,8 @@ if len(customers) > 0:
     with tabs[0]:
         balances = get_psales_invoices_balance_by_entity(
             entity_id=cust_id,
-            bal_dt=date.today()
+            bal_dt=date.today(),
+            access_token=access_token
         )
 
         st.subheader("Outstanding Invoices")
