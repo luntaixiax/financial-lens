@@ -206,7 +206,7 @@ if len(properties) > 0:
         y_label=f'Book Value ({currency})'
     )
     # show cumulative value
-    trans_stat = get_property_stat(existing_property_id, rep_dt=datetime.now().date())
+    trans_stat = get_property_stat(existing_property_id, rep_dt=datetime.now().date(), access_token=access_token)
     trans_stat_display = pd.DataFrame.from_records([{
         'Purchase Cost': f"{currency} {round(trans_stat['pur_cost'], 2):,.2f}",
         'Acc. Appreciation': f"{currency} {round(trans_stat['acc_appreciation'], 2):,.2f}",

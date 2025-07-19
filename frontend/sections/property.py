@@ -505,7 +505,7 @@ if edit_mode == 'Add' and st.session_state.get('validated', False):
     st.button(
         label='Add Property',
         on_click=add_property,
-        args=(property_, files, access_token=access_token)
+        args=(property_, files, access_token)
     )
     
 elif edit_mode == 'Edit':
@@ -518,7 +518,7 @@ elif edit_mode == 'Edit':
                 label='Update',
                 type='secondary',
                 on_click=update_property,
-                args=(property_, files, access_token=access_token)
+                args=(property_, files, access_token)
             )
     with btn_cols[0]:
         st.button(

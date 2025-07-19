@@ -115,7 +115,7 @@ if len(suppliers) > 0:
             title="Remaining Balance", 
             content=f"{base_currency} {total_balance: ,.2f}", 
             description=f"equivalent in base currency", 
-            key="card3"
+            key="card4"
         )
     with card_cols2[1]:
         ui.metric_card(

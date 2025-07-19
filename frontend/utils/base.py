@@ -47,11 +47,34 @@ def handle_error(f):
 def assemble_url(prefix:str, endpoint: str) -> str:
     return f"{BASE_URL}/{prefix}/{endpoint}"
 
-def plain_get_req(prefix:str, endpoint: str, params:dict=None, data:dict = None) -> str:
+def plain_get_req(
+    prefix:str, 
+    endpoint: str, 
+    params:dict=None, 
+    json_:dict = None,
+    data:dict = None,
+    headers: dict | None= None,
+    access_token: str | None = None,
+) -> str:
+    base_headers = {
+        "Content-Type" : "application/json"
+    }
+    if access_token:
+        base_headers.update(
+            {
+                "Authorization" : f"Bearer {access_token}"
+            }
+        )
+    if headers:
+        base_headers.update(
+            **headers
+        )
     resp = requests.get(
         url = assemble_url(prefix, endpoint),
         params = params,
-        json = data,
+        json = json_,
+        data = data,
+        headers = base_headers
     )
     if resp.status_code == 200:
         return resp.text
