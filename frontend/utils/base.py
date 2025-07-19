@@ -59,53 +59,124 @@ def plain_get_req(prefix:str, endpoint: str, params:dict=None, data:dict = None)
         raise UnprocessableEntityError()
 
 @handle_error
-def get_req(prefix:str, endpoint: str, params:dict=None, data:dict = None) -> dict:
-    headers = {
-        "Content-type" : "application/json"
+def get_req(
+    prefix:str, 
+    endpoint: str, 
+    access_token: str | None = None,
+    headers: dict | None= None,
+    params:dict=None, 
+    json_:dict = None
+) -> dict:
+    base_headers = {
+        "Content-Type" : "application/json"
     }
+    if access_token:
+        base_headers.update(
+            {
+                "Authorization" : f"Bearer {access_token}"
+            }
+        )
+    if headers:
+        base_headers.update(
+            **headers
+        )
     return requests.get(
         url = assemble_url(prefix, endpoint),
         params = params,
-        json = data,
-        headers = headers
+        json = json_,
+        headers = base_headers
     )
 
 @handle_error
-def post_req(prefix:str, endpoint: str, params:dict=None, data:dict = None, files: list[Tuple[str, bytes]] | None = None) -> dict:
+def post_req(
+    prefix:str, 
+    endpoint: str,
+    access_token: str | None = None,
+    headers: dict | None= None,
+    params:dict=None, 
+    data: dict | None = None,
+    json_: dict | None = None,
+    files: list[Tuple[str, bytes]] | None = None
+) -> dict:
     if files is None:
-        headers = {
-            "Content-type" : "application/json"
+        base_headers = {
+            "Content-Type" : "application/json"
         }
     else:
-        headers = None
+        base_headers = {}
+    if access_token:
+        base_headers.update(
+            {
+                "Authorization" : f"Bearer {access_token}"
+            }
+        )
+    if headers:
+        base_headers.update(
+            **headers
+        )
     return requests.post(
             url = assemble_url(prefix, endpoint),
             params = params,
-            json = data,
-            headers = headers,
+            data = data,
+            json = json_,
+            headers = base_headers,
             files = files
         )
 
 @handle_error
-def put_req(prefix:str, endpoint: str, params:dict=None, data:dict = None) -> dict:
-    headers = {
-        "Content-type" : "application/json"
+def put_req(
+    prefix:str, 
+    endpoint: str,
+    access_token: str | None = None,
+    headers: dict | None= None,
+    params:dict=None, 
+    json_:dict = None
+) -> dict:
+    base_headers = {
+        "Content-Type" : "application/json"
     }
+    if access_token:
+        base_headers.update(
+            {
+                "Authorization" : f"Bearer {access_token}"
+            }
+        )
+    if headers:
+        base_headers.update(
+            **headers
+        )
     return requests.put(
         url = assemble_url(prefix, endpoint),
         params = params,
-        json = data,
-        headers = headers
+        json = json_,
+        headers = base_headers
     )
 
 @handle_error
-def delete_req(prefix:str, endpoint: str,params:dict=None, data:dict = None) -> dict:
-    headers = {
-        "Content-type" : "application/json"
-    }
+def delete_req(
+    prefix:str, 
+    endpoint: str,
+    access_token: str | None = None,
+    headers: dict | None= None,
+    params:dict=None, 
+    json_:dict = None
+) -> dict:
+    base_headers = {
+        "Content-Type" : "application/json"
+    }   
+    if access_token:
+        base_headers.update(
+            {
+                "Authorization" : f"Bearer {access_token}"
+            }
+        )
+    if headers:
+        base_headers.update(
+            **headers
+        )
     return requests.delete(
         url = assemble_url(prefix, endpoint),
         params = params,
-        json = data,
-        headers = headers
+        json = json_,
+        headers = base_headers
     )

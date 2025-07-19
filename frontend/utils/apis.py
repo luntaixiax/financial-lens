@@ -4,17 +4,34 @@ from datetime import date, datetime, timezone
 from functools import wraps
 import uuid
 from utils.exceptions import AlreadyExistError, NotExistError, FKNotExistError, \
-    FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError, UnprocessableEntityError
+    FKNoDeleteUpdateError, OpNotPermittedError, NotMatchWithSystemError, UnprocessableEntityError, \
+    PermissionDeniedError
 from utils.base import get_req, plain_get_req, post_req, delete_req, put_req
 import pandas as pd
-import streamlit_shadcn_ui as ui
 import streamlit as st
+import streamlit_shadcn_ui as ui
+import extra_streamlit_components as stx
 
+#@st.fragment
+def get_manager():
+    return stx.CookieManager(key='login_cookie')
+
+cookie_manager = get_manager()
 def message_box(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         try:
             r = f(*args, **kwargs)
+        except PermissionDeniedError as e:
+            raise # TODO: change to next line
+            #st.switch_page('sections/login.py')
+            # ui.alert_dialog(
+            #     show=True,
+            #     title=e.message,
+            #     description=e.details,
+            #     confirm_label="OK",
+            # )
+            
         except (AlreadyExistError, NotExistError, FKNotExistError, FKNoDeleteUpdateError, 
                 OpNotPermittedError, NotMatchWithSystemError, UnprocessableEntityError) as e:
             ui.alert_dialog(
@@ -29,6 +46,28 @@ def message_box(f):
             return r
 
     return decorated
+
+@message_box
+def login(username: str, password: str) -> bool:
+    token_data = post_req(
+        prefix='management',
+        endpoint='login',
+        data={
+            "username": username,
+            "password": password    
+        },
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    cookie_manager.set("authenticated", True, key='authenticated_set')
+    cookie_manager.set("username", username, key='username_set')
+    cookie_manager.set("access_token", token_data["access_token"], key='access_token_set')
+    return True
+
+
+def logout():
+    cookie_manager.set("authenticated", False, key='authenticated_set')
+    cookie_manager.set("access_token", None, key='access_token_set')
+    cookie_manager.set("username", None, key='username_set')
 
 @st.cache_data
 def list_country() -> list[dict]:
@@ -85,7 +124,7 @@ def add_item(name: str, item_type: int, entity_type: int, unit: int,
     post_req(
         prefix='item',
         endpoint='add',
-        data={
+        json_={
             "name": name,
             "item_type": item_type,
             "entity_type": entity_type,
@@ -104,7 +143,7 @@ def update_item(item_id: str, name: str, item_type: int, entity_type: int, unit:
     put_req(
         prefix='item',
         endpoint='update',
-        data={
+        json_={
             "item_id": item_id,
             "name": name,
             "item_type": item_type,
@@ -147,7 +186,7 @@ def add_contact(name: str, email: str, phone: str,
     post_req(
         prefix='entity',
         endpoint='contact/add',
-        data={
+        json_={
             "name": name,
             "email": email,
             "phone": phone,
@@ -170,7 +209,7 @@ def update_contact(contact_id: str, name: str, email: str, phone: str,
     put_req(
         prefix='entity',
         endpoint='contact/update',
-        data={
+        json_={
             "contact_id": contact_id,
             "name": name,
             "email": email,
@@ -228,7 +267,7 @@ def add_customer(customer_name: str, is_business: bool, bill_contact_id: str,
     post_req(
         prefix='entity',
         endpoint='customer/add',
-        data={
+        json_={
             "customer_name": customer_name,
             "is_business": is_business,
             "bill_contact": bill_contact,
@@ -249,7 +288,7 @@ def update_customer(cust_id: str, customer_name: str, is_business: bool, bill_co
     put_req(
         prefix='entity',
         endpoint='customer/update',
-        data={
+        json_={
             "cust_id": cust_id,
             "customer_name": customer_name,
             "is_business": is_business,
@@ -294,7 +333,7 @@ def add_supplier(supplier_name: str, is_business: bool, bill_contact_id: str,
     post_req(
         prefix='entity',
         endpoint='supplier/add',
-        data={
+        json_={
             "supplier_name": supplier_name,
             "is_business": is_business,
             "bill_contact": bill_contact,
@@ -315,7 +354,7 @@ def update_supplier(supplier_id: str, supplier_name: str, is_business: bool, bil
     put_req(
         prefix='entity',
         endpoint='supplier/update',
-        data={
+        json_={
             "supplier_id": supplier_id,
             "supplier_name": supplier_name,
             "is_business": is_business,
@@ -370,7 +409,7 @@ def add_chart(chart: dict, parent_chart_id: str):
         params={
             'parent_chart_id': parent_chart_id
         },
-        data={
+        json_={
             "name": chart['name'],
             "acct_type": chart['acct_type'],
         }
@@ -385,7 +424,7 @@ def update_move_chart(chart: dict, parent_chart_id: str):
     put_req(
         prefix='accounts',
         endpoint='chart/update',
-        data={
+        json_={
             "chart_id": chart['chart_id'],
             "name": chart['name'],
             "acct_type": chart['acct_type'],
@@ -455,7 +494,7 @@ def add_account(acct_name: str, acct_type: int, currency: int, chart_id: str):
     post_req(
         prefix='accounts',
         endpoint='account/add',
-        data={
+        json_={
             "acct_name": acct_name,
             "acct_type": acct_type,
             "currency": currency,
@@ -478,7 +517,7 @@ def update_account(acct_id: str, acct_name: str, acct_type: int, currency: int, 
     put_req(
         prefix='accounts',
         endpoint='account/update',
-        data={
+        json_={
             "acct_id": acct_id,
             "acct_name": acct_name,
             "acct_type": acct_type,
@@ -540,7 +579,7 @@ def list_journal(
             'max_amount': max_amount,
             'num_entries': num_entries
         },
-        data={
+        json_={
             'jrn_ids': jrn_ids,
             'acct_ids': acct_ids,
             'acct_names': acct_names,
@@ -605,7 +644,7 @@ def add_journal(jrn_date: date, jrn_src: int, entries: list[dict], note: str | N
     post_req(
         prefix='journal',
         endpoint='add',
-        data={
+        json_={
             'jrn_date': jrn_date.strftime('%Y-%m-%d'),
             'entries': converted_entries,
             'jrn_src': jrn_src,
@@ -640,7 +679,7 @@ def update_journal(jrn_id: str, jrn_date: date, jrn_src: int, entries: list[dict
     put_req(
         prefix='journal',
         endpoint='update',
-        data={
+        json_={
             'journal_id': jrn_id,
             'jrn_date': jrn_date.strftime('%Y-%m-%d'),
             'entries': converted_entries,
@@ -746,7 +785,7 @@ def list_sales_invoice(
             'max_amount': max_amount,
             'num_invoice_items': num_invoice_items
         },
-        data={
+        json_={
             'invoice_ids': invoice_ids,
             'invoice_nums': invoice_nums,
             'customer_ids': customer_ids,
@@ -768,7 +807,7 @@ def validate_sales(invoice: dict) -> dict:
     return post_req(
         prefix='sales',
         endpoint='invoice/validate',
-        data=invoice
+        json_=invoice
     )
 
 @message_box
@@ -776,7 +815,7 @@ def create_journal_from_new_sales_invoice(invoice: dict) -> dict:
     return get_req(
         prefix='sales',
         endpoint='invoice/trial_journal',
-        data=invoice
+        json_=invoice
     )
 
 @message_box
@@ -784,7 +823,7 @@ def add_sales_invoice(invoice: dict):
     post_req(
         prefix='sales',
         endpoint='invoice/add',
-        data=invoice
+        json_=invoice
     )
     
 
@@ -801,7 +840,7 @@ def update_sales_invoice(invoice: dict):
     put_req(
         prefix='sales',
         endpoint='invoice/update',
-        data=invoice
+        json_=invoice
     )
 
     list_sales_invoice.clear()
@@ -874,7 +913,7 @@ def list_sales_payment(
             'max_amount': max_amount,
             'num_invoices': num_invoices
         },
-        data={
+        json_={
             'payment_ids': payment_ids,
             'payment_nums': payment_nums,
             'invoice_ids': invoice_ids,
@@ -917,7 +956,7 @@ def validate_sales_payment(payment: dict) -> dict:
     return post_req(
         prefix='sales',
         endpoint='payment/validate',
-        data=payment
+        json_=payment
     )
 
 @message_box
@@ -925,7 +964,7 @@ def create_journal_from_new_sales_payment(payment: dict) -> dict:
     return get_req(
         prefix='sales',
         endpoint='payment/trial_journal',
-        data=payment
+        json_=payment
     )
     
 @message_box
@@ -933,7 +972,7 @@ def add_sales_payment(payment: dict):
     post_req(
         prefix='sales',
         endpoint='payment/add',
-        data=payment
+        json_=payment
     )
 
     list_sales_payment.clear()
@@ -950,7 +989,7 @@ def update_sales_payment(payment: dict):
     put_req(
         prefix='sales',
         endpoint='payment/update',
-        data=payment
+        json_=payment
     )
 
     list_sales_payment.clear()
@@ -1013,7 +1052,7 @@ def list_purchase_invoice(
             'max_amount': max_amount,
             'num_invoice_items': num_invoice_items
         },
-        data={
+        json_={
             'invoice_ids': invoice_ids,
             'invoice_nums': invoice_nums,
             'supplier_ids': supplier_ids,
@@ -1035,7 +1074,7 @@ def validate_purchase(invoice: dict) -> dict:
     return post_req(
         prefix='purchase',
         endpoint='invoice/validate',
-        data=invoice
+        json_=invoice
     )
 
 @message_box
@@ -1043,7 +1082,7 @@ def create_journal_from_new_purchase_invoice(invoice: dict) -> dict:
     return get_req(
         prefix='purchase',
         endpoint='invoice/trial_journal',
-        data=invoice
+        json_=invoice
     )
 
 @message_box
@@ -1051,7 +1090,7 @@ def add_purchase_invoice(invoice: dict):
     post_req(
         prefix='purchase',
         endpoint='invoice/add',
-        data=invoice
+        json_=invoice
     )
     
 
@@ -1068,7 +1107,7 @@ def update_purchase_invoice(invoice: dict):
     put_req(
         prefix='purchase',
         endpoint='invoice/update',
-        data=invoice
+        json_=invoice
     )
 
     list_purchase_invoice.clear()
@@ -1141,7 +1180,7 @@ def list_purchase_payment(
             'max_amount': max_amount,
             'num_invoices': num_invoices
         },
-        data={
+        json_={
             'payment_ids': payment_ids,
             'payment_nums': payment_nums,
             'invoice_ids': invoice_ids,
@@ -1184,7 +1223,7 @@ def validate_purchase_payment(payment: dict) -> dict:
     return post_req(
         prefix='purchase',
         endpoint='payment/validate',
-        data=payment
+        json_=payment
     )
 
 @message_box
@@ -1192,7 +1231,7 @@ def create_journal_from_new_purchase_payment(payment: dict) -> dict:
     return get_req(
         prefix='purchase',
         endpoint='payment/trial_journal',
-        data=payment
+        json_=payment
     )
     
 @message_box
@@ -1200,7 +1239,7 @@ def add_purchase_payment(payment: dict):
     post_req(
         prefix='purchase',
         endpoint='payment/add',
-        data=payment
+        json_=payment
     )
 
     list_purchase_payment.clear()
@@ -1217,7 +1256,7 @@ def update_purchase_payment(payment: dict):
     put_req(
         prefix='purchase',
         endpoint='payment/update',
-        data=payment
+        json_=payment
     )
 
     list_purchase_payment.clear()
@@ -1252,7 +1291,7 @@ def validate_expense(expense: dict) -> dict:
     return post_req(
         prefix='expense',
         endpoint='validate',
-        data=expense
+        json_=expense
     )
 
 @message_box
@@ -1260,7 +1299,7 @@ def create_journal_from_new_expense(expense: dict) -> dict:
     return get_req(
         prefix='expense',
         endpoint='trial_journal',
-        data=expense
+        json_=expense
     )
 
 @st.cache_data
@@ -1303,7 +1342,7 @@ def list_expense(
             'max_amount': max_amount,
             'has_receipt': has_receipt
         },
-        data={
+        json_={
             'expense_ids': expense_ids,
             'expense_acct_ids': expense_acct_ids,
             'expense_acct_names': expense_acct_names,          
@@ -1320,7 +1359,7 @@ def add_expense(expense: dict, files: list[Tuple[str, bytes]]):
     post_req(
         prefix='expense',
         endpoint='add',
-        data=expense
+        json_=expense
     )
     list_expense.clear()
     list_journal.clear()
@@ -1337,7 +1376,7 @@ def add_expenses(expenses: list[dict]):
     post_req(
         prefix='expense',
         endpoint='batch_add',
-        data=expenses
+        json_=expenses
     )
     list_expense.clear()
     list_journal.clear()
@@ -1361,7 +1400,7 @@ def update_expense(expense: dict, files: list[str]):
     put_req(
         prefix='expense',
         endpoint='update',
-        data=expense
+        json_=expense
     )
     get_expense_journal.clear()
     list_expense.clear()
@@ -1423,7 +1462,7 @@ def register_files(filenames: list[str]) -> dict[str, str]:
     return post_req(
         prefix='misc',
         endpoint='register_files',
-        data=filenames
+        json_=filenames
     )
 
 @message_box
@@ -1480,7 +1519,7 @@ def create_journal_from_new_property(property: dict) -> dict:
     return get_req(
         prefix='property',
         endpoint='property/trial_journal',
-        data=property
+        json_=property
     )
     
 @message_box
@@ -1488,7 +1527,7 @@ def validate_property(property: dict) -> dict:
     return post_req(
         prefix='property',
         endpoint='property/validate_property',
-        data=property
+        json_=property
     )
     
 @message_box
@@ -1501,7 +1540,7 @@ def add_property(property: dict,  files: list[Tuple[str, bytes]]):
     post_req(
         prefix='property',
         endpoint='property/add',
-        data=property
+        json_=property
     )
     list_property.clear()
     list_journal.clear()
@@ -1523,7 +1562,7 @@ def update_property(property: dict, files: list[str]):
     put_req(
         prefix='property',
         endpoint='property/update',
-        data=property
+        json_=property
     )
 
     list_property.clear()
@@ -1576,7 +1615,7 @@ def create_journal_from_new_property_trans(property_trans: dict) -> dict:
     return get_req(
         prefix='property',
         endpoint='transaction/trial_journal',
-        data=property_trans
+        json_=property_trans
     )
     
 @message_box
@@ -1584,7 +1623,7 @@ def validate_property_trans(property_trans: dict) -> dict:
     return post_req(
         prefix='property',
         endpoint='transaction/validate',
-        data=property_trans
+        json_=property_trans
     )
     
 @message_box
@@ -1592,7 +1631,7 @@ def add_property_trans(property_trans: dict):
     post_req(
         prefix='property',
         endpoint='transaction/add',
-        data=property_trans
+        json_=property_trans
     )
     list_property_trans.clear()
     get_propertytrans_journal.clear()
@@ -1608,7 +1647,7 @@ def update_property_trans(property_trans: dict):
     put_req(
         prefix='property',
         endpoint='transaction/update',
-        data=property_trans
+        json_=property_trans
     )
     list_property_trans.clear()
     get_propertytrans_journal.clear()
@@ -1682,7 +1721,7 @@ def create_journal_from_new_issue(issue: dict) -> dict:
     return get_req(
         prefix='shares',
         endpoint='issue/trial_journal',
-        data=issue
+        json_=issue
     )
     
 @message_box
@@ -1690,7 +1729,7 @@ def validate_issue(issue: dict) -> dict:
     return post_req(
         prefix='shares',
         endpoint='issue/validate_issue',
-        data=issue
+        json_=issue
     )
     
 @message_box
@@ -1698,7 +1737,7 @@ def add_issue(issue: dict):
     post_req(
         prefix='shares',
         endpoint='issue/add',
-        data=issue
+        json_=issue
     )
     list_issue.clear()
     list_reissue_from_repur.clear()
@@ -1713,7 +1752,7 @@ def update_issue(issue: dict):
     put_req(
         prefix='shares',
         endpoint='issue/update',
-        data=issue
+        json_=issue
     )
 
     list_issue.clear()
@@ -1762,7 +1801,7 @@ def create_journal_from_new_repur(repur: dict) -> dict:
     return get_req(
         prefix='shares',
         endpoint='repur/trial_journal',
-        data=repur
+        json_=repur
     )
     
 @message_box
@@ -1770,7 +1809,7 @@ def validate_repur(repur: dict) -> dict:
     return post_req(
         prefix='shares',
         endpoint='repur/validate_repur',
-        data=repur
+        json_=repur
     )
     
 @message_box
@@ -1778,7 +1817,7 @@ def add_repur(repur: dict):
     post_req(
         prefix='shares',
         endpoint='repur/add',
-        data=repur
+        json_=repur
     )
     list_repur.clear()
     list_journal.clear()
@@ -1792,7 +1831,7 @@ def update_repur(repur: dict):
     put_req(
         prefix='shares',
         endpoint='repur/update',
-        data=repur
+        json_=repur
     )
 
     list_repur.clear()
@@ -1839,7 +1878,7 @@ def create_journal_from_new_div(div: dict) -> dict:
     return get_req(
         prefix='shares',
         endpoint='div/trial_journal',
-        data=div
+        json_=div
     )
     
 @message_box
@@ -1847,7 +1886,7 @@ def validate_div(div: dict) -> dict:
     return post_req(
         prefix='shares',
         endpoint='div/validate_div',
-        data=div
+        json_=div
     )
     
 @message_box
@@ -1855,7 +1894,7 @@ def add_div(div: dict):
     post_req(
         prefix='shares',
         endpoint='div/add',
-        data=div
+        json_=div
     )
     list_div.clear()
     list_journal.clear()
@@ -1869,7 +1908,7 @@ def update_div(div: dict):
     put_req(
         prefix='shares',
         endpoint='div/update',
-        data=div
+        json_=div
     )
 
     list_div.clear()
@@ -1927,8 +1966,8 @@ def set_logo(logo: bytes):
     preview_purchase_invoice.clear()
     preview_sales_invoice.clear()
 
-@st.cache_data
 @message_box
+@st.cache_data
 def get_logo() -> bytes | str:
     try:
         f = get_req(
@@ -1950,7 +1989,7 @@ def upsert_comp_contact(
         prefix='settings',
         endpoint='set_company',
         params={'name': company_name},
-        data={
+        json_={
             "contact_id": "xyz",
             "name": name,
             "email": email,

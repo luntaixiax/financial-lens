@@ -9,9 +9,14 @@ from utils.tools import DropdownSelect
 from utils.apis import set_logo, get_logo, list_country, list_state, list_city, \
     upsert_comp_contact, get_comp_contact, is_setup, get_base_currency, set_base_currency, \
     get_default_tax_rate, set_default_tax_rate, get_par_share_price, set_par_share_price, initiate
-    
+from utils.apis import cookie_manager
 st.set_page_config(layout="centered")
 
+st.text(cookie_manager.get_all())
+st.text(cookie_manager.get("authenticated"))
+st.text(cookie_manager.get("authenticated"))
+# if cookie_manager.get("authenticated") is None:
+#     st.switch_page('sections/login.py')
 
 st.subheader("Your Company LOGO")
 logo_cols = st.columns([1, 4])
