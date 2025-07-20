@@ -5,18 +5,23 @@ import pandas as pd
 from utils.enums import CurType, AcctType
 from utils.apis import tree_income_statement, get_base_currency, get_comp_contact, get_logo
 from utils.tools import DropdownSelect
-
+from utils.apis import cookie_manager
 st.set_page_config(layout="wide")
+
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
     
 st.subheader('Income Statement')
 
-base_cur = get_base_currency()
+base_cur = get_base_currency(access_token=access_token)
 
 def show_expander(tree: dict, icon: str):
     net_base = f"({CurType(base_cur).name}) {tree['chart_summary']['net_base']: ,.2f}"
@@ -51,7 +56,7 @@ with cols[1]:
         key='dt_end'
     )
 
-inc_st = tree_income_statement(start_dt=start_dt, end_dt=end_dt)
+inc_st = tree_income_statement(start_dt=start_dt, end_dt=end_dt, access_token=access_token)
 
 cols = st.columns(2)
 with cols[0]:
@@ -65,6 +70,6 @@ with cols[1]:
 total_inc = inc_st[str(AcctType.INC.value)]['chart_summary']['net_base']
 total_exp = inc_st[str(AcctType.EXP.value)]['chart_summary']['net_base']
 net_inc = total_inc - total_exp
-st.markdown(f'📥 **Total Income ({CurType(get_base_currency()).name})**: :green-background[{total_inc:,.2f}]')
-st.markdown(f'📤 **Total Expense ({CurType(get_base_currency()).name})**: :blue-background[{total_exp:,.2f}]')
-st.markdown(f'📤 **Net Income ({CurType(get_base_currency()).name})**: :orange-background[{net_inc:,.2f}]')
+st.markdown(f'📥 **Total Income ({CurType(base_cur).name})**: :green-background[{total_inc:,.2f}]')  
+st.markdown(f'📤 **Total Expense ({CurType(base_cur).name})**: :blue-background[{total_exp:,.2f}]')
+st.markdown(f'📤 **Net Income ({CurType(base_cur).name})**: :orange-background[{net_inc:,.2f}]')

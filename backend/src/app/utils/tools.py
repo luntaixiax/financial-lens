@@ -1,12 +1,15 @@
 from functools import lru_cache
+from datetime import datetime, timezone, timedelta
 import math
-from typing import Literal
+from typing import Any, Hashable, Literal
+from collections import OrderedDict
 import uuid
+import re
 import hvac
 import os
 import tomli
 from pathlib import Path
-from src.app.model.enums import CurType
+from passlib.context import CryptContext
 
 
 ENV = os.environ.get("ENV", "prod")
@@ -17,43 +20,21 @@ VAULT_MOUNT_PATH = {
     'backup_server' : f"{ENV}/backup_server",
     'stateapi' : f"{ENV}/stateapi",
     'static_server': f"{ENV}/static_server",
+    'auth': f"{ENV}/auth",
 }
 
-def id_generator(prefix: str, length: int = 8, existing_list: list[str] | None = None) -> str:
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def id_generator(prefix: str, length: int = 8, existing_list: list[str] | None = None, 
+                 only_alpha_numeric: bool = False) -> str:
     new_id = prefix + str(uuid.uuid4())[:length]
     if existing_list:
         if new_id in existing_list:
-            new_id = id_generator(prefix, length, existing_list)
+            new_id = id_generator(prefix, length, existing_list, only_alpha_numeric)
+    if only_alpha_numeric:
+        new_id = re.sub(r'[^a-zA-Z0-9]', '', new_id)
     return new_id
-
-
-def get_settings() -> dict:
-    from sqlmodel import Session
-    from src.app.service.misc import SettingService
-    from src.app.service.files import FileService
-    from src.app.dao.files import configDao, fileDao
-    from src.app.dao.connection import get_engine, get_storage_fs
-    
-    file_fs = get_storage_fs('files')
-    engine = get_engine('finlens') # TODO: should not hardcode db name
-
-    with Session(engine) as session:
-        file_dao=fileDao(file_fs=file_fs, session=session)
-        file_service = FileService(file_dao=file_dao)
-        config_dao = configDao(file_fs=file_fs)
-        
-        setting_service = SettingService(
-            file_service=file_service,
-            config_dao=config_dao
-        )
-    
-    return {
-        'preferences': {
-            'base_cur': setting_service.get_base_currency(),
-            'default_sales_tax_rate': setting_service.get_default_tax_rate(),
-            'par_share_price': setting_service.get_par_share_price()
-        }
-    }
 
 @lru_cache()
 def get_amount_precision() -> int:
@@ -71,23 +52,8 @@ def taxround(x: float) -> float:
         return math.floor(expoN) / 10 ** precision
     return math.ceil(expoN) / 10 ** precision
 
-@lru_cache()
-def get_base_cur() -> CurType:
-    settings = get_settings()
-    return settings['preferences']['base_cur']
-
-def get_default_tax_rate() -> float:
-    settings = get_settings()
-    return settings['preferences']['default_sales_tax_rate']
-
-@lru_cache() # TODO: should not change
-def get_par_share_price() -> float:
-    settings = get_settings()
-    return settings['preferences']['par_share_price']
-
 
 def get_vault_resp(mount_point: str, path: str) -> dict:
-    print(Path(__file__).resolve().parent.parent.parent.parent.parent / "secrets.toml")
     with open((Path(__file__).resolve().parent.parent.parent.parent.parent / "secrets.toml").resolve(), mode="rb") as fp:
         config = tomli.load(fp)
         
@@ -129,27 +95,87 @@ def get_secret() -> dict:
         mount_point = VAULT_MOUNT_POINT,
         path = VAULT_MOUNT_PATH['static_server']
     )
+    auth = get_vault_resp(
+        mount_point = VAULT_MOUNT_POINT,
+        path = VAULT_MOUNT_PATH['auth'],
+    )
     
     return {
         'database' : database,
         'storage_server' : storage_server,
         'backup_server' : backup_server,
         'stateapi' : stateapi,
-        'static_server': static_server
+        'static_server': static_server,
+        'auth': auth
     }
 
-def get_file_root(type_: Literal['files', 'backup'] = 'files') -> str:
-    if type_ == 'files':
-        path_config = get_secret()['storage_server']['path']
-    else:
-        path_config = get_secret()['backup_server']['path']
+def get_files_bucket() -> str:
+    path_config = get_secret()['storage_server']['path']
+    return path_config['bucket']
+
+def get_backup_bucket() -> str:
+    path_config = get_secret()['backup_server']['path']
+    return path_config['bucket']
+
+class LocalCacheKVStore:
     
-    return (Path(path_config['bucket']) / path_config['file_root']).as_posix()
-    
-def get_config_root(type_: Literal['files', 'backup'] = 'files') -> str:
-    if type_ == 'files':
-        path_config = get_secret()['storage_server']['path']
-    else:
-        path_config = get_secret()['backup_server']['path']
+    def __init__(self, capacity: int, ttl: int = 60 * 60 * 1):
+        self._capacity = capacity
+        self._cache = {} # space -> key -> value
+        self._ttl = ttl
+
+    def put(self, space: str, key: Hashable, value: Any) -> None:
+        expire_time = datetime.now(timezone.utc) + timedelta(seconds=self._ttl)
         
-    return (Path(path_config['bucket']) / 'config').as_posix()
+        if space in self._cache:
+            if key in self._cache[space]:
+                self._cache[space].pop(key)
+            elif len(self._cache[space]) >= self._capacity:
+                self._cache[space].popitem(last=False) # Remove the least recently used (first item)
+            # set value
+            self._cache[space][key] = {
+                'value': value,
+                'expire_time': expire_time
+            }
+        else:
+            # set value
+            self._cache[space] = OrderedDict({key: {
+                'value': value,
+                'expire_time': expire_time
+            }})
+    
+    def get(self, space: str, key: Hashable) -> Any:
+        if space in self._cache:
+            if key in self._cache[space]:
+                if self._cache[space][key]['expire_time'] < datetime.now(timezone.utc):
+                    self._cache[space].pop(key)
+                    raise TimeoutError(f"Key {key} expired in space {space}")
+                else:
+                    return self._cache[space][key]['value']
+            else:
+                raise KeyError(f"Key {key} not found in space {space}")
+        else:
+            raise KeyError(f"Space {space} not found")
+    
+    def remove(self, space: str, key: Hashable) -> None:
+        if space in self._cache:
+            if key in self._cache[space]:
+                self._cache[space].pop(key)
+            else:
+                raise KeyError(f"Key {key} not found in space {space}")
+        else:
+            raise KeyError(f"Space {space} not found")
+        
+    def invalidate(self, space: str, key: Hashable) -> None:
+        try:
+            self.remove(space, key)
+        except KeyError:
+            pass
+        
+    def clear(self, space: str):
+        if space in self._cache:
+            self._cache.pop(space)
+    
+    def clear_all(self):
+        self._cache = {}
+            

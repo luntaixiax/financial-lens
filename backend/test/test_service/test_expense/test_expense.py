@@ -3,7 +3,6 @@ import logging
 import math
 import pytest
 from unittest import mock
-from src.app.utils.tools import get_base_cur
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError, NotMatchWithSystemError
 from src.app.model.enums import CurType, ItemType, JournalSrc, UnitType
 from src.app.model.expense import Expense, ExpenseItem, ExpInfo, Merchant
@@ -74,11 +73,11 @@ def test_create_journal_from_expense(
     assert math.isclose(gain_entry.amount_base, gain_, rel_tol=1e-6)
     
     
-def test_validate_expense(session_with_sample_choa, test_expense_service):
+def test_validate_expense(session_with_sample_choa, test_expense_service, test_setting_service):
     
     expense = Expense(
         expense_dt=date(2024, 1, 1),
-        currency=get_base_cur(),
+        currency=test_setting_service.get_base_currency(),
         expense_items=[
             ExpenseItem(
                 expense_item_id='sample-exp-item1',

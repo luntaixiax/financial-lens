@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from src.app.service.settings import ConfigService
 from src.app.service.acct import AcctService
 from src.app.service.journal import JournalService
 from src.app.service.entity import EntityService
@@ -10,16 +11,12 @@ from src.app.service.property import PropertyService
 from src.app.service.shares import SharesService
 from src.web.dependency.service import get_acct_service, get_journal_service, \
     get_entity_service, get_item_service, get_sales_service, get_purchase_service, \
-    get_expense_service, get_property_service, get_shares_service
+    get_expense_service, get_property_service, get_setting_service, get_shares_service
 
-router = APIRouter(prefix="/test", tags=["test"])
+router = APIRouter(prefix="/sample", tags=["sample"])
 
-@router.get("/router_test")
-def router_test() -> str:
-    return "Hello, router tester here"
-
-@router.post("/init_sample")
-def init_sample(
+@router.post("/create_sample")
+def create_sample(
     acct_service: AcctService = Depends(get_acct_service),
     journal_service: JournalService = Depends(get_journal_service),
     entity_service: EntityService = Depends(get_entity_service),
@@ -28,12 +25,17 @@ def init_sample(
     purchase_service: PurchaseService = Depends(get_purchase_service),
     expense_service: ExpenseService = Depends(get_expense_service),
     property_service: PropertyService = Depends(get_property_service),
-    shares_service: SharesService = Depends(get_shares_service)
+    shares_service: SharesService = Depends(get_shares_service),
+    setting_service: ConfigService = Depends(get_setting_service)
 ):
-
-    # create basic account structure *standard
-    acct_service.init()
+    # set base settings
+    setting_service.create_sample()
     # create additional sample accounts
+    if not setting_service.is_setup():
+        # create basic account structure *standard
+        acct_service.init()
+        setting_service.confirm_setup()
+    
     acct_service.create_sample()
     # create sample journals
     journal_service.create_sample()

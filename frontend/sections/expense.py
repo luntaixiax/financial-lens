@@ -10,17 +10,24 @@ from datetime import datetime, date
 from utils.tools import DropdownSelect, display_number
 from utils.exceptions import NotExistError
 from utils.enums import AcctType, CurType, EntryType, JournalSrc
-from utils.apis import convert_to_base, get_base_currency, list_expense, get_expense_journal, \
+from utils.apis import get_base_currency, list_expense, get_expense_journal, \
     create_journal_from_new_expense, validate_expense, add_expense, update_expense, delete_expense, \
     get_default_tax_rate, get_accounts_by_type, get_all_accounts, get_account, \
     upload_file, delete_file, get_file, get_comp_contact, get_logo
-    
+from utils.apis import cookie_manager
+
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
+base_cur = get_base_currency(access_token=access_token)
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
     
 def display_exp(exp: dict) -> dict:
@@ -146,13 +153,13 @@ def validate_expense_(expense_: dict):
         )
         return
 
-    expense_ = validate_expense(expense_)
+    expense_ = validate_expense(expense_, access_token=access_token)
     if isinstance(expense_, dict):
         if expense_.get('expense_items') is not None:
             st.session_state['validated'] = True
             
             # calculate and journal to session state
-            jrn_ = create_journal_from_new_expense(expense_)
+            jrn_ = create_journal_from_new_expense(expense_, access_token=access_token)
             st.session_state['journal'] = jrn_
 
 class JournalEntryHelper:
@@ -188,7 +195,7 @@ def navigate_to_page(page: int):
         
 
 
-exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
+exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value, access_token=access_token)
 dds_exp_accts = DropdownSelect(
     briefs=exp_accts,
     include_null=False,
@@ -196,16 +203,16 @@ dds_exp_accts = DropdownSelect(
     display_keys=['acct_name']
 )
 
-ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
-lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
-equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value)
+ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value, access_token=access_token)
+lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value, access_token=access_token)
+equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value, access_token=access_token)
 dds_balsh_accts = DropdownSelect(
     briefs=ast_accts + lib_accts + equ_accts,
     include_null=False,
     id_key='acct_id',
     display_keys=['acct_name']
 )
-all_accts = get_all_accounts()
+all_accts = get_all_accounts(access_token=access_token)
 dds_all_accts = DropdownSelect(
     briefs=all_accts,
     include_null=False,
@@ -334,6 +341,7 @@ if edit_mode == 'Edit':
         expense_acct_names=search_exp_acct_names,
         min_amount=search_min_amount,
         max_amount=search_max_amount,
+        access_token=access_token
     )
     
     # prevent overflow (from cached)
@@ -478,7 +486,7 @@ if edit_mode == 'Edit':
 
         if  _row_list := selected['selection']['rows']:
             exp_id_sel = exps[_row_list[0]]['expense_id']
-            exp_sel, jrn_sel = get_expense_journal(exp_id_sel)
+            exp_sel, jrn_sel = get_expense_journal(exp_id_sel, access_token=access_token)  
             
             badge_cols = st.columns([1, 2])
             with badge_cols[0]:
@@ -526,7 +534,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
             )
         # get payment acct details
         pmt_acct_id = dds_balsh_accts.get_id(pmt_acct)
-        pmt_acct = get_account(pmt_acct_id)
+        pmt_acct = get_account(pmt_acct_id, access_token=access_token)
         
     with exp_cols[1]:
         cur_type_option = st.selectbox(
@@ -566,7 +574,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
             'tax_rate',
             'description'
         ]}]
-        exp_items[0]['tax_rate'] = get_default_tax_rate() * 100
+        exp_items[0]['tax_rate'] = get_default_tax_rate(access_token=access_token) * 100
     
     if 'exp_items' not in st.session_state:
         st.session_state['exp_items'] = exp_items
@@ -606,7 +614,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 step=0.001,
                 min_value=0.0,
                 max_value=100.0,
-                default=get_default_tax_rate() * 100,
+                default=get_default_tax_rate(access_token=access_token) * 100,   
                 #required=True
             ),
             'payment_amount': st.column_config.NumberColumn(
@@ -689,7 +697,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
         remove_receipts = []
         for recpt_id in recpt_ids:
             try:
-                receipt = get_file(file_id = recpt_id)
+                receipt = get_file(file_id = recpt_id, access_token=access_token)
             except NotExistError as e:
                 receipt_section.error(f"{e.message}")
             else:
@@ -824,7 +832,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 for e in debit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+            st.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')  
             
             st.caption('Credit Entries')
             credit_entries = st.data_editor(
@@ -882,7 +890,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 for e in credit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+            st.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]')
 
 
     
@@ -892,7 +900,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
         st.button(
             label='Add Expense',
             on_click=add_expense,
-            args=(expense_, files)
+            args=(expense_, files, access_token)
         )
         
     elif edit_mode == 'Edit':
@@ -905,7 +913,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                     label='Update',
                     type='secondary',
                     on_click=update_expense,
-                    args=(expense_, files)
+                    args=(expense_, files, access_token)
                 )
         with btn_cols[0]:
             st.button(
@@ -913,6 +921,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and num_exps > 0 and _row_list):
                 type='primary',
                 on_click=delete_expense,
                 kwargs=dict(
-                    expense_id=exp_id_sel
+                    expense_id=exp_id_sel,
+                    access_token=access_token
                 )
             )

@@ -7,16 +7,15 @@ from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, F
 from src.app.model.enums import AcctType
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.dao.orm import ChartOfAccountORM, AcctORM, infer_integrity_error
+from src.app.dao.connection import UserDaoAccess
 
 class chartOfAcctDao:
     
-    def __init__(self, engine: Engine):
-        self.engine = engine
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def save(self, top_node: ChartNode):
         # save the whole tree to DB
-        # save the whole tree to DB
-        logging.info("Saving following Chart of Accounts:\n")
         top_node.print()
             
         # get existing nodes for extra node deletion below
@@ -28,7 +27,7 @@ class chartOfAcctDao:
             # get the order of chart ids in case need to delete
             ordered_nodes = list(existing_node.descendants)[::-1] + [existing_node]
     
-        with Session(self.engine) as s:
+        with Session(self.dao_access.user_engine) as s:
             # get already existing nodes within same chart type in db
             sql = select(ChartOfAccountORM.chart_id).where(
                 ChartOfAccountORM.acct_type == top_node.chart.acct_type,
@@ -95,7 +94,7 @@ class chartOfAcctDao:
     
     def load(self, acct_type: AcctType) -> ChartNode:
         # assemble the relevant tree from DB and return the top node
-        with Session(self.engine) as s:
+        with Session(self.dao_access.user_engine) as s:
             def add_childs(node: ChartNode):
                 # find child
                 sql = select(ChartOfAccountORM).where(
@@ -148,7 +147,7 @@ class chartOfAcctDao:
         except NotExistError as e:
             return
             
-        with Session(self.engine) as s:
+        with Session(self.dao_access.user_engine) as s:
             # need to delete from bottom node to top node
             for node in list(top_node.descendants)[::-1] + [top_node]:
                 sql = select(ChartOfAccountORM).where(
@@ -178,7 +177,7 @@ class chartOfAcctDao:
     
     def get_chart(self, chart_id: str) -> Chart:
         # get chart orm
-        with Session(self.engine) as s:
+        with Session(self.dao_access.user_engine) as s:
             sql = select(ChartOfAccountORM).where(
                 ChartOfAccountORM.chart_id == chart_id
             )
@@ -192,7 +191,7 @@ class chartOfAcctDao:
     
     def get_charts(self, acct_type: AcctType) -> list[Chart]:
         # get chart orm
-        with Session(self.engine) as s:
+        with Session(self.dao_access.user_engine) as s:
             sql = select(ChartOfAccountORM).where(
                 ChartOfAccountORM.acct_type == acct_type
             )
@@ -205,7 +204,7 @@ class chartOfAcctDao:
     
     
     def get_parent_chart(self, chart_id: str) -> Chart:
-        with Session(self.engine) as s:
+        with Session(self.dao_access.user_engine) as s:
             sql = select(ChartOfAccountORM).where(
                 ChartOfAccountORM.chart_id == (
                     select(ChartOfAccountORM.parent_chart_id)
@@ -224,8 +223,8 @@ class chartOfAcctDao:
 
 class acctDao:
     
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, dao_access: UserDaoAccess):
+        self.dao_access = dao_access
         
     def fromAcct(self, acct: Account) -> AcctORM:
         return AcctORM(
@@ -247,26 +246,26 @@ class acctDao:
         
     def add(self, acct: Account):
         acct_orm = self.fromAcct(acct)
-        self.session.add(acct_orm)
+        self.dao_access.user_session.add(acct_orm)
         
         try:
-            self.session.commit()
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise infer_integrity_error(e, during_creation=True)
             
     def remove(self, acct_id: str):
         sql = select(AcctORM).where(AcctORM.acct_id == acct_id)
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))    
         
         try:
-            self.session.delete(p)
-            self.session.commit()
+            self.dao_access.user_session.delete(p)
+            self.dao_access.user_session.commit()
         except IntegrityError as e:
-            self.session.rollback()
+            self.dao_access.user_session.rollback()
             raise FKNoDeleteUpdateError(details=str(e))
             
         
@@ -274,7 +273,7 @@ class acctDao:
         acct_orm = self.fromAcct(acct)
         sql = select(AcctORM).where(AcctORM.acct_id == acct_orm.acct_id)
         try:
-            p = self.session.exec(sql).one()
+            p = self.dao_access.user_session.exec(sql).one()
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         
@@ -286,22 +285,22 @@ class acctDao:
             p.chart_id = acct_orm.chart_id
 
             try:
-                self.session.add(p)
-                self.session.commit()
+                self.dao_access.user_session.add(p)
+                self.dao_access.user_session.commit()
             except IntegrityError as e:
                 # if integrity error happened here, must certainly it is because
                 # updated chart_id does not exist
-                self.session.rollback()
+                self.dao_access.user_session.rollback()
                 raise FKNotExistError(details=str(e))
             else:
-                self.session.refresh(p) # update p to instantly have new values
+                self.dao_access.user_session.refresh(p) # update p to instantly have new values
         
     def get_chart_id_by_acct(self, acct_id: str) -> str:
         sql = select(AcctORM.chart_id).where(
             AcctORM.acct_id == acct_id
         )
         try:
-            chart_id = self.session.exec(sql).one() # get the account
+            chart_id = self.dao_access.user_session.exec(sql).one() # get the account
         except NoResultFound as e:
             raise NotExistError(details=str(e))
         return chart_id
@@ -309,7 +308,7 @@ class acctDao:
     def get(self, acct_id: str, chart: Chart) -> Account:
         sql = select(AcctORM).where(AcctORM.acct_id == acct_id)
         try:
-            acct_orm = self.session.exec(sql).one() # get the account
+            acct_orm = self.dao_access.user_session.exec(sql).one() # get the account
         except NoResultFound as e:
             raise NotExistError(details=str(e))
             
@@ -320,7 +319,7 @@ class acctDao:
             AcctORM.chart_id == chart.chart_id
         )
         try:
-            acct_orms = self.session.exec(sql).all() # get the accounts
+            acct_orms = self.dao_access.user_session.exec(sql).all() # get the accounts
         except NoResultFound as e:
             raise NotExistError(details=str(e))
             

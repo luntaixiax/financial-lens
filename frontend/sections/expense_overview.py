@@ -6,13 +6,18 @@ import streamlit_shadcn_ui as ui
 from utils.tools import display_number
 from utils.enums import CurType
 from utils.apis import summary_expense, get_base_currency, get_comp_contact, get_logo
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
     
 def process_exp_for_barchart(exps: list[dict]) -> list[dict]:
@@ -29,9 +34,9 @@ def process_exp_for_barchart(exps: list[dict]) -> list[dict]:
     return r
 
 current_dt = datetime.now().date()
-ytd_exp = summary_expense(current_dt.replace(month=1, day=1), current_dt)
-mtd_exp = summary_expense(current_dt.replace(day=1), current_dt)
-base_cur = get_base_currency()
+ytd_exp = summary_expense(current_dt.replace(month=1, day=1), current_dt, access_token=access_token)
+mtd_exp = summary_expense(current_dt.replace(day=1), current_dt, access_token=access_token)
+base_cur = get_base_currency(access_token=access_token)
 
 st.subheader('Summary')
 
@@ -96,7 +101,7 @@ with qry_cols[1]:
         key='dt_end'
     )
 
-qry_exp = summary_expense(start_dt, end_dt)
+qry_exp = summary_expense(start_dt, end_dt, access_token=access_token)
 qry_exp_total = sum(e['total_base_amount'] for e in qry_exp)
 if len(qry_exp) == 0:
     st.warning("No expense found during the selected period", icon='🥵')

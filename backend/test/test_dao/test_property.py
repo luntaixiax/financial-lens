@@ -2,7 +2,6 @@ from datetime import date
 from typing import Generator
 from unittest import mock
 import pytest
-from src.app.utils.tools import get_base_cur
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError
 from src.app.model.enums import CurType, PropertyType, PropertyTransactionType
 from src.app.model.property import Property, PropertyTransaction

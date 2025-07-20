@@ -1,7 +1,6 @@
 from datetime import date
 import math
 from typing import Tuple
-from src.app.utils.tools import get_base_cur
 from src.app.service.item import ItemService
 from src.app.service.entity import EntityService
 from src.app.dao.invoice import invoiceDao
@@ -17,16 +16,20 @@ from src.app.model.enums import AcctType, CurType, EntityType, EntryType, ItemTy
 from src.app.model.invoice import _InvoiceBalance, _InvoiceBrief, GeneralInvoiceItem, Invoice, InvoiceItem, Item
 from src.app.model.journal import Journal, Entry
 from src.app.model.payment import _PaymentBrief, PaymentItem, Payment
-
+from src.app.service.settings import ConfigService
 
 class SalesService:
     
     def __init__(
             self, 
-            invoice_dao: invoiceDao, payment_dao: paymentDao, 
-            item_service: ItemService, entity_service: EntityService,
-            acct_service: AcctService, journal_service: JournalService,
-            fx_service: FxService
+            invoice_dao: invoiceDao, 
+            payment_dao: paymentDao, 
+            item_service: ItemService, 
+            entity_service: EntityService,
+            acct_service: AcctService, 
+            journal_service: JournalService,
+            fx_service: FxService,
+            setting_service: ConfigService
         ):
         self.invoice_dao = invoice_dao
         self.payment_dao = payment_dao
@@ -35,6 +38,8 @@ class SalesService:
         self.journal_service = journal_service
         self.fx_service = fx_service
         self.entity_service = entity_service
+        self.setting_service = setting_service
+        
         
     def create_sample(self):
         # add invoice
@@ -103,6 +108,7 @@ class SalesService:
         self.delete_invoice('inv-sales')
 
     def create_journal_from_invoice(self, invoice: Invoice) -> Journal:
+        base_cur = self.setting_service.get_base_currency()
         self._validate_invoice(invoice)
         
         entries = []
@@ -159,7 +165,7 @@ class SalesService:
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
                 acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
-                cur_incexp=get_base_cur(),
+                cur_incexp=base_cur,
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
                 description='fx gain' if gain >=0 else 'fx loss'
@@ -229,6 +235,7 @@ class SalesService:
         return journal
     
     def create_journal_from_payment(self, payment: Payment) -> Journal:
+        base_cur = self.setting_service.get_base_currency()
         self._validate_payment(payment)
         
         payment_acct = self.acct_service.get_account(payment.payment_acct_id)
@@ -294,7 +301,7 @@ class SalesService:
         fx_gain = Entry(
             entry_type=EntryType.CREDIT, # fx gain is credit
             acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
-            cur_incexp=get_base_cur(),
+            cur_incexp=base_cur,
             amount=gain, # gain is already expressed in base currency
             amount_base=gain, # gain is already expressed in base currency
             description='fx gain' if gain >=0 else 'fx loss'

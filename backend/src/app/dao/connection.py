@@ -1,9 +1,11 @@
 from pathlib import Path
 from typing import Generator, Literal
-from s3fs import S3FileSystem
+from fsspec import AbstractFileSystem
+from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, create_engine
 from functools import lru_cache
+from src.app.model.user import User
 from src.app.utils.tools import get_secret
 
 def get_db_url(db: str) -> str:
@@ -12,7 +14,7 @@ def get_db_url(db: str) -> str:
     return db_url
 
 @lru_cache
-def get_engine(db: str = 'manage') -> Engine:
+def get_engine(db: str = 'common') -> Engine:
     config = get_secret()['database']
 
     db_url = get_db_url(db)
@@ -38,7 +40,9 @@ def session_factory(db: str):
     return get_session
 
 @lru_cache
-def get_storage_fs(type_: Literal['files', 'backup'] = 'files') -> S3FileSystem:
+def get_storage_fs(type_: Literal['files', 'backup'] = 'files') -> AbstractFileSystem:
+    from s3fs import S3FileSystem
+    
     if type_ == 'files':
         config = get_secret()['storage_server']
     else:
@@ -57,13 +61,24 @@ def get_storage_fs(type_: Literal['files', 'backup'] = 'files') -> S3FileSystem:
     )
     return s3a
 
-def yield_file_fs() -> S3FileSystem:
-    return get_storage_fs('files')
-    
-def yield_backup_fs() -> S3FileSystem:
-    return get_storage_fs('backup')
 
-if __name__ == '__main__':
-    from src.app.dao.orm import SQLModelWithSort
+class CommonDaoAccess(BaseModel):
+    # all access needed for common operation
+     
+    class Config:
+        arbitrary_types_allowed = True
     
-    SQLModelWithSort.metadata.create_all(get_engine())
+    common_engine: Engine
+    common_session: Session
+    file_fs: AbstractFileSystem # TODO: move user specific?
+    backup_fs: AbstractFileSystem
+
+class UserDaoAccess(CommonDaoAccess):
+    # all access needed for user specific operation
+    
+    user: User
+
+    common_engine: Engine
+    user_engine: Engine
+    common_session: Session
+    user_session: Session

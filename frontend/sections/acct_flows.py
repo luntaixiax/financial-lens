@@ -8,13 +8,18 @@ from utils.apis import get_account, get_all_accounts, get_blsh_balance, get_ince
     get_base_currency, list_entry_by_acct, get_logo, get_comp_contact
 from utils.tools import DropdownSelect
 from utils.enums import CurType, EntryType, AcctType
-
+from utils.apis import cookie_manager
 st.set_page_config(layout="centered")
+
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
 
 def group_entries_by_dates(entries: list[dict], year: int) -> dict[int, dict[int, list[dict]]]:
     # group entries by month and day
@@ -36,7 +41,7 @@ def group_entries_by_dates(entries: list[dict], year: int) -> dict[int, dict[int
                 grouped[yr_mnth][entry_dt.day].append(entry)
     return grouped
 
-all_accts = get_all_accounts()
+all_accts = get_all_accounts(access_token=access_token)
 acct_options = [
     {
         'acct_id': a['acct_id'],
@@ -59,8 +64,8 @@ acct_name = st.selectbox(
     key='acct_name'
 )
 acct_id = dds_accts.get_id(acct_name)
-acct = get_account(acct_id)
-base_cur = get_base_currency()
+acct = get_account(acct_id, access_token=access_token)
+base_cur = get_base_currency(access_token=access_token)
 
 
 badge_cols = st.columns(4)
@@ -109,7 +114,8 @@ if acct['acct_type'] in (1, 2, 3):
     
     blsh_summary = get_blsh_balance(
         acct_id=acct_id,
-        report_dt=date.today()
+        report_dt=date.today(),
+        access_token=access_token
     )
     debit_direction = "Inflow" if acct['acct_type'] in (1,) else "Outflow"
     credit_direction = "Inflow" if acct['acct_type'] in (2, 3) else "Outflow"
@@ -144,7 +150,7 @@ if acct['acct_type'] in (1, 2, 3):
         options=list(range(1970, date.today().year + 1)[::-1])
     )
     
-    entries = list_entry_by_acct(acct_id)
+    entries = list_entry_by_acct(acct_id, access_token=access_token)
         
     # list entries
     grped_entries = group_entries_by_dates(entries, year)
@@ -159,7 +165,8 @@ if acct['acct_type'] in (1, 2, 3):
             flow_stat = get_incexp_flow(
                 acct_id=acct_id,
                 start_dt=yr_mnth_dt,
-                end_dt=mnth_end_dt
+                end_dt=mnth_end_dt,
+                access_token=access_token
             )
             flow_cols = st.columns([2, 1, 1], gap='small', border=False)
             with flow_cols[0]:
@@ -250,6 +257,7 @@ else:
         acct_id=acct_id,
         start_dt=date(year, 1, 1), # year start
         end_dt=date(year, 12, 31), # year end
+        access_token=access_token
     )
     flow_cols = st.columns([2, 1, 1], gap='small', border=False)
     with flow_cols[0]:
@@ -276,7 +284,7 @@ else:
             key=str(uuid.uuid4())
         )
     
-    entries = list_entry_by_acct(acct_id)
+    entries = list_entry_by_acct(acct_id, access_token=access_token)
         
     # list entries
     grped_entries = group_entries_by_dates(entries, year)
@@ -291,7 +299,8 @@ else:
             flow_stat = get_incexp_flow(
                 acct_id=acct_id,
                 start_dt=yr_mnth_dt,
-                end_dt=mnth_end_dt
+                end_dt=mnth_end_dt,
+                access_token=access_token
             )
             flow_cols = st.columns([2, 1, 1], gap='small', border=False)
             with flow_cols[0]:

@@ -10,11 +10,13 @@ from src.app.service.fx import FxService
 from src.app.model.const import SystemAcctNumber
 from src.app.model.journal import Entry, Journal
 from src.app.model.enums import AcctType, EntryType, JournalSrc
-from src.app.utils.tools import finround, get_base_cur, get_par_share_price
-from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
+from src.app.utils.tools import finround     
+from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, \
+    NotExistError, NotMatchWithSystemError, OpNotPermittedError
 from src.app.service.acct import AcctService
 from src.app.model.accounts import Account
 from src.app.model.shares import Dividend, StockIssue, StockRepurchase
+from src.app.service.settings import ConfigService
 
 
 class SharesService:
@@ -27,6 +29,7 @@ class SharesService:
             acct_service: AcctService, 
             journal_service: JournalService,
             fx_service: FxService,
+            setting_service: ConfigService
         ):
         self.stock_issue_dao = stock_issue_dao
         self.stock_repurchase_dao = stock_repurchase_dao
@@ -34,7 +37,9 @@ class SharesService:
         self.acct_service = acct_service
         self.journal_service = journal_service
         self.fx_service = fx_service
-
+        self.setting_service = setting_service
+       
+        
     def create_sample(self):
         issue = StockIssue(
             issue_id='sample-issue',
@@ -73,6 +78,7 @@ class SharesService:
         self.delete_div(div_id='sample-div')
         
     def _validate_issue(self, issue: StockIssue) -> StockIssue:
+        base_cur = self.setting_service.get_base_currency()
         # TODO: if reissue, need to check if num_shares <= total repurchased shares
         if issue.is_reissue:
             # check if reissue id exist
@@ -124,7 +130,7 @@ class SharesService:
             )
             
         # if the debit account is base currency, it should match the issue amount
-        if debit_acct.currency == get_base_cur():
+        if debit_acct.currency == base_cur:
             if not math.isclose(issue.issue_amt, issue.issue_amt_base): # type: ignore
                 raise OpNotPermittedError(
                     message=f'Issue amount should equal to issue price x num_shares, if receiving base currency',
@@ -134,6 +140,7 @@ class SharesService:
         return issue
     
     def _validate_repur(self, repur: StockRepurchase) -> StockRepurchase:
+        base_cur = self.setting_service.get_base_currency()
         # check if credit_acct_id exists
         try:
             credit_acct: Account = self.acct_service.get_account(
@@ -151,7 +158,7 @@ class SharesService:
             )
             
         # if the credit account is base currency, it should match the repurchase amount
-        if credit_acct.currency == get_base_cur():
+        if credit_acct.currency == base_cur:
             if not math.isclose(repur.repur_amt, repur.repur_amt_base): # type: ignore
                 raise OpNotPermittedError(
                     message=f'Repurchase amount should equal to repur price x num_shares, if paying base currency',
@@ -180,6 +187,8 @@ class SharesService:
         return div
     
     def create_journal_from_issue(self, issue: StockIssue) -> Journal:
+        base_cur = self.setting_service.get_base_currency()
+        par_share_price = self.setting_service.get_par_share_price()
         self._validate_issue(issue)
         
         entries = []
@@ -193,7 +202,7 @@ class SharesService:
             credit_acct = self.acct_service.get_account(SystemAcctNumber.TREASURY_STOCK)
             description=f"Reissue Treasy stock at cost={cost_price}"
         else:
-            cost_price = get_par_share_price()
+            cost_price = par_share_price
             credit_acct = self.acct_service.get_account(SystemAcctNumber.CONTR_CAP)
             description=f"Common stock at par value={cost_price}"
             
@@ -223,8 +232,8 @@ class SharesService:
         
         # debit receiving account
         # use base currency to record if using expense to debit
-        cur_incexp = get_base_cur() if debit_acct.acct_type == AcctType.EXP else None
-        if debit_acct.currency != get_base_cur():
+        cur_incexp = base_cur if debit_acct.acct_type == AcctType.EXP else None
+        if debit_acct.currency != base_cur:
             amount_base=self.fx_service.convert_to_base(
                 amount=issue.issue_amt,
                 src_currency=debit_acct.currency, # receive currency # type: ignore
@@ -246,7 +255,7 @@ class SharesService:
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
                 acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
-                cur_incexp=get_base_cur(),
+                cur_incexp=base_cur,
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
                 description='fx gain' if gain >=0 else 'fx loss'
@@ -271,14 +280,15 @@ class SharesService:
             jrn_date=issue.issue_dt,
             entries=entries,
             jrn_src=JournalSrc.SHARE,
-            note=f"Issuing new stocks @{get_base_cur()}{issue.issue_price} for {issue.num_shares} shares" \
+            note=f"Issuing new stocks @{base_cur}{issue.issue_price} for {issue.num_shares} shares" \
             if issue.is_reissue == False \
-            else f"Reissue repurchased stocks @{get_base_cur()}{issue.issue_price} for {issue.num_shares} shares"
+            else f"Reissue repurchased stocks @{base_cur}{issue.issue_price} for {issue.num_shares} shares"
         )
         journal.reduce_entries()
         return journal
     
     def create_journal_from_repur(self, repur: StockRepurchase) -> Journal:
+        base_cur = self.setting_service.get_base_currency()
         self._validate_repur(repur)
         
         entries = []
@@ -299,7 +309,7 @@ class SharesService:
         entries.append(treasury_entry)
         
         # credit the account paying the repurchase
-        if credit_acct.currency != get_base_cur():
+        if credit_acct.currency != base_cur:
             amount_base=self.fx_service.convert_to_base(
                 amount=repur.repur_amt,
                 src_currency=credit_acct.currency, # receive currency # type: ignore
@@ -320,7 +330,7 @@ class SharesService:
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
                 acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
-                cur_incexp=get_base_cur(),
+                cur_incexp=base_cur,
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
                 description='fx gain' if gain >=0 else 'fx loss'
@@ -345,7 +355,7 @@ class SharesService:
             jrn_date=repur.repur_dt,
             entries=entries,
             jrn_src=JournalSrc.SHARE,
-            note=f"Repurchasing stock @{get_base_cur()}{repur.repur_price} for {repur.num_shares} shares"
+            note=f"Repurchasing stock @{base_cur}{repur.repur_price} for {repur.num_shares} shares"
         )
         journal.reduce_entries()
         return journal

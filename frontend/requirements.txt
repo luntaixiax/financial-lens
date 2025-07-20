@@ -7,3 +7,4 @@ Requests==2.32.3
 streamlit==1.46.0
 streamlit_nested_layout==0.1.4
 streamlit_shadcn_ui==0.1.18
+extra_streamlit_components==0.1.80

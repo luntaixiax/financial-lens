@@ -13,14 +13,19 @@ from utils.enums import AcctType, CurType, EntryType, JournalSrc
 from utils.apis import add_repur, create_journal_from_new_repur, delete_repur, get_account, get_accounts_by_type, get_all_accounts, \
     get_base_currency, get_comp_contact, list_reissue_from_repur, \
     get_repur_journal, get_logo, list_repur, update_repur, validate_repur
-    
+from utils.apis import cookie_manager
     
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+base_cur = get_base_currency(access_token=access_token)
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
 def display_repur(repur: dict) -> dict:
     return {
@@ -66,12 +71,12 @@ def validate_repur_(repur_: dict):
         )
         return
     
-    repur_ = validate_repur(repur_)
+    repur_ = validate_repur(repur_, access_token=access_token)
     if isinstance(repur_, dict):
         st.session_state['validated'] = True
         
         # calculate and journal to session state
-        jrn_ = create_journal_from_new_repur(repur_)
+        jrn_ = create_journal_from_new_repur(repur_, access_token=access_token)
         st.session_state['journal'] = jrn_
         
 class JournalEntryHelper:
@@ -97,15 +102,15 @@ class JournalEntryHelper:
         ]
 
 
-ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
-lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
+ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value, access_token=access_token)
+lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value, access_token=access_token)
 dds_pay_accts = DropdownSelect(
     briefs=ast_accts + lib_accts,
     include_null=False,
     id_key='acct_id',
     display_keys=['acct_name']
 )
-all_accts = get_all_accounts()
+all_accts = get_all_accounts(access_token=access_token)
 dds_all_accts = DropdownSelect(
     briefs=all_accts,
     include_null=False,
@@ -118,7 +123,7 @@ dds_currency = DropdownSelect.from_enum(
 )
 
 
-base_cur_name = CurType(get_base_currency()).name
+base_cur_name = CurType(base_cur).name   
 
 edit_mode = st.radio(
     label='Edit Mode',
@@ -134,7 +139,7 @@ edit_mode = st.radio(
 )
 if edit_mode == 'Edit':
     
-    repurs = list_repur()
+    repurs = list_repur(access_token=access_token)
     if len(repurs) > 0:
         repur_displays = map(display_repur, repurs)
         
@@ -179,10 +184,10 @@ if edit_mode == 'Edit':
 
         if  _row_list := selected['selection']['rows']:
             rep_id_sel = repurs[_row_list[0]]['repur_id']
-            repur_sel, jrn_sel = get_repur_journal(rep_id_sel)
+            repur_sel, jrn_sel = get_repur_journal(rep_id_sel, access_token=access_token)  
             
             # display related reissue
-            reissues = list_reissue_from_repur(rep_id_sel)
+            reissues = list_reissue_from_repur(rep_id_sel, access_token=access_token)
             if len(reissues) > 0:
                 reissue_disp = [{
                     'Issue ID': r['issue_id'],
@@ -270,11 +275,11 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(repurs) > 0 and _row_list)
             
         # get payment acct details
         pmt_acct_id = dds_pay_accts.get_id(pmt_acct)
-        pmt_acct = get_account(pmt_acct_id)
+        pmt_acct = get_account(pmt_acct_id, access_token=access_token)
         
     with iss_cols[1]:
         pmt_amt = st.number_input(
-            label=f"💰 Payment Amount ({CurType(pmt_acct['currency'] or get_base_currency()).name})",
+            label=f"💰 Payment Amount ({CurType(pmt_acct['currency'] or base_cur).name})",   
             value=0.0 if edit_mode == 'Add' else repur_sel['repur_amt'],
             step=0.01,
             key='pmt_amt',
@@ -378,7 +383,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(repurs) > 0 and _row_list)
                 for e in debit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+            st.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')  
             
             st.caption('Credit Entries')
             credit_entries = st.data_editor(
@@ -436,7 +441,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(repurs) > 0 and _row_list)
                 for e in credit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+            st.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]')  
 
 
     if edit_mode == 'Add' and st.session_state.get('validated', False):
@@ -444,7 +449,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(repurs) > 0 and _row_list)
         st.button(
             label='Add Repurchase',
             on_click=add_repur,
-            args=(repur_,)
+            args=(repur_, access_token)
         )
         
     elif edit_mode == 'Edit':
@@ -457,7 +462,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(repurs) > 0 and _row_list)
                     label='Update',
                     type='secondary',
                     on_click=update_repur,
-                    args=(repur_,)
+                    args=(repur_, access_token)
                 )
         with btn_cols[0]:
             st.button(
@@ -465,6 +470,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(repurs) > 0 and _row_list)
                 type='primary',
                 on_click=delete_repur,
                 kwargs=dict(
-                    repur_id=rep_id_sel
+                    repur_id=rep_id_sel,
+                    access_token=access_token
                 )
             )

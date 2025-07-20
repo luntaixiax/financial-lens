@@ -2,16 +2,15 @@ from datetime import date
 from typing import Generator
 from unittest import mock
 import pytest
-from src.app.utils.tools import get_base_cur
 from src.app.model.exceptions import AlreadyExistError, FKNotExistError, NotExistError
 from src.app.model.enums import CurType
 from src.app.model.expense import ExpenseItem, Expense, ExpInfo, Merchant
 
 @pytest.fixture
-def sample_expense_meal() -> Expense: 
+def sample_expense_meal(test_setting_service) -> Expense: 
     expense = Expense(
         expense_dt=date(2024, 1, 1),
-        currency=get_base_cur(),
+        currency=test_setting_service.get_base_currency(),
         expense_items=[
             ExpenseItem(
                 expense_item_id='sample-exp-item1',
@@ -75,11 +74,9 @@ def sample_expense_rent() -> Expense:
     )
     return expense
 
-@mock.patch("src.app.utils.tools.get_settings")
-def test_expense(mock_settings, settings, session_with_sample_choa, 
+def test_expense(session_with_sample_choa, 
                  sample_expense_meal, sample_expense_rent, sample_journal_meal,
                  test_expense_dao, test_journal_dao):
-    mock_settings.return_value = settings
     
     # add without journal will fail
     with pytest.raises(FKNotExistError):

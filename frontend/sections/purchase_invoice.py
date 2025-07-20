@@ -14,13 +14,19 @@ from utils.apis import get_fx, list_supplier, list_item, list_purchase_invoice, 
     create_journal_from_new_purchase_invoice, get_all_accounts, add_purchase_invoice, \
     update_purchase_invoice, delete_purchase_invoice, get_base_currency, preview_purchase_invoice, \
     get_comp_contact, get_logo
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="wide")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+base_cur = get_base_currency(access_token=access_token)
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
     
 def display_invoice(invoice: dict) -> dict:
@@ -103,7 +109,7 @@ def clear_entries_and_reset_page():
 
 def update_inv_item(entry: dict) -> dict:
     if entry.get('item_id') is not None:
-        item = get_item(dds_citems.get_id(entry['item_id']))
+        item = get_item(dds_citems.get_id(entry['item_id']), access_token=access_token)
         entry['unit_price'] = item['unit_price']
     else:
         entry['unit_price'] = None
@@ -164,7 +170,8 @@ def update_general_inv_item(entry: dict) -> dict:
         entry['amount_pre_tax'] = amount_pre_tax_raw * get_fx(
             src_currency=CurType[currency].value,
             tgt_currency=CurType[inv_cur_type_option].value,
-            cur_dt=entry.get('incur_dt').date()
+            cur_dt=entry.get('incur_dt').date(),
+            access_token=access_token
         )
         
     return entry
@@ -213,7 +220,7 @@ def convert_inv_items_to_db(inv_item_entries: list[dict]) -> list[dict]:
             continue
         
         r = {}
-        r['item'] = get_item(dds_citems.get_id(e['item_id']))
+        r['item'] = get_item(dds_citems.get_id(e['item_id']), access_token=access_token)
         r['quantity'] = e['quantity']
         r['acct_id'] = dds_exp_accts.get_id(e['acct_name'])
         r['tax_rate'] = e['tax_rate'] / 100
@@ -289,7 +296,7 @@ def validate_invoice(invoice_: dict):
         )
         return
     
-    invoice_ = validate_purchase(invoice_)
+    invoice_ = validate_purchase(invoice_, access_token=access_token)
     if isinstance(invoice_, dict):
         if invoice_.get('subtotal_invitems') is not None:
             # pass the validation, otherwise may not pass, just pop up alerts
@@ -301,7 +308,7 @@ def validate_invoice(invoice_: dict):
             st.session_state['validated'] = True
 
             # calculate and journal to session state
-            jrn_ = create_journal_from_new_purchase_invoice(invoice_)
+            jrn_ = create_journal_from_new_purchase_invoice(invoice_, access_token=access_token)
             st.session_state['journal'] = jrn_
             
             return
@@ -316,7 +323,7 @@ def validate_invoice(invoice_: dict):
     )
     
 
-suppliers = list_supplier()
+suppliers = list_supplier(access_token=access_token)
 if len(suppliers) > 0:
     dds_suppliers = DropdownSelect(
         briefs=suppliers,
@@ -328,8 +335,8 @@ if len(suppliers) > 0:
         CurType,
         include_null=False
     )
-    inc_accts = get_accounts_by_type(acct_type=AcctType.INC.value)
-    exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
+    inc_accts = get_accounts_by_type(acct_type=AcctType.INC.value, access_token=access_token)
+    exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value, access_token=access_token)
     dds_exp_accts = DropdownSelect(
         briefs=exp_accts,
         include_null=False,
@@ -342,7 +349,7 @@ if len(suppliers) > 0:
         id_key='acct_id',
         display_keys=['acct_name']
     )
-    all_accts = get_all_accounts()
+    all_accts = get_all_accounts(access_token=access_token)
     dds_accts = DropdownSelect(
         briefs=all_accts,
         include_null=False,
@@ -376,7 +383,7 @@ if len(suppliers) > 0:
     # either add mode or selected edit/view mode
     if edit_mode == 'Edit':
         
-        invoices = list_purchase_invoice(supplier_ids=[supplier_id])
+        invoices = list_purchase_invoice(supplier_ids=[supplier_id], access_token=access_token)
         
         inv_displays = map(display_invoice, invoices)
         selected: dict = st.dataframe(
@@ -443,7 +450,7 @@ if len(suppliers) > 0:
 
         if  _row_list := selected['selection']['rows']:
             inv_id_sel = invoices[_row_list[0]]['invoice_id']
-            inv_sel, jrn_sel = get_purchase_invoice_journal(inv_id_sel)
+            inv_sel, jrn_sel = get_purchase_invoice_journal(inv_id_sel, access_token=access_token)
 
             ui.badges(
                 badge_list=[("Invoice ID", "default"), (inv_id_sel, "secondary")], 
@@ -509,7 +516,7 @@ if len(suppliers) > 0:
         )
         
         # get item list (filter by currency)
-        items = list_item(entity_type=EntityType.SUPPLIER.value)
+        items = list_item(entity_type=EntityType.SUPPLIER.value, access_token=access_token)
         items = list(map(
             display_item, filter(
                 lambda e: e['currency'] == CurType[inv_cur_type_option].value, 
@@ -586,7 +593,7 @@ if len(suppliers) > 0:
                 'description'
             ]}]
             invoice_items[0]['discount_rate'] = 0
-            invoice_items[0]['tax_rate'] = get_default_tax_rate() * 100
+            invoice_items[0]['tax_rate'] = get_default_tax_rate(access_token=access_token) * 100
             
             general_invoice_items = [{c: None for c in [
                 'incur_dt',
@@ -651,7 +658,7 @@ if len(suppliers) > 0:
                     step=0.001,
                     min_value=0.0,
                     max_value=100.0,
-                    default=get_default_tax_rate() * 100,
+                    default=get_default_tax_rate(access_token=access_token) * 100,   
                     #required=True
                 ),
                 'discount_rate': st.column_config.NumberColumn(
@@ -752,7 +759,7 @@ if len(suppliers) > 0:
                     step=0.001,
                     min_value=0.0,
                     max_value=100.0,
-                    default=get_default_tax_rate() * 100,
+                    default=get_default_tax_rate(access_token=access_token) * 100,   
                     #required=True
                 ),
                 'description': st.column_config.TextColumn(
@@ -879,7 +886,7 @@ if len(suppliers) > 0:
                     for e in debit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+                st.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')  
                 
                 st.caption('Credit Entries')
                 credit_entries = st.data_editor(
@@ -937,7 +944,7 @@ if len(suppliers) > 0:
                     for e in credit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+                st.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]')  
 
         
         if edit_mode == 'Add' and st.session_state.get('validated', False):
@@ -945,7 +952,7 @@ if len(suppliers) > 0:
             st.button(
                 label='Add Invoice',
                 on_click=add_purchase_invoice,
-                args=(invoice_,)
+                args=(invoice_, access_token)
             )
             
         elif edit_mode == 'Edit':
@@ -958,7 +965,7 @@ if len(suppliers) > 0:
                         label='Update',
                         type='secondary',
                         on_click=update_purchase_invoice,
-                        args=(invoice_,)
+                        args=(invoice_, access_token)
                     )
             with btn_cols[0]:
                 st.button(
@@ -966,7 +973,8 @@ if len(suppliers) > 0:
                     type='primary',
                     on_click=delete_purchase_invoice,
                     kwargs=dict(
-                        invoice_id=inv_id_sel
+                        invoice_id=inv_id_sel,
+                        access_token=access_token
                     )
                 )
                 
@@ -975,7 +983,7 @@ if len(suppliers) > 0:
                 st.subheader("Invoice Preview")
                 # show purchase invoice HTML preview
                 components.html(
-                    preview_purchase_invoice(inv_id_sel), 
+                    preview_purchase_invoice(inv_id_sel, access_token=access_token), 
                     height = 1250, 
                     scrolling=True
                 )

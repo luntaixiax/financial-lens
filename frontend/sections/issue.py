@@ -13,13 +13,20 @@ from utils.enums import AcctType, CurType, EntryType, JournalSrc
 from utils.apis import add_issue, create_journal_from_new_issue, delete_issue, get_account, get_accounts_by_type, \
     get_all_accounts, get_base_currency, get_comp_contact, get_issue_journal, get_logo, list_issue, \
     list_repur, get_total_reissue_from_repur, update_issue, validate_issue
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+
+base_cur = get_base_currency(access_token=access_token)
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')
     
 def display_issue(issue: dict) -> dict:
     return {
@@ -66,12 +73,12 @@ def validate_issue_(issue_: dict):
         )
         return
     
-    issue_ = validate_issue(issue_)
+    issue_ = validate_issue(issue_, access_token=access_token)
     if isinstance(issue_, dict):
         st.session_state['validated'] = True
         
         # calculate and journal to session state
-        jrn_ = create_journal_from_new_issue(issue_)
+        jrn_ = create_journal_from_new_issue(issue_, access_token=access_token)
         st.session_state['journal'] = jrn_
 
 class JournalEntryHelper:
@@ -98,16 +105,16 @@ class JournalEntryHelper:
 
 
     
-ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
-lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
-exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value)
+ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value, access_token=access_token)
+lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value, access_token=access_token)
+exp_accts = get_accounts_by_type(acct_type=AcctType.EXP.value, access_token=access_token)
 dds_pay_accts = DropdownSelect(
     briefs=ast_accts + lib_accts + exp_accts,
     include_null=False,
     id_key='acct_id',
     display_keys=['acct_name']
 )
-all_accts = get_all_accounts()
+all_accts = get_all_accounts(access_token=access_token) 
 dds_all_accts = DropdownSelect(
     briefs=all_accts,
     include_null=False,
@@ -118,7 +125,7 @@ dds_currency = DropdownSelect.from_enum(
     CurType,
     include_null=False
 )
-repurs = list_repur()
+repurs = list_repur(access_token=access_token)
 dds_repurs = DropdownSelect(
     briefs=repurs,
     include_null=False,
@@ -127,7 +134,7 @@ dds_repurs = DropdownSelect(
 )
 
 
-base_cur_name = CurType(get_base_currency()).name
+base_cur_name = CurType(base_cur).name  
 
 edit_mode = st.radio(
     label='Edit Mode',
@@ -144,8 +151,8 @@ edit_mode = st.radio(
 
 if edit_mode == 'Edit':
     
-    reissues = list_issue(is_reissue=True)
-    issues = list_issue(is_reissue=False)
+    reissues = list_issue(is_reissue=True, access_token=access_token)
+    issues = list_issue(is_reissue=False, access_token=access_token)
     issues = sorted(issues + reissues, key=lambda i: i['issue_dt'])
     
     if len(issues) > 0:
@@ -197,7 +204,7 @@ if edit_mode == 'Edit':
 
         if  _row_list := selected['selection']['rows']:
             iss_id_sel = issues[_row_list[0]]['issue_id']
-            issue_sel, jrn_sel = get_issue_journal(iss_id_sel)
+            issue_sel, jrn_sel = get_issue_journal(iss_id_sel, access_token=access_token)
             
             badge_cols = st.columns([1, 2])
             with badge_cols[0]:
@@ -265,7 +272,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
             total_reissued = get_total_reissue_from_repur(
                 repur_id=repur_id,
                 rep_dt=issue_dt,
-                exclu_issue_id=None if edit_mode == 'Add' else iss_id_sel # must exclude itself
+                exclu_issue_id=None if edit_mode == 'Add' else iss_id_sel, # must exclude itself
+                access_token=access_token
             )
             repur = list(filter(lambda r: r['repur_id'] == repur_id, repurs))[0]
             
@@ -321,11 +329,11 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
             
         # get payment acct details
         pmt_acct_id = dds_pay_accts.get_id(pmt_acct)
-        pmt_acct = get_account(pmt_acct_id)
+        pmt_acct = get_account(pmt_acct_id, access_token=access_token)
         
     with iss_cols[1]:
         pmt_amt = st.number_input(
-            label=f"💰 Received Amount ({CurType(pmt_acct['currency'] or get_base_currency()).name})",
+            label=f"💰 Received Amount ({CurType(pmt_acct['currency'] or base_cur).name})",  
             value=0.0 if edit_mode == 'Add' else issue_sel['issue_amt'],
             step=0.01,
             key='pmt_amt',
@@ -436,7 +444,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
                 for e in debit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+            st.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')  
             
             st.caption('Credit Entries')
             credit_entries = st.data_editor(
@@ -494,7 +502,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
                 for e in credit_entries
                 if pd.notnull(e['amount_base'])
             )
-            st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+            st.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]')
 
 
     if edit_mode == 'Add' and st.session_state.get('validated', False):
@@ -502,7 +510,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
         st.button(
             label='Add Issue',
             on_click=add_issue,
-            args=(issue_,)
+            args=(issue_, access_token)
         )
         
     elif edit_mode == 'Edit':
@@ -514,7 +522,7 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
                     label='Update',
                     type='secondary',
                     on_click=update_issue,
-                    args=(issue_,)
+                    args=(issue_, access_token)
                 )
         with btn_cols[0]:
             st.button(
@@ -522,7 +530,8 @@ if edit_mode == 'Add' or (edit_mode == 'Edit' and len(issues) > 0 and _row_list)
                 type='primary',
                 on_click=delete_issue,
                 kwargs=dict(
-                    issue_id=iss_id_sel
+                    issue_id=iss_id_sel,
+                    access_token=access_token
                 )
             )
     

@@ -1,7 +1,6 @@
 from typing import Any
 from anytree import PreOrderIter
 from src.app.model.const import SystemAcctNumber, SystemChartOfAcctNumber
-from src.app.utils.tools import get_base_cur
 from src.app.dao.accounts import acctDao, chartOfAcctDao
 from src.app.model.accounts import Account, Chart, ChartNode
 from src.app.model.enums import AcctType, CurType
@@ -13,14 +12,20 @@ from src.app.model.exceptions import (
     NotMatchWithSystemError,
     OpNotPermittedError,
 )
+from src.app.service.settings import ConfigService
 
 class AcctService:
     
-    def __init__(self, acct_dao: acctDao, chart_of_acct_dao: chartOfAcctDao):
+    def __init__(self, acct_dao: acctDao, chart_of_acct_dao: chartOfAcctDao, 
+                 setting_service: ConfigService):
         self.acct_dao = acct_dao
         self.chart_of_acct_dao = chart_of_acct_dao
-    
+        self.setting_service = setting_service
+        
+        
     def init(self):
+        base_cur = self.setting_service.get_base_currency()
+        
         # step 1. create basic chart
         # asset chart of accounts
         total_asset = ChartNode(
@@ -125,69 +130,68 @@ class AcctService:
         self.save_coa(total_income)
         self.save_coa(total_expense)
         
-        
         # create system accounts (tax, AR/AP, etc.)
         input_tax = Account(
             acct_id=SystemAcctNumber.INPUT_TAX,
             acct_name="Input Tax",
             acct_type=AcctType.AST,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=noncurrent_asset.chart
         )
         output_tax = Account(
             acct_id=SystemAcctNumber.OUTPUT_TAX,
             acct_name="Output Tax",
             acct_type=AcctType.LIB,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=noncurrent_liability.chart
         )
         ar = Account(
             acct_id=SystemAcctNumber.ACCT_RECEIV,
             acct_name="Account Receivable",
             acct_type=AcctType.AST,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=current_asset.chart
         )
         ap = Account(
             acct_id=SystemAcctNumber.ACCT_PAYAB,
             acct_name="Account Payable",
             acct_type=AcctType.LIB,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=current_liability.chart
         )
         cc = Account(
             acct_id=SystemAcctNumber.CONTR_CAP,
             acct_name="Contributed Capital",
             acct_type=AcctType.EQU,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=total_equity.chart
         )
         api = Account(
             acct_id=SystemAcctNumber.ADD_PAID_IN,
             acct_name="Additional Paid In",
             acct_type=AcctType.EQU,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=total_equity.chart
         )
         treas = Account(
             acct_id=SystemAcctNumber.TREASURY_STOCK,
             acct_name="Treasury Stock",
             acct_type=AcctType.EQU,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=total_equity.chart
         )
         div = Account(
             acct_id=SystemAcctNumber.ACC_DIV,
             acct_name="Acc. Dividend",
             acct_type=AcctType.EQU,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=total_equity.chart
         )
         oci = Account(
             acct_id=SystemAcctNumber.OTH_COMP_INC,
             acct_name="Other Comprehensive Income",
             acct_type=AcctType.EQU,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=total_equity.chart
         )
         sc = Account(
@@ -223,14 +227,14 @@ class AcctService:
             acct_name="PP&E",
             acct_type=AcctType.AST,
             chart=fixed_asset.chart,
-            currency=get_base_cur(),
+            currency=base_cur,
         )
         acc_amort = Account(
             acct_id=SystemAcctNumber.ACC_ADJ,
             acct_name="Acc. PP&E Adj.",
             acct_type=AcctType.AST,
             chart=fixed_asset.chart,
-            currency=get_base_cur(),
+            currency=base_cur,
         ) # accumulative amortization
         amort = Account(
             acct_id=SystemAcctNumber.DEPRECIATION,
@@ -274,6 +278,8 @@ class AcctService:
         self.add_account(impa)
         
     def create_sample(self):
+        base_cur = self.setting_service.get_base_currency()
+        
         total_inc_chart = self.get_chart(
             chart_id=SystemChartOfAcctNumber.TOTAL_INC
         )
@@ -289,7 +295,7 @@ class AcctService:
         ncurlib_chart = self.get_chart(
             chart_id=SystemChartOfAcctNumber.NONCUR_LIB
         )
-        
+
         consult_inc = Account(
             acct_id='acct-consul',
             acct_name='Consulting Income',
@@ -329,7 +335,7 @@ class AcctService:
             acct_id='acct-bank',
             acct_name="Bank Acct",
             acct_type=AcctType.AST,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=bank_chart,
         )
         bank_foreign = Account(
@@ -350,14 +356,14 @@ class AcctService:
             acct_id='acct-credit',
             acct_name="Credit Acct",
             acct_type=AcctType.LIB,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=curlib_chart
         )
         shareholder_loan = Account(
             acct_id='acct-shareloan',
             acct_name="Shareholder Loan",
             acct_type=AcctType.LIB,
-            currency=get_base_cur(),
+            currency=base_cur,
             chart=ncurlib_chart
         )
         

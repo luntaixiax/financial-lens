@@ -1,10 +1,6 @@
-from datetime import date, datetime
-from pathlib import Path
-from typing import Any, Tuple
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from datetime import date
+from typing import Tuple
+from fastapi import APIRouter, Depends
 from src.app.model.invoice import GeneralInvoiceItem
 from src.app.model.enums import CurType
 from src.app.model.journal import Journal

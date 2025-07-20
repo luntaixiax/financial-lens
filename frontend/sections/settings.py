@@ -7,10 +7,14 @@ import streamlit_shadcn_ui as ui
 from utils.enums import CurType
 from utils.tools import DropdownSelect
 from utils.apis import set_logo, get_logo, list_country, list_state, list_city, \
-    upsert_comp_contact, get_comp_contact, is_setup, get_base_currency, set_base_currency, \
+    upsert_comp_contact, get_comp_contact, is_setup, get_base_currency, \
     get_default_tax_rate, set_default_tax_rate, get_par_share_price, set_par_share_price, initiate
-    
+from utils.apis import cookie_manager
 st.set_page_config(layout="centered")
+
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
 
 
 st.subheader("Your Company LOGO")
@@ -22,13 +26,13 @@ with logo_cols[1]:
     )
     if logo is not None:
         bytes_logo = io.BufferedReader(logo)
-        set_logo(bytes_logo)
+        set_logo(bytes_logo, access_token=access_token)
 
 with logo_cols[0]:
-    st.image(get_logo())
+    st.image(get_logo(access_token=access_token))
     
 st.subheader("Your Company Contact")
-comp_name, existing_entity = get_comp_contact()
+comp_name, existing_entity = get_comp_contact(access_token=access_token)
     
 contact_cols = st.columns(2)
 with contact_cols[0]:
@@ -111,7 +115,7 @@ with st.popover(label='Address', icon='📍', use_container_width=True):
         )
     # add state
     states = list_state(
-        country_iso2=dds_countries.get_id(bcountry)
+        country_iso2=dds_countries.get_id(bcountry),
     )
     dds_states = DropdownSelect(
         briefs=states,
@@ -167,7 +171,8 @@ st.button(
     kwargs=dict(
         company_name=cname, name=bname, email=bemail, phone=bphone, 
         address1=baddress1, address2=baddress2, suite_no=bsuite_no, 
-        city=bcity, state=bstate, country=bcountry, postal_code=bpostal
+        city=bcity, state=bstate, country=bcountry, postal_code=bpostal,
+        access_token=access_token
     ),
     key='btn_contact'
 )
@@ -175,11 +180,11 @@ st.button(
 
 st.subheader("Your Accounting Default Settings")
 
-is_set = is_setup()
+is_set = is_setup(access_token=access_token)
 
-current_base_cur = get_base_currency(ignore_error=True) or CurType.USD.value
-current_default_tax_rate = get_default_tax_rate(ignore_error=True) or 0.13
-current_par_share_price = get_par_share_price(ignore_error=True) or 0.01
+current_base_cur = get_base_currency(ignore_error=True, access_token=access_token) or CurType.USD.value
+current_default_tax_rate = get_default_tax_rate(ignore_error=True, access_token=access_token) or 0.13
+current_par_share_price = get_par_share_price(ignore_error=True, access_token=access_token) or 0.01
 
 st.toggle(
     label = 'Is Setup Already?',
@@ -227,7 +232,8 @@ if is_set:
         key='btn_update_default',
         on_click=set_default_tax_rate,
         kwargs=dict(
-            default_tax_rate=default_tax_rate / 100
+            default_tax_rate=default_tax_rate / 100,
+            access_token=access_token
         )
     )
 else:
@@ -238,6 +244,7 @@ else:
         kwargs=dict(
             base_cur=CurType[base_cur].value,
             default_tax_rate=default_tax_rate / 100,
-            par_share_price=par_share_price
+            par_share_price=par_share_price,
+            access_token=access_token
         )
     )

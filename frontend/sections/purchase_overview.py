@@ -11,17 +11,22 @@ from utils.tools import DropdownSelect
 from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, JournalSrc, UnitType
 from utils.apis import get_base_currency, list_supplier, list_purchase_invoice, \
     list_purchase_payment, get_ppurchase_invoices_balance_by_entity, get_comp_contact, get_logo
-
+from utils.apis import cookie_manager
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+base_cur = get_base_currency(access_token=access_token)
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')   
        
 def get_purchase_payment_hist() -> list[dict]:
-    invoices = list_purchase_invoice(supplier_ids=[supplier_id])
-    payments = list_purchase_payment(invoice_ids=[i['invoice_id'] for i in invoices])
+    invoices = list_purchase_invoice(supplier_ids=[supplier_id], access_token=access_token)
+    payments = list_purchase_payment(invoice_ids=[i['invoice_id'] for i in invoices], access_token=access_token)
     
     chain = []
     for invoice in invoices:    
@@ -52,7 +57,7 @@ def get_purchase_payment_hist() -> list[dict]:
         
 
 
-suppliers = list_supplier()
+suppliers = list_supplier(access_token=access_token)
 if len(suppliers) > 0:
 
     dds_suppliers = DropdownSelect(
@@ -79,7 +84,7 @@ if len(suppliers) > 0:
     total_offset = sum(h['offset_amount'] for h in historys if h['direction'] == 'payment')
     total_balance = total_billed - total_offset
     fx_gain = total_offset - total_paid
-    base_currency = CurType(get_base_currency()).name
+    base_currency = CurType(base_cur).name   
 
     card_cols = st.columns(3)
     with card_cols[0]:
@@ -105,12 +110,12 @@ if len(suppliers) > 0:
         )
         
     card_cols2 = st.columns(2)
-    with card_cols2[2]:
+    with card_cols2[0]:
         ui.metric_card(
             title="Remaining Balance", 
             content=f"{base_currency} {total_balance: ,.2f}", 
             description=f"equivalent in base currency", 
-            key="card3"
+            key="card4"
         )
     with card_cols2[1]:
         ui.metric_card(
@@ -124,7 +129,8 @@ if len(suppliers) > 0:
     with tabs[0]:
         balances = get_ppurchase_invoices_balance_by_entity(
             entity_id=supplier_id,
-            bal_dt=date.today()
+            bal_dt=date.today(),
+            access_token=access_token
         )
 
         st.subheader("Outstanding Invoices")

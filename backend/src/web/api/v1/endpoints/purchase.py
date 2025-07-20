@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from src.app.model.exceptions import NotExistError
-from src.app.service.misc import SettingService
+from src.app.service.settings import ConfigService
 from src.app.model.payment import _PaymentBrief, Payment
 from src.app.model.entity import Address, Contact, Customer, Supplier
 from src.app.model.enums import CurType, ItemType, UnitType
@@ -110,7 +110,7 @@ def preview_purchase_invoice(
     request: Request,
     invoice_id: str,
     purchase_service: PurchaseService = Depends(get_purchase_service),
-    setting_service: SettingService = Depends(get_setting_service),
+    setting_service: ConfigService = Depends(get_setting_service),
     entity_service: EntityService = Depends(get_entity_service)
 ):
     invoice, journal = purchase_service.get_invoice_journal(invoice_id)

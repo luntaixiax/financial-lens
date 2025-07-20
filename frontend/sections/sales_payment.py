@@ -12,13 +12,19 @@ from utils.enums import AcctType, CurType, EntityType, EntryType, ItemType, Jour
 from utils.apis import get_account, get_fx, get_sales_payment_journal, list_customer, list_sales_invoice, list_sales_payment, \
     get_accounts_by_type, get_sales_invoice_balance, validate_sales_payment, create_journal_from_new_sales_payment, \
     get_base_currency, get_all_accounts, add_sales_payment, update_sales_payment, delete_sales_payment, get_comp_contact, get_logo
+from utils.apis import cookie_manager
 
 st.set_page_config(layout="centered")
+if cookie_manager.get("authenticated") != True:
+    st.switch_page('sections/login.py')
+access_token=cookie_manager.get("access_token")
+base_cur = get_base_currency(access_token=access_token)
+
 with st.sidebar:
-    comp_name, _ = get_comp_contact()
+    comp_name, _ = get_comp_contact(access_token=access_token)
     
     st.markdown(f"Hello, :rainbow[**{comp_name}**]")
-    st.logo(get_logo(), size='large')
+    st.logo(get_logo(access_token=access_token), size='large')   
     
     
 def display_payment(payment: dict) -> dict:
@@ -78,7 +84,7 @@ def on_change_pmt_items():
 def update_pmt_item(entry: dict) -> dict:
     if (inv_num := entry.get('invoice_num')) is not None:
         inv_id = dds_invs.get_id(inv_num)
-        balance = get_sales_invoice_balance(inv_id, pmt_date)
+        balance = get_sales_invoice_balance(inv_id, pmt_date, access_token=access_token)   
         entry['balance'] = balance['balance']
         
         # add paid amount in payment currency
@@ -87,7 +93,8 @@ def update_pmt_item(entry: dict) -> dict:
                 entry['payment_amount_raw'] = payment_amount * get_fx(
                     src_currency=CurType(pmt_acct['currency']).value,
                     tgt_currency=CurType(balance['currency']).value,
-                    cur_dt=pmt_date
+                    cur_dt=pmt_date,
+                    access_token=access_token
                 )
 
     return entry
@@ -157,13 +164,13 @@ def validate_payment(payment_: dict):
         )
         return
     
-    payment_ = validate_sales_payment(payment_)
+    payment_ = validate_sales_payment(payment_, access_token=access_token)
     if isinstance(payment_, dict):
         if payment_.get('payment_items') is not None:
             st.session_state['validated'] = True
             
             # calculate and journal to session state
-            jrn_ = create_journal_from_new_sales_payment(payment_)
+            jrn_ = create_journal_from_new_sales_payment(payment_, access_token=access_token)
             st.session_state['journal'] = jrn_
 
 
@@ -190,7 +197,7 @@ class JournalEntryHelper:
         ]
         
         
-customers = list_customer()
+customers = list_customer(access_token=access_token)
 
 if len(customers) > 0:
     dds_customers = DropdownSelect(
@@ -203,9 +210,9 @@ if len(customers) > 0:
         CurType,
         include_null=False
     )
-    ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value)
-    lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value)
-    equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value)
+    ast_accts = get_accounts_by_type(acct_type=AcctType.AST.value, access_token=access_token)
+    lib_accts = get_accounts_by_type(acct_type=AcctType.LIB.value, access_token=access_token)
+    equ_accts = get_accounts_by_type(acct_type=AcctType.EQU.value, access_token=access_token)
     balsh_accts = ast_accts + lib_accts + equ_accts
     dds_accts = DropdownSelect(
         briefs=balsh_accts,
@@ -214,7 +221,7 @@ if len(customers) > 0:
         display_keys=['acct_name']
     )
 
-    all_accts = get_all_accounts()
+    all_accts = get_all_accounts(access_token=access_token)
     dds_all_accts = DropdownSelect(
         briefs=all_accts,
         include_null=False,
@@ -246,7 +253,7 @@ if len(customers) > 0:
         )
         cust_id = dds_customers.get_id(edit_customer)
         
-    invoices = list_sales_invoice(customer_ids=[cust_id])
+    invoices = list_sales_invoice(customer_ids=[cust_id], access_token=access_token)
     invs_options = [
         {
             'invoice_id': i['invoice_id'],
@@ -263,7 +270,7 @@ if len(customers) > 0:
     )
 
     if edit_mode == 'Edit':
-        payments = list_sales_payment(invoice_ids=[i['invoice_id'] for i in invoices])
+        payments = list_sales_payment(invoice_ids=[i['invoice_id'] for i in invoices], access_token=access_token)
         #st.json(payments)
         
         pmt_displays = map(display_payment, payments)
@@ -324,7 +331,7 @@ if len(customers) > 0:
         
         if _row_list := selected['selection']['rows']:
             pmt_id_sel = payments[_row_list[0]]['payment_id']
-            pmt_sel, jrn_sel = get_sales_payment_journal(pmt_id_sel)
+            pmt_sel, jrn_sel = get_sales_payment_journal(pmt_id_sel, access_token=access_token)
 
             ui.badges(
                 badge_list=[("Payment ID", "default"), (pmt_id_sel, "secondary")], 
@@ -369,14 +376,14 @@ if len(customers) > 0:
             )
             # get payment acct details
             pmt_acct_id = dds_accts.get_id(pmt_acct)
-            pmt_acct = get_account(pmt_acct_id)
+            pmt_acct = get_account(pmt_acct_id, access_token=access_token)
             
         # prepare data editor
         if edit_mode == 'Edit':
             pmt_items = [
                 {
                     'invoice_num': dds_invs._mappings.get(pi['invoice_id']),
-                    'balance': get_sales_invoice_balance(pi['invoice_id'], pmt_date)['balance'],
+                    'balance': get_sales_invoice_balance(pi['invoice_id'], pmt_date, access_token=access_token)['balance'],    
                     'payment_amount': pi['payment_amount'],
                     'payment_amount_raw': pi['payment_amount_raw']
                     
@@ -572,7 +579,7 @@ if len(customers) > 0:
                     for e in debit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📥 **Total Debit ({CurType(get_base_currency()).name})**: :green-background[{display_number(total_debit)}]')
+                st.markdown(f'📥 **Total Debit ({CurType(base_cur).name})**: :green-background[{display_number(total_debit)}]')  
                 
                 st.caption('Credit Entries')
                 credit_entries = st.data_editor(
@@ -630,7 +637,7 @@ if len(customers) > 0:
                     for e in credit_entries
                     if pd.notnull(e['amount_base'])
                 )
-                st.markdown(f'📤 **Total Credit ({CurType(get_base_currency()).name})**: :blue-background[{display_number(total_credit)}]')
+                st.markdown(f'📤 **Total Credit ({CurType(base_cur).name})**: :blue-background[{display_number(total_credit)}]')  
 
 
         if edit_mode == 'Add' and st.session_state.get('validated', False):
@@ -638,7 +645,7 @@ if len(customers) > 0:
             st.button(
                 label='Add Payment',
                 on_click=add_sales_payment,
-                args=(payment_,)
+                args=(payment_, access_token)
             )
             
         elif edit_mode == 'Edit':
@@ -651,7 +658,7 @@ if len(customers) > 0:
                         label='Update',
                         type='secondary',
                         on_click=update_sales_payment,
-                        args=(payment_,)
+                        args=(payment_, access_token)
                     )
             with btn_cols[0]:
                 st.button(
@@ -659,7 +666,8 @@ if len(customers) > 0:
                     type='primary',
                     on_click=delete_sales_payment,
                     kwargs=dict(
-                        invoice_id=pmt_id_sel
+                        payment_id=pmt_id_sel,
+                        access_token=access_token
                     )
                 )
                 

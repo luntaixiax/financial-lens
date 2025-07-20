@@ -1,7 +1,6 @@
 from datetime import date
 import math
 from typing import Tuple
-from src.app.utils.tools import get_base_cur
 from src.app.dao.expense import expenseDao
 from src.app.model.exceptions import AlreadyExistError, FKNoDeleteUpdateError, FKNotExistError, NotExistError, NotMatchWithSystemError, OpNotPermittedError
 from src.app.model.const import SystemAcctNumber
@@ -13,20 +12,31 @@ from src.app.model.accounts import Account
 from src.app.model.enums import AcctType, CurType, EntryType, JournalSrc
 from src.app.model.expense import _ExpenseBrief, _ExpenseSummaryBrief, ExpenseItem, Expense, ExpInfo, Merchant
 from src.app.model.journal import Journal, Entry
+from src.app.service.settings import ConfigService
 
 class ExpenseService:
     
-    def __init__(self, expense_dao: expenseDao, acct_service: AcctService, journal_service: JournalService, fx_service: FxService):
+    def __init__(
+        self, 
+        expense_dao: expenseDao, 
+        acct_service: AcctService, 
+        journal_service: JournalService, 
+        fx_service: FxService, 
+        setting_service: ConfigService
+    ):
         self.expense_dao = expense_dao
         self.acct_service = acct_service
         self.journal_service = journal_service
         self.fx_service = fx_service
-    
+        self.setting_service = setting_service
+        
     def create_sample(self):
+        base_cur = self.setting_service.get_base_currency()
+        
         expense1 = Expense(
             expense_id='exp-sample1',
             expense_dt=date(2024, 1, 1),
-            currency=get_base_cur(),
+            currency=base_cur,
             expense_items=[
                 ExpenseItem(
                     expense_item_id='sample-exp-item1',
@@ -148,6 +158,8 @@ class ExpenseService:
             
     
     def create_journal_from_expense(self, expense: Expense) -> Journal:
+        base_cur = self.setting_service.get_base_currency()
+        
         self._validate_expense(expense)
         
         # create journal entries
@@ -226,7 +238,7 @@ class ExpenseService:
             fx_gain = Entry(
                 entry_type=EntryType.CREDIT, # fx gain is credit
                 acct=self.acct_service.get_account(SystemAcctNumber.FX_GAIN), # goes to gain account
-                cur_incexp=get_base_cur(),
+                cur_incexp=base_cur,
                 amount=gain, # gain is already expressed in base currency
                 amount_base=gain, # gain is already expressed in base currency
                 description='fx gain' if gain >=0 else 'fx loss'
