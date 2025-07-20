@@ -131,10 +131,15 @@ with st.popover(label='Address', icon='📍', use_container_width=True):
             key="bstate"
         )
     else:
+        try:
+            state_idx = dds_states.get_idx_from_option(existing_entity['address']['state'])
+        except:
+            # if state is not in the list, set to the first option
+            state_idx = 0
         bstate = st.selectbox(
             label="🌎 State", 
             options=dds_states.options,
-            index=dds_states.get_idx_from_option(existing_entity['address']['state']),
+            index=state_idx,
             key="bstate2"
         )
     # add city
@@ -150,10 +155,15 @@ with st.popover(label='Address', icon='📍', use_container_width=True):
             key="bcity"
         )
     else:
+        try:
+            city_idx = cities.index(existing_entity['address']['city'])
+        except:
+            # if city is not in the list, set to the first option
+            city_idx = 0
         bcity = st.selectbox(
             label="🌇 City", 
             options=cities,
-            index=cities.index(existing_entity['address']['city']),
+            index=city_idx,
             key="bcity2"
         )
     
