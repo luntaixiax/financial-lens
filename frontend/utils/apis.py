@@ -2133,8 +2133,8 @@ def set_logo(logo: bytes, access_token: str | None = None):
     preview_purchase_invoice.clear()
     preview_sales_invoice.clear()
 
-@message_box
 @st.cache_data
+@message_box
 def get_logo(access_token: str | None = None) -> bytes | str:
     try:
         print("get_logo", access_token)
