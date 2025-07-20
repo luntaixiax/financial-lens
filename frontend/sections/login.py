@@ -1,50 +1,82 @@
-import requests
 import streamlit as st
-import extra_streamlit_components as stx
-from utils.apis import cookie_manager, login, logout
+import streamlit_shadcn_ui as ui
+from utils.apis import cookie_manager, login, logout, register
+st.set_page_config(layout="centered")
 
-cookies = cookie_manager.get_all()
-st.write(cookies)
+cols = st.columns(2, gap='large', vertical_alignment='top')
 
+with cols[0]:
+    st.image("images/app_logo.png")
+    st.caption("Manage your financials all in one place")
 
-# def login(username: str, password: str):
-#     try:
-#         BACKEND_URL = "http://localhost:8181"
-#         response = requests.post(
-#             f"{BACKEND_URL}/api/v1/management/login",
-#             data={
-#                 "username": username,
-#                 "password": password
-#             },
-#             headers={"Content-Type": "application/x-www-form-urlencoded"}
-#         )
+with cols[1]:
+    tabs = st.tabs(['Login', 'Register'])
+    with tabs[0]:
         
-#         if response.status_code == 200:
-#             token_data = response.json()
-#             cookie_manager.set("authenticated", True, key='authenticated_set')
-#             cookie_manager.set("username", username, key='username_set')
-#             cookie_manager.set("access_token", token_data["access_token"], key='access_token_set')
-#             return True
-#         else:
-#             st.error(f"Login failed: {response.text}")
-#             return False
+        login_cont = st.container(key="login_cont", border=False)
+        if not cookie_manager.get("authenticated"):
             
-#     except requests.exceptions.RequestException as e:
-#         st.error(f"Connection error: {e}")
-#         return False
-    
-if not cookie_manager.get("authenticated"):
-    username = st.text_input("username", key="username")
-    password = st.text_input("password", key="password", type="password")
-    
-    if st.button("Login", key="login_button"):
-        if login(username, password):
-            st.success("Login successful")
-            # TODO: refresh the page
+            login_cont.title("🎉Login")
+        
+            username = login_cont.text_input("User Name", key="username", icon='🐮')
+            password = login_cont.text_input("Password", key="password", type="password", icon='🔒', max_chars=20)
+            
+            if login_cont.button(
+                "Login", 
+                key="login_button", 
+                type='tertiary', 
+                icon=":material/login:"
+            ):
+                if login(username, password):
+                    login_cont.success("Login successful", icon='💯')
+                    # TODO: refresh the page
+                else:
+                    login_cont.error("Invalid username or password", icon='🙊')
         else:
-            st.error("Invalid username or password")
-else:
-    st.info(f"Login successful, welcome back {cookie_manager.get('username')}")
-    if st.button("Logout", key="logout_button"):
-        logout()
-        st.rerun()
+            login_cont.info(f"Login successful, welcome back **{cookie_manager.get('username')}**", icon='🥳')
+            if login_cont.button(
+                "Logout", 
+                key="logout_button",
+                type='tertiary', 
+                icon=":material/logout:"
+            ):
+                logout()
+                st.rerun()
+                
+    with tabs[1]:
+        register_cont = st.container(key="register_cont", border=False)
+        register_cont.title("🎊Register")
+        
+        username = register_cont.text_input(
+            "User Name", 
+            key="reg_username", 
+            icon='🦁'
+        )
+        password = register_cont.text_input(
+            "Password", 
+            key="reg_password", 
+            type="password", 
+            icon='🔒', 
+            max_chars=20
+        )
+        confirm_password = register_cont.text_input(
+            "Confirm Password", 
+            key="reg_confirm_password", 
+            type="password", 
+            icon='🔒', 
+            max_chars=20
+        )
+        if register_cont.button(
+            "Register", 
+            key="register_button",
+            type='tertiary', 
+            icon=":material/person_add:"
+        ):
+            if password == confirm_password:
+                if register(username, password):
+                    register_cont.success("Registration successful", icon='💯')
+                else:
+                    register_cont.error("Registration failed", icon='⁉️')
+            else:
+                register_cont.error("Passwords do not match", icon='🙊')
+        

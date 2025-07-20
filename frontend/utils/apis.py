@@ -31,7 +31,7 @@ def message_box(f):
             r = f(*args, **kwargs)
         except PermissionDeniedError as e:
             logout() # clear cookies
-            raise # TODO: change to next line
+            #raise # TODO: change to next line
             #st.switch_page('sections/login.py')
             # ui.alert_dialog(
             #     show=True,
@@ -71,8 +71,17 @@ def login(username: str, password: str) -> bool:
     cookie_manager.set("access_token", token_data["access_token"], key='access_token_set')
     return True
 
-
-
+@message_box
+def register(username: str, password: str) -> bool:
+    post_req(
+        prefix='management',
+        endpoint='register',
+        json_={
+            "username": username,
+            "password": password    
+        }
+    )
+    return True
 
 @st.cache_data
 def list_country() -> list[dict]:

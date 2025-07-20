@@ -2,7 +2,7 @@ import streamlit as st
     
 pages = {
     "Settings": [
-        st.Page("sections/login.py", title="Login", icon='👤'),
+        st.Page("sections/login.py", title="Login & Register", icon='👤'),
         st.Page("sections/settings.py", title="Manage Your Company", icon='⚙️'),
         st.Page("sections/db_management.py", title="Manage Data", icon='⛅'),
     ],
