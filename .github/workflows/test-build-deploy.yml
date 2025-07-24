@@ -52,25 +52,24 @@ jobs:
     if: ${{ needs.limit-changes-backend.outputs.changelist == 'true' }}
     steps:
       - uses: actions/checkout@v4
+      
+      - name: install uv
+        uses: astral-sh/setup-uv@v6
 
-      - name: setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-          cache: 'pip'
-
-      - name: install python library
+      - name: set up python
         working-directory: backend
-        run: |
-          pip install pytest pytest-cov
-          pip install -r requirements.txt
+        run: uv python install
+
+      - name: install the project
+        working-directory: backend
+        run: uv sync --locked --all-extras --dev
 
       - name: unit testing
         working-directory: backend
         env:
           ENV: dev
         run: |
-          python -m pytest -s .
+          uv run pytest -s .
 
   build-backend-image:
     runs-on: ubuntu-latest
